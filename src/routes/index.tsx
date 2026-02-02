@@ -1,5 +1,5 @@
+import { Button } from '@/components/ui/button'
 import { createFileRoute } from '@tanstack/react-router'
-import logo from '../logo.svg'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -7,33 +7,25 @@ export const Route = createFileRoute('/')({
 
 function App() {
   return (
-    <div className="text-center">
-      <header className="min-h-screen flex flex-col items-center justify-center bg-[#282c34] text-white text-[calc(10px+2vmin)]">
-        <img
-          src={logo}
-          className="h-[40vmin] pointer-events-none animate-[spin_20s_linear_infinite]"
-          alt="logo"
-        />
-        <p>
-          Edit <code>src/routes/index.tsx</code> and save to reload.
-        </p>
-        <a
-          className="text-[#61dafb] hover:underline"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-        <a
-          className="text-[#61dafb] hover:underline"
-          href="https://tanstack.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn TanStack
-        </a>
-      </header>
+    <div className="text-center bg-neutral-200 min-h-screen select-none">
+      <div className="bg-white py-2 px-4 flex justify-between items-center">
+        <p className="font-black text-lg">Logo</p>
+        <ul className="flex gap-2 font-semibold h-full ">
+          <li className=" hover:text-slate-500 select-none cursor-pointer">
+            Home
+          </li>
+          <li className=" hover:text-slate-500 select-none cursor-pointer">
+            Leaderboard
+          </li>
+          <li className=" hover:text-slate-500 select-none cursor-pointer">
+            Challenges
+          </li>
+        </ul>
+        <div className="flex gap-2">
+          <Button variant={'secondary'}>Sign Up</Button>
+          <Button>Finish</Button>
+        </div>
+      </div>
     </div>
   )
 }
