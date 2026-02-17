@@ -9,6 +9,7 @@ import TanStackQueryDevtools from '@/integrations/tanstack-query/devtools'
 import type { QueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import { ThemeProvider } from 'next-themes'
+import Footer from '@/components/Footer'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -18,10 +19,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: () => (
     <>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <Navbar />
-        <Outlet />
+        <div className="min-h-screen flex flex-col justify-between">
+          <Navbar />
+          <Outlet />
+          <Footer />
+        </div>
       </ThemeProvider>
-      
+
       <TanStackDevtools
         config={{
           position: 'bottom-right',
