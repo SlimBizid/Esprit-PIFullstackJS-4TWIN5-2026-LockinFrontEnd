@@ -7,6 +7,8 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import TanStackQueryDevtools from '@/integrations/tanstack-query/devtools'
 
 import type { QueryClient } from '@tanstack/react-query'
+import Navbar from '@/components/Navbar'
+import { ThemeProvider } from 'next-themes'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -15,8 +17,11 @@ interface MyRouterContext {
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: () => (
     <>
-      {/* <Header /> */}
-      <Outlet />
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <Navbar />
+        <Outlet />
+      </ThemeProvider>
+      
       <TanStackDevtools
         config={{
           position: 'bottom-right',

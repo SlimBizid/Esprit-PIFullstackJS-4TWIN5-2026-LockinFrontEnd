@@ -25,51 +25,51 @@ code {
   --card-foreground: oklch(0.25 0.04 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.04 260);
-  --primary: oklch(0.70 0.18 290); 
+  --primary: oklch(0.7 0.18 290);
   --primary-foreground: oklch(0.98 0.01 240);
-  --secondary: oklch(0.90 0.02 260);
+  --secondary: oklch(0.9 0.02 260);
   --secondary-foreground: oklch(0.25 0.04 260);
-  --muted: oklch(0.90 0.02 260);
-  --muted-foreground: oklch(0.50 0.05 260);
-  --accent: oklch(0.70 0.18 290);
+  --muted: oklch(0.9 0.02 260);
+  --muted-foreground: oklch(0.5 0.05 260);
+  --accent: oklch(0.7 0.18 290);
   --accent-foreground: oklch(0.25 0.04 260);
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.85 0.02 260);
   --input: oklch(0.85 0.02 260);
-  --ring: oklch(0.70 0.18 290);
+  --ring: oklch(0.7 0.18 290);
   --radius: 0.625rem;
 }
 
 .dark {
-  --background: oklch(0.27 0.02 259);         /* #282a36 - Background */
-  --foreground: oklch(0.97 0.01 80);           /* #f8f8f2 - Foreground */
+  --background: oklch(0.27 0.02 259); /* #282a36 - Background */
+  --foreground: oklch(0.97 0.01 80); /* #f8f8f2 - Foreground */
   --card: oklch(0.27 0.02 259);
   --card-foreground: oklch(0.97 0.01 80);
   --popover: oklch(0.27 0.02 259);
   --popover-foreground: oklch(0.97 0.01 80);
-  
-  --primary: oklch(0.72 0.16 295);            /* #bd93f9 - Purple */
+
+  --primary: oklch(0.72 0.16 295); /* #bd93f9 - Purple */
   --primary-foreground: oklch(0.27 0.02 259);
-  
-  --secondary: oklch(0.36 0.03 261);          /* #44475a - Current Line/Selection */
+
+  --secondary: oklch(0.36 0.03 261); /* #44475a - Current Line/Selection */
   --secondary-foreground: oklch(0.97 0.01 80);
-  
+
   --muted: oklch(0.36 0.03 261);
-  --muted-foreground: oklch(0.55 0.08 262);    /* #6272a4 - Comment (Blueish) */
-  
+  --muted-foreground: oklch(0.55 0.08 262); /* #6272a4 - Comment (Blueish) */
+
   --accent: oklch(0.72 0.16 295);
   --accent-foreground: oklch(0.97 0.01 80);
-  
-  --destructive: oklch(0.66 0.20 25);         /* #ff5555 - Red */
+
+  --destructive: oklch(0.66 0.2 25); /* #ff5555 - Red */
   --destructive-foreground: oklch(0.97 0.01 80);
-  
+
   --border: oklch(0.36 0.03 261);
   --input: oklch(0.36 0.03 261);
   --ring: oklch(0.72 0.16 295);
 
   /* Sidebar specifically for ByteBattle Layout */
-  --sidebar: oklch(0.23 0.02 259);            /* Slightly darker than bg */
+  --sidebar: oklch(0.23 0.02 259); /* Slightly darker than bg */
   --sidebar-foreground: oklch(0.97 0.01 80);
   --sidebar-primary: oklch(0.72 0.16 295);
   --sidebar-border: oklch(0.36 0.03 261);

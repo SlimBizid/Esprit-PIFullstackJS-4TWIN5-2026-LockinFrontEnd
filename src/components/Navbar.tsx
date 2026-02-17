@@ -1,29 +1,51 @@
 import { Button } from '@/components/ui/button'
-import { Moon, Sun } from 'lucide-react';
-import { useTheme } from "next-themes"
+import { Link } from '@tanstack/react-router'
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
-export default function Navbar(){
-      const { theme, setTheme } = useTheme();
+export default function Navbar() {
+  const { theme, setTheme } = useTheme()
 
-    return <div className="text-center bg-background min-h-screen select-none">
-      <div className="bg-secondary py-2 px-4 flex justify-between items-center">
-        <p className="font-black text-lg">LockIN</p>
-        <ul className="flex gap-2 font-semibold h-full ">
-          <li className=" hover:text-slate-500 select-none cursor-pointer">
+  return (
+    <div className=" px-4 flex justify-between items-center border-border border-b">
+      <div className="p-2 flex items-center gap-2">
+        <div className="h-10 aspect-square bg-primary rounded"></div>
+        <Link to="/">
+          <p className="font-black text-lg">LockIN</p>
+        </Link>
+      </div>
+      <ul className="flex gap-2 font-semibold h-full ">
+        <Link to="/home" activeProps={{ className: 'text-primary' }}>
+          <li className=" hover:text-primary select-none cursor-pointer">
             Home
           </li>
-          <li className=" hover:text-slate-500 select-none cursor-pointer">
+        </Link>
+        <Link to="/leaderboard" activeProps={{ className: 'text-primary' }}>
+          <li className=" hover:text-primary select-none cursor-pointer">
             Leaderboard
           </li>
-          <li className=" hover:text-slate-500 select-none cursor-pointer">
+        </Link>
+        <Link to="/challenges" activeProps={{ className: 'text-primary' }}>
+          <li className=" hover:text-primary select-none cursor-pointer">
             Challenges
           </li>
-        </ul>
-        <div className="flex gap-2">
-          <Button size="icon" onClick={()=> setTheme(theme == "light"? "dark" : "light")}>{theme == "dark" ? <Moon /> : <Sun />}</Button>
-          <Button variant={'secondary'}>Sign Up</Button>
-          <Button>Finish</Button>
-        </div>
+        </Link>
+      </ul>
+      <div className="flex gap-2">
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => setTheme(theme == 'light' ? 'dark' : 'light')}
+        >
+          {theme == 'dark' ? <Moon /> : <Sun />}
+        </Button>
+        <Link to="/auth/register">
+          <Button variant="secondary">Sign Up</Button>
+        </Link>
+        <Link to="/auth/login">
+          <Button>Log In</Button>
+        </Link>
       </div>
     </div>
+  )
 }
