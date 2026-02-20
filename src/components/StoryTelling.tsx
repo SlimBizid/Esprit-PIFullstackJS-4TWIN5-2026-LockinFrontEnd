@@ -1,13 +1,30 @@
-import { Link } from '@tanstack/react-router'
+type StoryTellingProps = {
+  imageSrc?: string;
+  imageAlt?: string;
+};
 
-export default function StoryTelling() {
+export default function StoryTelling({
+  imageSrc,
+  imageAlt = "Storytelling section image",
+}: StoryTellingProps) {
   return (
     <section className="bg-background text-foreground py-20">
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12">
-
-        {/* Left Side - Purple Image Placeholder */}
+        
+        {/* Left Side - Image with fallback */}
         <div className="w-full md:w-1/2">
-          <div className="bg-purple-500 h-72 rounded-2xl"></div>
+          {imageSrc ? (
+            <img
+              src={imageSrc}
+              alt={imageAlt}
+              className="w-full h-72 object-cover rounded-2xl"
+            />
+          ) : (
+            <div
+              className="w-full h-72 bg-primary rounded-2xl"
+              aria-label="Placeholder image"
+            />
+          )}
         </div>
 
         {/* Right Side - Text Content */}
@@ -18,23 +35,24 @@ export default function StoryTelling() {
 
           <p className="mb-4 text-lg">
             LockIN is a real-time competitive coding platform where developers
-            face off in live coding battles.
+            compete in live coding battles.
           </p>
 
           <p className="mb-6 text-lg">
-            Participants solve algorithmic and programming challenges under time
-            pressure, competing for speed, accuracy, and code quality.
+            Participants solve algorithmic challenges under time pressure,
+            competing for speed, accuracy, and code quality.
           </p>
 
-          <Link
-            to="/auth/register"
-            className="inline-block bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl transition"
+          <button
+            onClick={() => {
+              window.location.href = "/auth/register";
+            }}
+            className="bg-primary hover:opacity-90 text-white px-6 py-3 rounded-xl transition-all"
           >
             Get started →
-          </Link>
-
+          </button>
         </div>
       </div>
     </section>
-  )
+  );
 }
