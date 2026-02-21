@@ -1,4 +1,7 @@
 import { Link } from "@tanstack/react-router"
+import SoloChallenge from '@/../public/SoloChallenge.png'
+import TeamChallenge from '@/../public/TeamChallenge.png'
+import CodingBattle from '@/../public/CodingBattle.png'
 
 export default function BenefitsSection() {
   return (
@@ -35,8 +38,12 @@ export default function BenefitsSection() {
             to="/challenges/solo"
             className="group bg-card border border-border rounded-xl p-8 text-left transition-all duration-300 hover:border-primary hover:shadow-xl"
           >
-            <div className="h-40 bg-primary rounded-lg mb-6" />
-
+          <img
+              src={SoloChallenge}
+              alt="Solo Challenges"
+              className="h-40 w-full rounded-lg mb-6 object-cover"
+            />
+            
             <h3 className="text-lg font-semibold mb-3 text-foreground">
               Go on solo challenges
             </h3>
@@ -52,7 +59,11 @@ export default function BenefitsSection() {
             to="/challenges/team"
             className="group bg-card border border-border rounded-xl p-8 text-left transition-all duration-300 hover:border-primary hover:shadow-xl"
           >
-            <div className="h-40 bg-primary rounded-lg mb-6" />
+            <img
+              src={TeamChallenge}
+              alt="Team Challenges"
+              className="h-40 w-full rounded-lg mb-6 object-cover"
+            />
 
             <h3 className="text-lg font-semibold mb-3 text-foreground">
               Join team challenges
@@ -69,7 +80,11 @@ export default function BenefitsSection() {
             to="/challenges/battle"
             className="group bg-card border border-border rounded-xl p-8 text-left transition-all duration-300 hover:border-primary hover:shadow-xl"
           >
-            <div className="h-40 bg-primary rounded-lg mb-6" />
+            <img
+              src={CodingBattle}
+              alt="Coding Battles"
+              className="h-40 w-full rounded-lg mb-6 object-cover"
+            />
 
             <h3 className="text-lg font-semibold mb-3 text-foreground">
               Engage in 1v1 battles
