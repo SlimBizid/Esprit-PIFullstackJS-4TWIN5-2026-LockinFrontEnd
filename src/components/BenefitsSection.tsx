@@ -1,7 +1,105 @@
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel'
+
 export default function BenefitsSection() {
+  const benefits = [
+    {
+      title: "Built for the 'Unfocused' Genius",
+      description:
+        'We target talented coders addicted to gaming who need a better dopamine loop to build discipline.',
+      rarity: 'text-rarity-common',
+      tag: 'NICHE',
+    },
+    {
+      title: 'The Pet House Mechanic',
+      description:
+        'Equip unique pets to gain small buffs during unranked challenges. Turn mundane tasks into RPG progression.',
+      rarity: 'text-rarity-rare',
+      tag: 'GAMIFIED',
+    },
+    {
+      title: 'Anti-Sabotage Training',
+      description:
+        "Our 'Coders VS Imposter' mode trains you to spot bugs and intentional sabotage in high-stakes relay coding.",
+      rarity: 'text-rarity-epic',
+      tag: 'EXCLUSIVE',
+    },
+    {
+      title: 'True Ownership',
+      description:
+        'Every border, badge, and title is a trophy earned. No custom uploads—your profile reflects your actual milestones.',
+      rarity: 'text-rarity-legendary',
+      tag: 'RANKED',
+    },
+  ]
+
   return (
-    <>
-      <p>benefits section</p>
-    </>
+    <section id="benefits" className="w-full py-24 bg-background select-none">
+      <div className="max-w-7xl mx-auto px-12">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+          <div className="max-w-2xl">
+            <h2 className="text-sm font-bold tracking-[0.2em] text-primary uppercase mb-4">
+              Core Mechanics
+            </h2>
+            <p className="text-3xl md:text-5xl font-mono-one text-foreground uppercase tracking-tighter">
+              A Platform that{' '}
+              <span className="text-primary text-glow">Understands</span> the
+              Grind.
+            </p>
+          </div>
+          <div className="hidden md:flex gap-2"></div>
+        </div>
+
+        <Carousel
+          className="w-full"
+          opts={{
+            align: 'start',
+            loop: true,
+          }}
+        >
+          <CarouselContent className="-ml-4">
+            {benefits.map((benefit, index) => (
+              <CarouselItem
+                key={index}
+                className="pl-4 md:basis-1/2 lg:basis-1/3"
+              >
+                <div
+                  className={`h-full p-8 rounded-2xl backdrop-blur-sm flex flex-col justify-between  transition-colors group cursor-grab active:cursor-grabbing`}
+                >
+                  <div>
+                    <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase bg-secondary px-2 py-1 rounded mb-6 inline-block">
+                      {benefit.tag}
+                    </span>
+                    <h3
+                      className={`text-2xl font-bold ${benefit.rarity} mb-4 font-mono-one tracking-tight group-hover:text-foreground transition-colors`}
+                    >
+                      {benefit.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {benefit.description}
+                    </p>
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-border/50 flex justify-between items-center">
+                    <span className="text-xs font-mono text-primary/50">
+                      L-IN // 00{index + 1}
+                    </span>
+                    <div className="w-8 h-px bg-primary/30" />
+                  </div>
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <div className="flex justify-center gap-4 mt-8">
+            <CarouselPrevious className="static translate-y-0  border-border bg-background hover:bg-primary hover:text-primary-foreground transition-all" />
+            <CarouselNext className="static translate-y-0  border-border bg-background hover:bg-primary hover:text-primary-foreground transition-all" />
+          </div>
+        </Carousel>
+      </div>
+    </section>
   )
 }

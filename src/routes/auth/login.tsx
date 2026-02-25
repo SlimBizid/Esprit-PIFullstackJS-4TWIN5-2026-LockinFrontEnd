@@ -13,7 +13,7 @@ function RouteComponent() {
       <div className="rounded-md overflow-hidden grid grid-cols-2">
         <div className="h-full col-span-1 text-center flex flex-col gap-8 px-20 py-16 bg-accent">
           <div className="gap-4 flex flex-col select-none">
-            <p className="text-5xl font-keania-one">Welcome Back</p>
+            <p className="text-5xl font-mono-one">Welcome Back</p>
             <p>Build your new coding habit with LockIN</p>
           </div>
           <div className="flex flex-col gap-4">
