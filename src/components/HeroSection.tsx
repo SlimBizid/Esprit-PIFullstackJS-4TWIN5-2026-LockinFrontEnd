@@ -1,7 +1,10 @@
 import PixelSword from '@/../public/pixel sword.jpg'
 import Editor from '@/../public/editor.png'
+import EditorLight from '@/../public/editor-light.png'
+import { useTheme } from 'next-themes'
 
 export default function HeroSection() {
+  const { theme } = useTheme()
   return (
     <section className="relative w-full min-h-[80vh] py-32 flex flex-col items-center justify-center pt-20 overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-10 pointer-events-none ">
@@ -22,9 +25,8 @@ export default function HeroSection() {
       </div>
 
       <div className="relative rounded-2xl  mx-32 shadow-2xl z-10 mt-20 border-2 overflow-hidden">
-        {/* <div className="absolute inset-0 z-10 bg-gray-950" /> */}
         <img
-          src={Editor}
+          src={`${theme === 'dark' ? Editor : EditorLight}`}
           alt="ByteBattle Preview"
           className="w-full h-auto  object-cover aspect-video"
         />

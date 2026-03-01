@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as ChallengesRouteImport } from './routes/challenges'
+import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
@@ -31,6 +32,11 @@ const HomeRoute = HomeRouteImport.update({
 const ChallengesRoute = ChallengesRouteImport.update({
   id: '/challenges',
   path: '/challenges',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChallengeRoute = ChallengeRouteImport.update({
+  id: '/challenge',
+  path: '/challenge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -61,6 +67,7 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/challenge'
     | '/challenges'
     | '/home'
     | '/leaderboard'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/challenge'
     | '/challenges'
     | '/home'
     | '/leaderboard'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/challenge'
     | '/challenges'
     | '/home'
     | '/leaderboard'
@@ -125,6 +137,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChallengeRoute: typeof ChallengeRoute
   ChallengesRoute: typeof ChallengesRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/challenges'
       fullPath: '/challenges'
       preLoaderRoute: typeof ChallengesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/challenge': {
+      id: '/challenge'
+      path: '/challenge'
+      fullPath: '/challenge'
+      preLoaderRoute: typeof ChallengeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -197,6 +217,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChallengeRoute: ChallengeRoute,
   ChallengesRoute: ChallengesRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,

@@ -39,7 +39,7 @@ export default function BenefitsSection() {
   ]
 
   return (
-    <section id="benefits" className="w-full py-24 bg-background select-none">
+    <section id="benefits" className="w-full py-24 bg-background select-none ">
       <div className="max-w-7xl mx-auto px-12">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
           <div className="max-w-2xl">
@@ -66,7 +66,7 @@ export default function BenefitsSection() {
             {benefits.map((benefit, index) => (
               <CarouselItem
                 key={index}
-                className="pl-4 md:basis-1/2 lg:basis-1/3"
+                className="pl-4 md:basis-1/2 lg:basis-1/3 border border-border mx-2 rounded-lg"
               >
                 <div
                   className={`h-full p-8 rounded-2xl backdrop-blur-sm flex flex-col justify-between  transition-colors group cursor-grab active:cursor-grabbing`}
