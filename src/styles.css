@@ -137,6 +137,18 @@ code {
   --font-keania-one: 'Keania One', sans-serif;
   --font-mono-one: 'Rubik Mono One', monospace;
   --font-quantico: 'Quantico', sans-serif;
+
+  @keyframes peekaboo {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  --animate-peekaboo: peekaboo steps(1) 1s infinite;
 }
 
 @layer base {
