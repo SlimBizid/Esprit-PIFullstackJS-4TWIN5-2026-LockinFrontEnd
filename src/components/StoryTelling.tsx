@@ -1,9 +1,9 @@
-import { Cat, HatGlasses } from "lucide-react";
+import { Cat, HatGlasses } from 'lucide-react'
 
 export default function StoryTelling() {
   return (
-    <section className="w-full py-24 px-32 bg-accent">
-      <div className="max-w-7xl mx-auto space-y-32">
+    <section className="w-full py-24 px-16 md:px-32 bg-accent">
+      <div className="max-w-7xl mx-auto space-y-16 md:space-y-32">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
             <h2 className="text-3xl md:text-5xl font-mono-one text-destructive uppercase tracking-tight">

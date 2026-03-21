@@ -1,22 +1,18 @@
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from './ui/sheet'
+import { Menu } from 'lucide-react'
 
 export default function Navbar() {
   const [scrollProgress, setScrollProgress] = useState(0)
-  const user = useUser()
-  const isAuthenticated = useIsAuthenticated()
-  const logout = useUserStore((s) => s.logout)
-  const isLoading = useUserStore((s) => s.isLoading)
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-    } catch (err) {
-      console.error('Logout failed', err)
-    }
-  }
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -215,7 +211,7 @@ export default function Navbar() {
             </p>
           </Link>
         </div>
-        <ul className="flex gap-2 font-semibold h-full absolute mx-auto w-fit items-center inset-x-0">
+        <ul className="hidden md:flex gap-2 font-semibold h-full absolute mx-auto w-fit items-center inset-x-0">
           <Link to="/home" activeProps={{ className: 'text-primary' }}>
             <li className=" hover:text-primary select-none cursor-pointer">
               Home
@@ -232,25 +228,64 @@ export default function Navbar() {
             </li>
           </Link>
         </ul>
-        <div className="flex gap-2">
-          {!isAuthenticated ? (
-            <>
-              <Link to="/auth/register">
-                <Button variant="secondary">Sign Up</Button>
-              </Link>
-              <Link to="/auth/login">
-                <Button>Log In</Button>
-              </Link>
-            </>
-          ) : (
-            <>
-              <span className="font-medium">{user?.username}</span>
-              <Button onClick={handleLogout} disabled={isLoading}>
-                Logout
-              </Button>
-            </>
-          )}
+        <div className="hidden md:flex gap-2">
+          <Link to="/auth/register">
+            <Button variant="secondary">Sign Up</Button>
+          </Link>
+          <Link to="/auth/login">
+            <Button>Log In</Button>
+          </Link>
         </div>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild className="md:hidden">
+            <Button variant="ghost" size="icon">
+              <Menu size={24} />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right">
+            <SheetHeader>
+              <SheetTitle>
+                <Link to="/" className="flex gap-2 items-center">
+                  <Logo />
+                  LockIN_
+                </Link>
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-4 mt-6 font-semibold px-4">
+              <Link
+                onClick={() => setSheetOpen(false)}
+                to="/home"
+                activeProps={{ className: 'text-primary' }}
+              >
+                Home
+              </Link>
+              <Link
+                onClick={() => setSheetOpen(false)}
+                to="/leaderboard"
+                activeProps={{ className: 'text-primary' }}
+              >
+                Leaderboard
+              </Link>
+              <Link
+                onClick={() => setSheetOpen(false)}
+                to="/challenges"
+                activeProps={{ className: 'text-primary' }}
+              >
+                Challenges
+              </Link>
+              <div className="flex gap-2">
+                <Link to="/auth/register">
+                  <Button variant="secondary" className="w-full">
+                    Sign Up
+                  </Button>
+                </Link>
+                <Link to="/auth/login">
+                  <Button className="w-full">Log In</Button>
+                </Link>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   )

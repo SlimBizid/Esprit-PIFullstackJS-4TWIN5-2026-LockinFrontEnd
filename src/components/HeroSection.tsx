@@ -8,7 +8,7 @@ export default function HeroSection() {
   return (
     <section className="relative w-full min-h-[80vh] py-32 flex flex-col items-center justify-center pt-20 overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-10 pointer-events-none ">
-        <img src={PixelSword} className="w-full object-cover" alt="" />
+        <img src={PixelSword} className="w-full object-cover size-200 " alt="" />
       </div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none bg-linear-to-t from-background from-20% to-50% to-emerald-300/0 z-20 "></div>
 
@@ -23,7 +23,8 @@ export default function HeroSection() {
         </h1>
       </div>
 
-      <div className="relative rounded-2xl  mx-32 shadow-2xl z-10 mt-20 border-2 overflow-hidden">
+      <div className="relative rounded-2xl mx-8 md:mx-32 shadow-2xl z-10 mt-20 border-2 overflow-hidden">
+        {/* <div className="absolute inset-0 z-10 bg-gray-950" /> */}
         <img
           src={`${theme === 'dark' ? Editor : EditorLight}`}
           alt="ByteBattle Preview"

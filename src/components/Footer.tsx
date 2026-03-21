@@ -7,9 +7,9 @@ export default function Footer() {
   const { theme, setTheme } = useTheme()
   return (
     <div className="border-t border-gray-950">
-      <div className="border-border border-t px-20 select-none font-semibold">
+      <div className="border-border border-t px-4 md:px-20 select-none font-semibold">
         <div className="border-x border-border flex flex-col">
-          <div className="p-12 pt-16 flex justify-between w-full border-b">
+          <div className="p-6 md:p-12 md:pt-16 flex flex-col gap-4 md:flex-row md:justify-between w-full border-b">
             <p>LockIn</p>
             <AvatarGroup>
               <Avatar size="sm" className="cursor-pointer">
@@ -50,7 +50,7 @@ export default function Footer() {
               </Avatar>
             </AvatarGroup>
           </div>
-          <div className="border-border border-b grid grid-cols-6 p-8 py-16">
+          <div className="border-border border-b grid grid-cols-2 md:grid-cols-6 p-4 md:p-8 py-8 md:py-16">
             <ul className="col-span-1 px-4 space-y-2">
               <li className="uppercase font-semibold text-gray-400">
                 Gamemodes
@@ -144,24 +144,26 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-          <div className="flex justify-between p-12 pb-24 relative">
-            <div className="flex items-center gap-2 text-sm bg-secondary px-4 rounded-4xl">
-              <div className="relative">
-                <div className="w-3 h-3 rounded-full bg-primary animate-ping absolute" />
-                <div className="w-3 h-3 rounded-full bg-primary relative" />
-              </div>
-              <p>ENGINE STATUS: LOCKING IN...</p>
-            </div>
+          <div className="flex  gap-4 justify-between p-6 md:p-12 md:pb-24 relative">
             <div className="absolute w-fit inset-x-0 mx-auto">
               2026 - All rights reserved
             </div>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setTheme(theme == 'light' ? 'dark' : 'light')}
-            >
-              {theme == 'dark' ? <Moon /> : <Sun />}
-            </Button>
+            <div className="flex w-full justify-between mt-8 lg:mt-0">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => setTheme(theme == 'light' ? 'dark' : 'light')}
+              >
+                {theme == 'dark' ? <Moon /> : <Sun />}
+              </Button>
+              <div className="flex items-center gap-2 text-sm bg-secondary px-4 rounded-4xl">
+                <div className="relative">
+                  <div className="w-3 h-3 rounded-full bg-primary animate-ping absolute" />
+                  <div className="w-3 h-3 rounded-full bg-primary relative" />
+                </div>
+                <p>ENGINE STATUS: LOCKING IN...</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
