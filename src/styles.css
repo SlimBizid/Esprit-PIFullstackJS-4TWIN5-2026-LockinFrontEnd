@@ -26,34 +26,36 @@ code {
 }
 
 :root {
-  /* Light Mode (Mintlify-style clean light) */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.12 0.02 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0.02 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0.02 250);
+  --background: #ffffff;
+  --foreground: #02060d;
+  --card: #ffffff;
+  --card-foreground: #02060d;
+  --popover: #ffffff;
+  --popover-foreground: #02060d;
 
-  /* The signature Mintlify Green/Cyan */
   --primary: #00cfba;
-  --primary-foreground: oklch(0.98 0.01 240);
+  --primary-foreground: #f3faff;
 
-  --secondary: oklch(0.96 0.01 250);
-  --secondary-foreground: oklch(0.12 0.02 250);
-  --muted: oklch(0.96 0.01 250);
-  --muted-foreground: oklch(0.45 0.02 250);
+  --secondary: #edf2f8;
+  --secondary-foreground: #02060d;
+  --muted: #edf2f8;
+  --muted-foreground: #4d5660;
   --accent: #f4f4f4;
-  --accent-foreground: oklch(0.12 0.02 250);
-  --destructive: oklch(0.6 0.18 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.92 0.01 250);
-  --input: oklch(0.92 0.01 250);
+  --accent-foreground: #02060d;
+  --destructive: #d74745;
+  --destructive-foreground: #f8f8f8;
+  --border: #e0e5eb;
+  --input: #e0e5eb;
   --ring: #00cfba;
   --radius: 0.5rem;
+
+  --common: #94a3b8;
+  --rare: #3b82f6;
+  --epic: #a855f7;
+  --legendary: #e9bf42;
 }
 
 .dark {
-  /* Mintlify Dark Mode: Deep Obsidian #0B0F1A */
   --background: #06090f;
   --foreground: #f8fafc;
   --card: #111827;
@@ -62,7 +64,7 @@ code {
   --popover-foreground: #f8fafc;
 
   /* Vibrant Mint Primary */
-  --primary: #00cfba;
+  --primary: #00cf80;
   --primary-foreground: #0b0f1a;
 
   --secondary: #1f2937;
@@ -74,7 +76,7 @@ code {
   --accent: #111a29;
   --accent-foreground: #f8fafc;
 
-  --destructive: oklch(0.55 0.22 25);
+  --destructive: #d40924;
   --destructive-foreground: #f8fafc;
 
   --border: #1e293b;
@@ -165,4 +167,9 @@ code {
     @apply font-quantico tracking-wider uppercase;
     font-weight: 900;
   }
+}
+
+::selection {
+  background-color: var(--primary);
+  color: var(--foreground);
 }

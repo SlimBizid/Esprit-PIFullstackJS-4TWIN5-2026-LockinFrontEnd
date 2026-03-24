@@ -1,5 +1,4 @@
 import { Avatar, AvatarImage, AvatarFallback, AvatarGroup } from './ui/avatar'
-import Esprit from '@/../public/Logo_ESPRIT 1.svg'
 import { Button } from './ui/button'
 import { useTheme } from 'next-themes'
 import { Moon, Sun } from 'lucide-react'
@@ -56,49 +55,93 @@ export default function Footer() {
               <li className="uppercase font-semibold text-gray-400">
                 Gamemodes
               </li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Solo Challenges</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">1v1 Duels</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Team Contests</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Coders VS Imposter</li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Solo Challenges
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                1v1 Duels
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Team Contests
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Coders VS Imposter
+              </li>
             </ul>
             <ul className="col-span-1 px-4 space-y-2">
               <li className="uppercase font-semibold text-gray-400">
                 Rankings
               </li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Leaderboard</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Season History</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Achievement Log</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Rank Titles</li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Leaderboard
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Season History
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Achievement Log
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Rank Titles
+              </li>
             </ul>
             <ul className="col-span-1 px-4 space-y-2">
               <li className="uppercase font-semibold text-gray-400">
                 Collection
               </li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Pet House</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Inventory</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Cosmetic Rarity</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Profile Borders</li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Pet House
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Inventory
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Cosmetic Rarity
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Profile Borders
+              </li>
             </ul>
             <ul className="col-span-1 px-4 space-y-2">
               <li className="uppercase font-semibold text-gray-400">
                 Community
               </li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Challenge Reviews</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Report System</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Team Chat</li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Challenge Reviews
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Report System
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Team Chat
+              </li>
             </ul>
             <ul className="col-span-1 px-4 space-y-2">
               <li className="uppercase font-semibold text-gray-400">The Lab</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Daily Quests</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">AI Challenge Gen</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Code Optimization</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Bug Hunting</li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Daily Quests
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                AI Challenge Gen
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Code Optimization
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Bug Hunting
+              </li>
             </ul>
             <ul className="col-span-1 px-4 space-y-2">
               <li className="uppercase font-semibold text-gray-400">Project</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Meet Dusk&Dawn</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Technical Diagrams</li>
-              <li className="hover:underline hover:text-primary cursor-pointer">Esprit 2026</li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Meet Dusk&Dawn
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Technical Diagrams
+              </li>
+              <li className="hover:underline hover:text-primary cursor-pointer">
+                Esprit 2026
+              </li>
             </ul>
           </div>
           <div className="flex justify-between p-12 pb-24 relative">
