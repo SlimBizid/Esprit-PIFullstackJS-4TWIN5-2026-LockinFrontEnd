@@ -1,9 +1,22 @@
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 
 export default function Navbar() {
   const [scrollProgress, setScrollProgress] = useState(0)
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
+  const logout = useUserStore((s) => s.logout)
+  const isLoading = useUserStore((s) => s.isLoading)
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (err) {
+      console.error('Logout failed', err)
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -220,12 +233,23 @@ export default function Navbar() {
           </Link>
         </ul>
         <div className="flex gap-2">
-          <Link to="/auth/register">
-            <Button variant="secondary">Sign Up</Button>
-          </Link>
-          <Link to="/auth/login">
-            <Button>Log In</Button>
-          </Link>
+          {!isAuthenticated ? (
+            <>
+              <Link to="/auth/register">
+                <Button variant="secondary">Sign Up</Button>
+              </Link>
+              <Link to="/auth/login">
+                <Button>Log In</Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className="font-medium">{user?.username}</span>
+              <Button onClick={handleLogout} disabled={isLoading}>
+                Logout
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
