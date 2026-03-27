@@ -284,7 +284,7 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center gap-2">
             {!isAuthenticated ? (
-              <>
+              <div>
                 <Link to="/auth/register">
                   <Button
                     variant="secondary"
@@ -298,7 +298,7 @@ export default function Navbar() {
                     Log In
                   </Button>
                 </Link>
-              </>
+              </div>
             ) : (
               <>
                 <span
@@ -345,41 +345,36 @@ export default function Navbar() {
               <SheetContent
                 id="mobile-nav-panel"
                 side="right"
-                className="w-72 pt-12 flex flex-col gap-0"
+                className="w-80 flex flex-col h-full"
                 aria-label="Mobile navigation"
               >
                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
 
-                <SheetClose asChild>
-                  <Link
-                    to="/"
-                    className="flex items-center gap-2 mb-6 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 px-2"
-                    aria-label="LockIN – go to homepage"
-                  >
-                    <Logo />
-                    <span className="font-black text-lg">
-                      LockIN
-                      <span className="text-primary animate-peekaboo">_</span>
-                    </span>
-                  </Link>
-                </SheetClose>
+                <div className="pt-6">
+                  <SheetClose asChild>
+                    <Link to="/" className="flex items-center gap-2 px-2">
+                      <Logo />
+                      <span className="font-black text-lg">
+                        LockIN<span className="text-primary">_</span>
+                      </span>
+                    </Link>
+                  </SheetClose>
+                </div>
 
-                <nav aria-label="Mobile navigation links">
-                  <ul className="flex flex-col gap-1" role="list">
+                <nav
+                  className="flex-1 mt-8"
+                  aria-label="Mobile navigation links"
+                >
+                  <ul className="flex flex-col gap-2">
                     {NAV_LINKS.map(({ to, label }) => (
                       <li key={to}>
                         <SheetClose asChild>
                           <Link
                             to={to}
                             activeProps={{
-                              className: 'text-primary bg-primary/10',
+                              className: 'text-primary bg-primary/5',
                             }}
-                            className="
-                              flex items-center w-full px-3 py-2.5 font-semibold text-base
-                              hover:text-primary hover:bg-primary/10 transition-colors
-                              focus-visible:outline-none focus-visible:ring-2
-                              focus-visible:ring-primary focus-visible:ring-offset-2
-                            "
+                            className="flex items-center w-full px-4 py-3 font-semibold text-lg rounded-lg transition-colors"
                           >
                             {label}
                           </Link>
@@ -389,35 +384,32 @@ export default function Navbar() {
                   </ul>
                 </nav>
 
-                <div className="flex flex-col gap-2 mt-auto pb-4">
+                <div className="mt-auto border-t pt-6 pb-8 flex flex-col gap-3 px-4">
                   {!isAuthenticated ? (
                     <>
                       <SheetClose asChild>
-                        <Link to="/auth/register" className="w-full">
+                        <Link to="/auth/login" className="w-full">
                           <Button
-                            variant="secondary"
-                            className="w-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                            variant="outline"
+                            className="w-full h-12 text-base"
                           >
-                            Sign Up
+                            Log In
                           </Button>
                         </Link>
                       </SheetClose>
                       <SheetClose asChild>
-                        <Link to="/auth/login" className="w-full">
-                          <Button className="w-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                            Log In
+                        <Link to="/auth/register" className="w-full">
+                          <Button className="w-full h-12 text-base">
+                            Sign Up
                           </Button>
                         </Link>
                       </SheetClose>
                     </>
                   ) : (
-                    <>
-                      <p
-                        className="px-3 text-sm font-medium text-muted-foreground"
-                        aria-label={`Logged in as ${user?.username}`}
-                      >
+                    <div className="space-y-4">
+                      <p className="px-2 text-sm text-muted-foreground text-center">
                         Signed in as{' '}
-                        <span className="text-foreground font-semibold">
+                        <span className="text-foreground font-bold">
                           {user?.username}
                         </span>
                       </p>
@@ -426,13 +418,12 @@ export default function Navbar() {
                           setMobileOpen(false)
                           handleLogout()
                         }}
-                        disabled={isLoading}
-                        aria-busy={isLoading}
-                        className="w-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        variant="destructive"
+                        className="w-full h-12"
                       >
-                        {isLoading ? 'Logging out…' : 'Logout'}
+                        Logout
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
               </SheetContent>
