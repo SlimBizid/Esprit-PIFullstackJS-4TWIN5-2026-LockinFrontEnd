@@ -1,11 +1,13 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Github, UserCircle, Lock } from 'lucide-react'
+import { Github } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { api, useUserStore } from '@/stores/userStore'
 import type { User } from '@/models/user'
+import { useId } from 'react'
 
 type LoginFormValues = {
   username: string
@@ -15,6 +17,7 @@ type LoginFormValues = {
 export function LoginForm() {
   const navigate = useNavigate()
   const setUser = useUserStore((s) => s.setUser)
+  const uid = useId()
 
   const {
     register,
@@ -28,7 +31,7 @@ export function LoginForm() {
       return data
     },
     onError: (error) => {
-      console.log(error)
+      console.error('Login failed', error)
     },
     onSuccess: (user) => {
       setUser(user)
@@ -36,113 +39,146 @@ export function LoginForm() {
     },
   })
 
-  const onSubmit = (values: LoginFormValues) => {
-    loginMutation.mutate(values)
-  }
+  const onSubmit = (values: LoginFormValues) => loginMutation.mutate(values)
+
+  const isPending = loginMutation.isPending || isSubmitting
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-      <div className="space-y-4">
-        <div className="relative">
-          <Input
-            placeholder="USERNAME / EMAIL"
-            {...register('username', {
-              required: 'Email is required',
-            })}
-            className="bg-background border-border/50 focus:border-primary transition-colors pl-10 h-11 text-xs font-mono uppercase tracking-widest"
-          />
-          <UserCircle className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-          {errors.username && (
-            <p className="text-xs text-red-500 mt-1">
-              {errors.username.message}
-            </p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <div className="relative">
-            <Input
-              type="password"
-              placeholder="ACCESS KEY"
-              {...register('password', {
-                required: 'Password is required',
-              })}
-              className="bg-background border-border/50 focus:border-primary transition-colors pl-10 h-11 text-xs font-mono tracking-[0.3em]"
-            />
-            <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-            {errors.password && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          <div className="flex justify-end">
-            <Link
-              to="/auth/forgot-password"
-              className="text-[10px] uppercase font-bold text-muted-foreground hover:text-primary transition-colors tracking-tighter"
-            >
-              Forgot Access Key?
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* SUBMIT */}
-      <Button
-        type="submit"
-        disabled={loginMutation.isPending || isSubmitting}
-        className="w-full h-11 bg-primary text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] font-bold uppercase tracking-widest text-xs transition-all"
-      >
-        {loginMutation.isPending ? 'Authorizing...' : 'Authorize Login'}
-      </Button>
-
-      {/* SERVER ERROR */}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      aria-label="Sign in form"
+      className="space-y-5"
+    >
+      {/* ── Server error ── */}
       {loginMutation.isError && (
-        <p className="text-xs text-red-500 text-center">
-          Login failed. Check credentials.
-        </p>
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          Incorrect username or password. Please try again.
+        </div>
       )}
 
-      {/* DIVIDER */}
-      <div className="relative flex items-center py-2">
-        <div className="grow border-t border-border"></div>
-        <span className="shrink mx-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-          Alternate Uplink
-        </span>
-        <div className="grow border-t border-border"></div>
+      {/* ── Username ── */}
+      <div className="space-y-1.5">
+        <Label htmlFor={`${uid}-username`} className="text-sm font-medium">
+          Username or email
+        </Label>
+        <Input
+          id={`${uid}-username`}
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          aria-invalid={!!errors.username}
+          aria-describedby={errors.username ? `${uid}-username-err` : undefined}
+          {...register('username', {
+            required: 'Please enter your username or email.',
+          })}
+          className="h-11"
+          placeholder="you@example.com"
+        />
+        {errors.username && (
+          <p
+            id={`${uid}-username-err`}
+            role="alert"
+            className="text-xs text-destructive mt-1"
+          >
+            {errors.username.message}
+          </p>
+        )}
       </div>
 
-      {/* SOCIAL / GUEST */}
+      {/* ── Password ── */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label htmlFor={`${uid}-password`} className="text-sm font-medium">
+            Password
+          </Label>
+          <Link
+            to="/auth/forgot-password"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
+                       focus-visible:ring-offset-2 rounded-sm"
+          >
+            Forgot password?
+          </Link>
+        </div>
+        <Input
+          id={`${uid}-password`}
+          type="password"
+          autoComplete="current-password"
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? `${uid}-password-err` : undefined}
+          {...register('password', { required: 'Please enter your password.' })}
+          className="h-11"
+          placeholder="••••••••"
+        />
+        {errors.password && (
+          <p
+            id={`${uid}-password-err`}
+            role="alert"
+            className="text-xs text-destructive mt-1"
+          >
+            {errors.password.message}
+          </p>
+        )}
+      </div>
+
+      {/* ── Submit ── */}
+      <Button
+        type="submit"
+        disabled={isPending}
+        aria-busy={isPending}
+        className="w-full h-11 font-semibold"
+      >
+        {isPending ? 'Signing in…' : 'Sign in'}
+      </Button>
+
+      {/* ── Divider ── */}
+      <div className="relative flex items-center py-1">
+        <div className="grow border-t border-border" />
+        <span className="mx-4 shrink text-xs text-muted-foreground">
+          or continue with
+        </span>
+        <div className="grow border-t border-border" />
+      </div>
+
+      {/* ── Social / Guest ── */}
       <div className="grid grid-cols-2 gap-3">
         <Button
           type="button"
           variant="outline"
-          className="h-10 border-border/50 hover:bg-primary/5 text-[10px] font-bold uppercase tracking-tight gap-2"
+          className="h-11 gap-2 font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          aria-label="Sign in with GitHub"
         >
-          <Github className="w-4 h-4" /> Github
+          <Github className="w-4 h-4" aria-hidden="true" />
+          GitHub
         </Button>
-
         <Button
           type="button"
           variant="outline"
-          className="h-10 border-border/50 hover:bg-primary/5 text-[10px] font-bold uppercase tracking-tight gap-2"
+          className="h-11 font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
-          As Guest
+          Continue as guest
         </Button>
       </div>
 
-      {/* REGISTER */}
-      <div className="mt-4 pt-6 border-t border-border/30 text-center">
+      {/* ── Register link ── */}
+      <p className="pt-2 text-center text-sm text-muted-foreground">
+        Don't have an account?{' '}
         <Link
           to="/auth/register"
-          className="text-[10px] uppercase font-bold text-muted-foreground hover:text-primary transition-colors tracking-widest"
+          className="font-semibold text-foreground underline underline-offset-4
+                     hover:text-primary transition-colors
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
+                     focus-visible:ring-offset-2 rounded-sm"
         >
-          Don't have an account?{' '}
-          <span className="text-primary underline underline-offset-4">
-            Register
-          </span>
+          Create one
         </Link>
-      </div>
+      </p>
     </form>
   )
 }
