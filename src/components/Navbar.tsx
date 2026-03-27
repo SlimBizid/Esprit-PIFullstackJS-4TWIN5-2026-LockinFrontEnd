@@ -375,7 +375,7 @@ export default function Navbar() {
                               className: 'text-primary bg-primary/10',
                             }}
                             className="
-                              flex items-center w-full px-3 py-2.5  font-semibold text-base
+                              flex items-center w-full px-3 py-2.5 font-semibold text-base
                               hover:text-primary hover:bg-primary/10 transition-colors
                               focus-visible:outline-none focus-visible:ring-2
                               focus-visible:ring-primary focus-visible:ring-offset-2

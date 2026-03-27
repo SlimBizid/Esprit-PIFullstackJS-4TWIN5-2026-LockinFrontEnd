@@ -50,7 +50,6 @@ export function LoginForm() {
       aria-label="Sign in form"
       className="space-y-5"
     >
-      {/* ── Server error ── */}
       {loginMutation.isError && (
         <div
           role="alert"
@@ -61,7 +60,6 @@ export function LoginForm() {
         </div>
       )}
 
-      {/* ── Username ── */}
       <div className="space-y-1.5">
         <Label htmlFor={`${uid}-username`} className="text-sm font-medium">
           Username or email
@@ -91,7 +89,6 @@ export function LoginForm() {
         )}
       </div>
 
-      {/* ── Password ── */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor={`${uid}-password`} className="text-sm font-medium">
@@ -127,7 +124,6 @@ export function LoginForm() {
         )}
       </div>
 
-      {/* ── Submit ── */}
       <Button
         type="submit"
         disabled={isPending}
@@ -137,7 +133,6 @@ export function LoginForm() {
         {isPending ? 'Signing in…' : 'Sign in'}
       </Button>
 
-      {/* ── Divider ── */}
       <div className="relative flex items-center py-1">
         <div className="grow border-t border-border" />
         <span className="mx-4 shrink text-xs text-muted-foreground">
@@ -146,7 +141,6 @@ export function LoginForm() {
         <div className="grow border-t border-border" />
       </div>
 
-      {/* ── Social / Guest ── */}
       <div className="grid grid-cols-2 gap-3">
         <Button
           type="button"
@@ -166,7 +160,6 @@ export function LoginForm() {
         </Button>
       </div>
 
-      {/* ── Register link ── */}
       <p className="pt-2 text-center text-sm text-muted-foreground">
         Don't have an account?{' '}
         <Link

@@ -5,7 +5,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { CarouselApi } from '@/components/ui/carousel'
 
 const BENEFITS = [
@@ -101,7 +101,7 @@ export default function BenefitsSection() {
                 <div className="h-full p-6 sm:p-8 rounded-2xl backdrop-blur-sm flex flex-col justify-between transition-colors group cursor-grab active:cursor-grabbing">
                   <div>
                     <span
-                      aria-label={`Rarity: ${benefit.tag}`}
+                      aria-label={`Category: ${benefit.tag}`}
                       className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase bg-secondary px-2 py-1 rounded mb-6 inline-block"
                     >
                       {benefit.tag}
