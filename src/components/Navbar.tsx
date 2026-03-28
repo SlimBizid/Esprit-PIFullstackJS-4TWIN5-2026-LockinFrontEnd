@@ -232,7 +232,7 @@ export default function Navbar() {
       <a
         href="#main-content"
         className="
-          sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100]
+          sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100
           focus:rounded-md focus:bg-primary focus:px-4 focus:py-2
           focus:text-primary-foreground focus:font-semibold focus:shadow-lg
           focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
@@ -248,7 +248,7 @@ export default function Navbar() {
         <nav
           id={navId}
           aria-label="Main navigation"
-          className="flex items-center justify-between px-4 h-16 max-w-screen-xl mx-auto"
+          className="flex items-center justify-between px-4 h-16 max-w-7xl mx-auto"
         >
           <Link
             to="/"
@@ -302,7 +302,7 @@ export default function Navbar() {
             ) : (
               <>
                 <span
-                  className="font-medium  text-primary font-bold"
+                  className="text-primary font-bold"
                   aria-label={`Logged in as ${user?.username}`}
                 >
                   {user?.username}

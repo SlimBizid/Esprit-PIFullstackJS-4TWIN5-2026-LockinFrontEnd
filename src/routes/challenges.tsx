@@ -101,6 +101,7 @@ const CHALLENGE_TOPICS = [
 type ChallengeFormValues = {
   title: string
   content: string
+  starterCode: string
   difficulty: Challenge['difficulty']
   type: Challenge['type']
   topics: string[]
@@ -113,6 +114,7 @@ type ChallengeFormValues = {
 type ChallengePayload = {
   title: string
   content: string
+  starterCode: string
   difficulty: Challenge['difficulty']
   type: Challenge['type']
   topics: string[]
@@ -186,6 +188,7 @@ function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
   return {
     title: challenge?.title ?? '',
     content: challenge?.content ?? '',
+    starterCode: challenge?.starterCode ?? '',
     difficulty: challenge?.difficulty ?? 'easy',
     type: challenge?.type ?? 'solo',
     topics: challenge?.topics ?? [],
@@ -209,6 +212,7 @@ function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
   return {
     title: values.title.trim(),
     content: values.content.trim(),
+    starterCode: values.starterCode,
     difficulty: values.difficulty,
     type: values.type,
     topics: values.topics,
@@ -311,6 +315,22 @@ function ChallengeFormDialog({
               className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               placeholder="Describe the problem statement."
               required
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="challenge-starter-code">Starter Code</Label>
+            <textarea
+              id="challenge-starter-code"
+              value={values.starterCode}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  starterCode: event.target.value,
+                }))
+              }
+              className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 font-mono"
+              placeholder="function solution(...args) {\n  // Implement your answer here.\n}"
             />
           </div>
 

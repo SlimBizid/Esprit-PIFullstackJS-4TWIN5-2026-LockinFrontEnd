@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { z } from 'zod'
 import {
   Terminal,
   ChevronLeft,
@@ -12,60 +13,89 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Editor, loader } from '@monaco-editor/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { useQuery } from '@tanstack/react-query'
+import { api, useIsAuthenticated } from '@/stores/userStore'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import type { Challenge } from '@/models/challenge'
+
+const challengeSearchSchema = z.object({
+  id: z.coerce.number().int().positive(),
+})
+
+type TestResult = {
+  passed: boolean
+  actual: string
+  expected: string
+  runtime: string
+}
+
+function formatDifficulty(difficulty: Challenge['difficulty']) {
+  return difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
+}
+
+function parseValue(value: string) {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
+function normalizeValue(value: unknown) {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  return JSON.stringify(value)
+}
+
+function getStarterCode() {
+  return [
+    'function solution(...args) {',
+    '  // Implement your answer here.',
+    '  return args',
+    '}',
+  ].join('\n')
+}
+
+function getInitialCode(challenge?: Challenge) {
+  if (challenge?.starterCode?.trim()) {
+    return challenge.starterCode
+  }
+
+  return getStarterCode()
+}
 
 export const Route = createFileRoute('/challenge')({
+  validateSearch: challengeSearchSchema,
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const difficulty = 'easy'
-  const title = `two sum`
-  const task = (
-    <>
-      <p>
-        Given an array of integers{' '}
-        <code className="text-primary bg-primary/5 px-1 rounded">nums</code> and
-        an integer{' '}
-        <code className="text-primary bg-primary/5 px-1 rounded">target</code>,
-        return indices of the two numbers such that they add up to target.
-      </p>
-      <p>
-        You may assume that each input would have{' '}
-        <strong className="text-foreground">exactly one solution</strong>, and
-        you may not use the same element twice.
-      </p>
-      <p>You can return the answer in any order.</p>
-    </>
-  )
-  const examples = [
-    {
-      input: 'nums = [2,7,11,15], target = 9',
-      output: '[0,1]',
-      explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].',
-    },
-    { input: 'nums = [3,2,4], target = 6', output: '[1,2]' },
-    { input: 'nums = [3,3], target = 6', output: '[0,1]' },
-  ]
-  const constraints = [
-    '2 <= nums.length <= 10⁴',
-    '-10⁹ <= nums[i] <= 10⁹',
-    '-10⁹ <= target <= 10⁹',
-    'Only one valid answer exists.',
-  ]
-  const followup =
-    'Can you come up with an algorithm that is less than O(n²) time complexity?'
-  const conditions = [
-    'Function must return exact expected output',
-    'Time complexity must not exceed O(n)',
-    'No external libraries permitted',
-  ]
-  const [code, setCode] = useState(
-    'function twoSum(nums, target) {\n\tconst map = new Map(); // val : index\n\tfor (let i = 0; i < nums.length; i++) {\n\t\tconst complement = target - nums[i];\n\t\tif (map.has(complement)) {\n\t\t\treturn [map.get(complement), i];\n\t\t}\n\t\tmap.set(nums[i], i);\n\t}\n}',
-  )
-
+  const navigate = useNavigate()
+  const { id } = Route.useSearch()
+  const isAuthenticated = useIsAuthenticated()
   const { theme } = useTheme()
+  const [code, setCode] = useState(getStarterCode)
+  const [activeTestCase, setActiveTestCase] = useState(0)
+  const [testResults, setTestResults] = useState<TestResult[]>([])
+  const [isRunning, setIsRunning] = useState(false)
+
+  const challengeQuery = useQuery({
+    queryKey: ['challenge', id],
+    queryFn: async () => {
+      const { data } = await api.get<Challenge>(`/challenges/${id}`)
+      return data
+    },
+  })
+
+  const challenge = challengeQuery.data
+  const testCases = challenge?.cases ?? []
+  const examples = challenge?.examples ?? []
+  const constraints = challenge?.constraints ?? []
+  const conditions = challenge?.conditions ?? []
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -115,86 +145,119 @@ function RouteComponent() {
     return () => cancelAnimationFrame(rafId)
   }, [theme])
 
-  const [activeTestCase, setActiveTestCase] = useState(0)
-  const [testResults, setTestResults] = useState<any[]>([])
-  const [isRunning, setIsRunning] = useState(false)
+  useEffect(() => {
+    setActiveTestCase(0)
+    setTestResults([])
+    setCode(getInitialCode(challenge))
+  }, [challenge, id])
+
+  const activeCase = useMemo(
+    () => testCases[activeTestCase] ?? null,
+    [activeTestCase, testCases],
+  )
 
   const handleRunTests = () => {
+    if (!isAuthenticated || !challenge) return
+
     setIsRunning(true)
 
-    const newResults: any[] = []
+    const newResults: TestResult[] = []
 
     try {
       const userFunction = new Function(`
-      ${code} 
-      return typeof twoSum !== 'undefined' ? twoSum : null;
-    `)()
+        ${code}
+        return typeof solution !== 'undefined' ? solution : null;
+      `)()
 
       if (!userFunction) {
         throw new Error(
-          "Function 'twoSum' not found. Please do not rename the function.",
+          "Function 'solution' not found. Please keep the function name as solution.",
         )
       }
 
-      testInputs.forEach((input, i) => {
+      testCases.forEach((testCase) => {
+        const parsedInputs = testCase.inputs.map((input) => parseValue(input.value))
+        const expectedValue = parseValue(testCase.expectedOutput)
         const start = performance.now()
 
         try {
-          const actualValue = userFunction(input.nums, input.target)
+          const actualValue = userFunction(...parsedInputs)
           const end = performance.now()
-
-          const expectedValue = JSON.parse(examples[i].output)
-          const isCorrect =
-            JSON.stringify(actualValue) === JSON.stringify(expectedValue)
+          const normalizedActual = normalizeValue(actualValue)
+          const normalizedExpected = normalizeValue(expectedValue)
 
           newResults.push({
-            passed: isCorrect,
-            actual: JSON.stringify(actualValue),
-            expected: examples[i].output,
+            passed: normalizedActual === normalizedExpected,
+            actual: normalizedActual,
+            expected: normalizedExpected,
             runtime: (end - start).toFixed(4),
           })
-        } catch (execError: any) {
+        } catch (execError) {
+          const message =
+            execError instanceof Error ? execError.message : 'Unknown error'
+
           newResults.push({
             passed: false,
-            actual: `Runtime Error: ${execError.message}`,
-            expected: examples[i].output,
+            actual: `Runtime Error: ${message}`,
+            expected: normalizeValue(expectedValue),
             runtime: '0.0000',
           })
         }
       })
 
       setTestResults(newResults)
-    } catch (err: any) {
-      alert(`Compilation Error: ${err.message}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert(`Compilation Error: ${message}`)
     } finally {
       setIsRunning(false)
     }
   }
 
-  const testInputs = [
-    { nums: [2, 7, 11, 15], target: 9 },
-    { nums: [3, 2, 4], target: 6 },
-    { nums: [3, 3], target: 6 },
-  ]
+  if (challengeQuery.isLoading) {
+    return (
+      <div className="mt-16 flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading challenge...
+      </div>
+    )
+  }
+
+  if (challengeQuery.isError || !challenge) {
+    return (
+      <div className="mt-16 mx-auto max-w-3xl p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Challenge unavailable</AlertTitle>
+          <AlertDescription>
+            Unable to load this challenge from the backend.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  const allPassed =
+    testResults.length > 0 && testResults.every((result) => result.passed)
 
   return (
     <div className="flex flex-col h-screen bg-background text-muted-foreground mt-16">
-      <nav className="h-12 border-b border-border flex items-center justify-between px-4 ">
+      <nav className="h-12 border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 hover:bg-primary-foreground"
+            onClick={() => navigate({ to: '/challenges' })}
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-primary" />
             <span className="text-foreground text-sm tracking-wider uppercase">
-              {title}
+              {challenge.title}
             </span>
             <Badge className="bg-primary/10 text-primary border-primary text-[10px] h-5 uppercase">
-              {difficulty}
+              {formatDifficulty(challenge.difficulty)}
             </Badge>
           </div>
         </div>
@@ -214,13 +277,15 @@ function RouteComponent() {
               <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
                 Mission Briefing
               </h3>
-              <h1 className="text-3xl text-foreground uppercase tracking-tight uppercase">
-                {title}
+              <h1 className="text-3xl text-foreground uppercase tracking-tight">
+                {challenge.title}
               </h1>
             </div>
 
             <div className="space-y-4 text-sm leading-relaxed text-foreground">
-              {task}
+              {challenge.content.split('\n').filter(Boolean).map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
             </div>
 
             <div className="space-y-6">
@@ -228,29 +293,23 @@ function RouteComponent() {
                 <Code2 className="w-4 h-4" /> Examples
               </div>
 
-              {examples.map((ex, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
-                >
-                  <div className="text-foreground">Example {i + 1}:</div>
-                  <div>
-                    <span className="text-primary">Input:</span>{' '}
-                    <span className="text-muted-foreground">{ex.input}</span>
-                  </div>
-                  <div>
-                    <span className="text-primary">Output:</span>{' '}
-                    <span className="text-muted-foreground">{ex.output}</span>
-                  </div>
-                  {ex.explanation && (
-                    <div>
-                      <span className="text-foreground italic">
-                        // {ex.explanation}
-                      </span>
+              {examples.length > 0 ? (
+                examples.map((example, index) => (
+                  <div
+                    key={`${example}-${index}`}
+                    className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
+                  >
+                    <div className="text-foreground">Example {index + 1}:</div>
+                    <div className="text-muted-foreground whitespace-pre-wrap">
+                      {example}
                     </div>
-                  )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  No examples provided.
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-6">
@@ -262,17 +321,14 @@ function RouteComponent() {
                   </h4>
                 </div>
                 <ul className="space-y-2 font-mono text-[12px] text-foreground">
-                  {constraints.map((constraint, i) => (
-                    <li key={i}>{constraint}</li>
-                  ))}
+                  {constraints.length > 0 ? (
+                    constraints.map((constraint, index) => (
+                      <li key={`${constraint}-${index}`}>{constraint}</li>
+                    ))
+                  ) : (
+                    <li className="text-muted-foreground">No constraints provided.</li>
+                  )}
                 </ul>
-              </div>
-
-              <div className="pt-4 border-t border-foreground/5">
-                <h4 className="text-[10px] font-bold text-primary uppercase mb-2 tracking-tighter">
-                  Follow-up:
-                </h4>
-                <p className="text-xs text-foreground italic">{followup}</p>
               </div>
             </div>
 
@@ -284,15 +340,21 @@ function RouteComponent() {
                 </h4>
               </div>
               <ul className="space-y-3">
-                {conditions.map((condition, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-3 text-xs text-foreground"
-                  >
-                    <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
-                    {condition}
+                {conditions.length > 0 ? (
+                  conditions.map((condition, index) => (
+                    <li
+                      key={`${condition}-${index}`}
+                      className="flex items-start gap-3 text-xs text-foreground"
+                    >
+                      <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
+                      {condition}
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-xs text-muted-foreground">
+                    No specific victory conditions provided.
                   </li>
-                ))}
+                )}
               </ul>
             </div>
           </div>
@@ -300,11 +362,16 @@ function RouteComponent() {
           <div className="mt-auto p-6 border-t border-foreground/5">
             <div className="flex justify-between items-end mb-2">
               <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                Session Progress
+                Acceptance Rate
               </span>
-              <span className="text-[10px] font-mono text-primary">65%</span>
+              <span className="text-[10px] font-mono text-primary">
+                {Number(challenge.acceptanceRate).toFixed(1)}%
+              </span>
             </div>
-            <Progress value={65} className="h-1 bg-primary-foreground" />
+            <Progress
+              value={Number(challenge.acceptanceRate)}
+              className="h-1 bg-primary-foreground"
+            />
           </div>
         </aside>
 
@@ -332,22 +399,22 @@ function RouteComponent() {
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-4">
                 Test Runner
               </span>
-              {examples.map((_, i) => (
+              {testCases.map((_, index) => (
                 <Button
-                  key={i}
-                  onClick={() => setActiveTestCase(i)}
-                  variant={`${activeTestCase === i ? 'default' : 'secondary'}`}
-                  className={`rounded-none h-full font-bold`}
+                  key={index}
+                  onClick={() => setActiveTestCase(index)}
+                  variant={activeTestCase === index ? 'default' : 'secondary'}
+                  className="rounded-none h-full font-bold"
                 >
-                  CASE_{i + 1}
+                  CASE_{index + 1}
                 </Button>
               ))}
-              <div className="flex h-full  gap-3 ml-auto">
+              <div className="flex h-full gap-3 ml-auto">
                 <Button
                   variant="outline"
                   onClick={handleRunTests}
-                  disabled={isRunning}
-                  className=" h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
+                  disabled={isRunning || !isAuthenticated || testCases.length === 0}
+                  className="h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
                 >
                   <Play
                     className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
@@ -356,10 +423,10 @@ function RouteComponent() {
                 </Button>
 
                 <Button
+                  disabled={!isAuthenticated || testCases.length === 0}
                   onClick={() => {
-                    const allPassed =
-                      testResults.length > 0 &&
-                      testResults.every((r) => r.passed)
+                    if (!isAuthenticated) return
+
                     if (allPassed) {
                       alert(
                         'MISSION ACCOMPLISHED: taw nzidou il logic mta3 il submission.',
@@ -368,15 +435,28 @@ function RouteComponent() {
                       alert('CRITICAL ERROR: code failed.')
                     }
                   }}
-                  className="h-full rounded-none bg-primary text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] text-xs font-bold gap-2 px-8"
+                  className="h-full rounded-none bg-primary text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] text-xs font-bold gap-2 px-8 disabled:opacity-50"
                 >
                   <Send className="w-3 h-3" /> SUBMIT
                 </Button>
               </div>
             </div>
 
+            {!isAuthenticated ? (
+              <div className="border-b border-border p-4">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Login Required</AlertTitle>
+                  <AlertDescription>
+                    Guests can view the challenge, but running tests and submitting
+                    code require a signed-in account.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : null}
+
             <div className="flex-1 p-6 overflow-y-auto font-mono">
-              <div className=" space-y-6">
+              <div className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-px flex-1 bg-border" />
@@ -386,24 +466,27 @@ function RouteComponent() {
                     <div className="h-px w-4 bg-border" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-muted/30 p-3 rounded border border-border/50">
-                      <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
-                        nums
-                      </div>
-                      <div className="text-sm text-foreground">
-                        [{testInputs[activeTestCase].nums.join(', ')}]
-                      </div>
+                  {activeCase ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {activeCase.inputs.map((input, index) => (
+                        <div
+                          key={`${input.type}-${index}`}
+                          className="bg-muted/30 p-3 rounded border border-border/50"
+                        >
+                          <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
+                            {input.type}
+                          </div>
+                          <div className="text-sm text-foreground break-words">
+                            {input.value}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="bg-muted/30 p-3 rounded border border-border/50">
-                      <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
-                        target
-                      </div>
-                      <div className="text-sm text-foreground">
-                        {testInputs[activeTestCase].target}
-                      </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No test cases available for this challenge.
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="space-y-3">
