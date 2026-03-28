@@ -1,8 +1,12 @@
 export type Challenge = {
   id: number
-  challenge_title: string
-  challenge_difficulty: 'easy' | 'medium' | 'hard'
-  challenge_type: 'solo' | '1v1' | 'teams'
+  title: string
+  content: string
+  examples: string[]
+  constraints: string[]
+  conditions: string[]
+  difficulty: 'easy' | 'medium' | 'hard'
+  type: 'solo' | 'pvp' | 'teams'
   topics: string[]
-  challenge_acceptance_rate?: number
+  acceptanceRate: number
 }

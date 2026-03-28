@@ -8,12 +8,35 @@ import { useForm } from 'react-hook-form'
 import { api, useUserStore } from '@/stores/userStore'
 import type { User } from '@/models/user'
 import { useId } from 'react'
+import axios from 'axios'
 
 type RegisterFormValues = {
   username: string
   email: string
   password: string
   confirmPassword: string
+}
+
+type RegisterResult = {
+  user: User | null
+}
+
+function getErrorMessage(error: unknown) {
+  if (!axios.isAxiosError(error)) {
+    return 'Registration failed. Please try again.'
+  }
+
+  const message = error.response?.data?.message
+
+  if (Array.isArray(message)) {
+    return message.join(', ')
+  }
+
+  if (typeof message === 'string' && message.trim()) {
+    return message
+  }
+
+  return 'Registration failed. Please try again.'
 }
 
 export function RegisterForm() {
@@ -29,20 +52,36 @@ export function RegisterForm() {
   } = useForm<RegisterFormValues>()
 
   const registerMutation = useMutation({
-    mutationFn: async (values: RegisterFormValues) => {
-      const { data } = await api.post<User>('/auth/register', {
+    mutationFn: async (values: RegisterFormValues): Promise<RegisterResult> => {
+      await api.post('/auth/signup', {
         username: values.username,
         email: values.email,
         password: values.password,
       })
-      return data
+
+      try {
+        const { data } = await api.post<User>('/auth/login', {
+          username: values.username,
+          password: values.password,
+        })
+
+        return { user: data }
+      } catch (error) {
+        console.error('Auto-login after registration failed', error)
+        return { user: null }
+      }
     },
     onError: (error) => {
       console.error('Registration failed', error)
     },
-    onSuccess: (user) => {
-      setUser(user)
-      navigate({ to: '/' })
+    onSuccess: ({ user }) => {
+      if (user) {
+        setUser(user)
+        navigate({ to: '/' })
+        return
+      }
+
+      navigate({ to: '/auth/login' })
     },
   })
 
@@ -65,7 +104,7 @@ export function RegisterForm() {
           aria-live="assertive"
           className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
-          Registration failed. This username or email may already be taken.
+          {getErrorMessage(registerMutation.error)}
         </div>
       )}
 

@@ -302,7 +302,7 @@ export default function Navbar() {
             ) : (
               <>
                 <span
-                  className="font-medium text-sm"
+                  className="font-medium  text-primary font-bold"
                   aria-label={`Logged in as ${user?.username}`}
                 >
                   {user?.username}
@@ -311,7 +311,8 @@ export default function Navbar() {
                   onClick={handleLogout}
                   disabled={isLoading}
                   aria-busy={isLoading}
-                  className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  variant={'link'}
+                  className="text-destructive"
                 >
                   {isLoading ? 'Logging out…' : 'Logout'}
                 </Button>
@@ -418,8 +419,8 @@ export default function Navbar() {
                           setMobileOpen(false)
                           handleLogout()
                         }}
-                        variant="destructive"
-                        className="w-full h-12"
+                        variant="link"
+                        className="w-full h-12 text-destructive"
                       >
                         Logout
                       </Button>
