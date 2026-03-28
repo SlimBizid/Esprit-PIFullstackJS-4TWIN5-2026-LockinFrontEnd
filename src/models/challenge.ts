@@ -13,6 +13,9 @@ export type Challenge = {
   title: string
   content: string
   starterCode: string
+  starterCodes: Partial<
+    Record<'javascript' | 'typescript' | 'python' | 'java' | 'cpp', string>
+  >
   examples: string[]
   constraints: string[]
   conditions: string[]

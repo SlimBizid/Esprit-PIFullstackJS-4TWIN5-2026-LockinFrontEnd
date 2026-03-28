@@ -97,11 +97,20 @@ const CHALLENGE_TOPICS = [
   'Monotonic Stack',
   'Enumeration',
 ] as const
+const EDITOR_LANGUAGES = [
+  'javascript',
+  'typescript',
+  'python',
+  'java',
+  'cpp',
+] as const
+type EditorLanguage = (typeof EDITOR_LANGUAGES)[number]
 
 type ChallengeFormValues = {
   title: string
   content: string
   starterCode: string
+  starterCodes: Record<EditorLanguage, string>
   difficulty: Challenge['difficulty']
   type: Challenge['type']
   topics: string[]
@@ -115,6 +124,7 @@ type ChallengePayload = {
   title: string
   content: string
   starterCode: string
+  starterCodes: Record<EditorLanguage, string>
   difficulty: Challenge['difficulty']
   type: Challenge['type']
   topics: string[]
@@ -185,10 +195,20 @@ function formatType(type: Challenge['type']) {
 }
 
 function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
+  const starterCodes: Record<EditorLanguage, string> = {
+    javascript:
+      challenge?.starterCodes?.javascript ?? challenge?.starterCode ?? '',
+    typescript: challenge?.starterCodes?.typescript ?? '',
+    python: challenge?.starterCodes?.python ?? '',
+    java: challenge?.starterCodes?.java ?? '',
+    cpp: challenge?.starterCodes?.cpp ?? '',
+  }
+
   return {
     title: challenge?.title ?? '',
     content: challenge?.content ?? '',
-    starterCode: challenge?.starterCode ?? '',
+    starterCode: starterCodes.javascript,
+    starterCodes,
     difficulty: challenge?.difficulty ?? 'easy',
     type: challenge?.type ?? 'solo',
     topics: challenge?.topics ?? [],
@@ -212,7 +232,8 @@ function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
   return {
     title: values.title.trim(),
     content: values.content.trim(),
-    starterCode: values.starterCode,
+    starterCode: values.starterCodes.javascript,
+    starterCodes: values.starterCodes,
     difficulty: values.difficulty,
     type: values.type,
     topics: values.topics,
@@ -245,6 +266,8 @@ function ChallengeFormDialog({
   const [values, setValues] = useState<ChallengeFormValues>(() =>
     getDefaultFormValues(challenge),
   )
+  const [activeStarterLanguage, setActiveStarterLanguage] =
+    useState<EditorLanguage>('javascript')
 
   const dialogTitle = challenge ? 'Edit challenge' : 'Create challenge'
   const dialogDescription = challenge
@@ -258,6 +281,7 @@ function ChallengeFormDialog({
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
           setValues(getDefaultFormValues(challenge))
+          setActiveStarterLanguage('javascript')
         }
         onOpenChange(nextOpen)
       }}
@@ -319,18 +343,44 @@ function ChallengeFormDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="challenge-starter-code">Starter Code</Label>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="challenge-starter-code">Starter Code</Label>
+              <Select
+                value={activeStarterLanguage}
+                onValueChange={(value) =>
+                  setActiveStarterLanguage(value as EditorLanguage)
+                }
+              >
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EDITOR_LANGUAGES.map((language) => (
+                    <SelectItem key={language} value={language}>
+                      {language}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <textarea
               id="challenge-starter-code"
-              value={values.starterCode}
+              value={values.starterCodes[activeStarterLanguage]}
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  starterCode: event.target.value,
+                  starterCode:
+                    activeStarterLanguage === 'javascript'
+                      ? event.target.value
+                      : current.starterCode,
+                  starterCodes: {
+                    ...current.starterCodes,
+                    [activeStarterLanguage]: event.target.value,
+                  },
                 }))
               }
               className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 font-mono"
-              placeholder="function solution(...args) {\n  // Implement your answer here.\n}"
+              placeholder="Starter code for the selected language"
             />
           </div>
 

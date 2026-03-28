@@ -18,6 +18,13 @@ import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { api, useIsAuthenticated } from '@/stores/userStore'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Challenge } from '@/models/challenge'
 
 const challengeSearchSchema = z.object({
@@ -29,6 +36,23 @@ type TestResult = {
   actual: string
   expected: string
   runtime: string
+}
+
+type EditorLanguage = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp'
+
+const LANGUAGE_LABELS: Record<EditorLanguage, string> = {
+  javascript: 'JavaScript',
+  typescript: 'TypeScript',
+  python: 'Python',
+  java: 'Java',
+  cpp: 'C++',
+}
+const LANGUAGE_FILE_EXTENSIONS: Record<EditorLanguage, string> = {
+  javascript: 'js',
+  typescript: 'ts',
+  python: 'py',
+  java: 'java',
+  cpp: 'cpp',
 }
 
 function formatDifficulty(difficulty: Challenge['difficulty']) {
@@ -60,12 +84,78 @@ function getStarterCode() {
   ].join('\n')
 }
 
-function getInitialCode(challenge?: Challenge) {
-  if (challenge?.starterCode?.trim()) {
-    return challenge.starterCode
+function getStarterCodeForLanguage(
+  language: EditorLanguage,
+  challenge?: Challenge,
+) {
+  const backendStarterCode =
+    challenge?.starterCodes?.[language]?.trim() ||
+    (language === 'javascript' ? challenge?.starterCode?.trim() : '')
+
+  if (backendStarterCode) {
+    return backendStarterCode
   }
 
-  return getStarterCode()
+  switch (language) {
+    case 'typescript':
+      return [
+        'function solution(...args: unknown[]): unknown {',
+        '  // Implement your answer here.',
+        '  return args',
+        '}',
+      ].join('\n')
+    case 'python':
+      return [
+        'def solution(*args):',
+        '    # Implement your answer here.',
+        '    return args',
+      ].join('\n')
+    case 'java':
+      return [
+        'class Solution {',
+        '    public Object solution(Object... args) {',
+        '        // Implement your answer here.',
+        '        return args;',
+        '    }',
+        '}',
+      ].join('\n')
+    case 'cpp':
+      return [
+        '#include <vector>',
+        '#include <string>',
+        'using namespace std;',
+        '',
+        'class Solution {',
+        'public:',
+        '    void solution() {',
+        '        // Implement your answer here.',
+        '    }',
+        '};',
+      ].join('\n')
+    case 'javascript':
+    default:
+      return backendStarterCode || getStarterCode()
+  }
+}
+
+function getInitialCode(challenge?: Challenge) {
+  return getStarterCodeForLanguage('javascript', challenge)
+}
+
+function buildCodeByLanguage(
+  challenge?: Challenge,
+): Record<EditorLanguage, string> {
+  return {
+    javascript: getInitialCode(challenge),
+    typescript: getStarterCodeForLanguage('typescript', challenge),
+    python: getStarterCodeForLanguage('python', challenge),
+    java: getStarterCodeForLanguage('java', challenge),
+    cpp: getStarterCodeForLanguage('cpp', challenge),
+  }
+}
+
+function getEditorPath(id: number, language: EditorLanguage) {
+  return `challenge-${id}/solution.${LANGUAGE_FILE_EXTENSIONS[language]}`
 }
 
 export const Route = createFileRoute('/challenge')({
@@ -78,7 +168,11 @@ function RouteComponent() {
   const { id } = Route.useSearch()
   const isAuthenticated = useIsAuthenticated()
   const { theme } = useTheme()
-  const [code, setCode] = useState(getStarterCode)
+  const [selectedLanguage, setSelectedLanguage] =
+    useState<EditorLanguage>('javascript')
+  const [codeByLanguage, setCodeByLanguage] = useState<
+    Record<EditorLanguage, string>
+  >(buildCodeByLanguage)
   const [activeTestCase, setActiveTestCase] = useState(0)
   const [testResults, setTestResults] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
@@ -96,6 +190,8 @@ function RouteComponent() {
   const examples = challenge?.examples ?? []
   const constraints = challenge?.constraints ?? []
   const conditions = challenge?.conditions ?? []
+  const code = codeByLanguage[selectedLanguage]
+  const isRunnableLanguage = selectedLanguage === 'javascript'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -148,7 +244,8 @@ function RouteComponent() {
   useEffect(() => {
     setActiveTestCase(0)
     setTestResults([])
-    setCode(getInitialCode(challenge))
+    setSelectedLanguage('javascript')
+    setCodeByLanguage(buildCodeByLanguage(challenge))
   }, [challenge, id])
 
   const activeCase = useMemo(
@@ -157,7 +254,7 @@ function RouteComponent() {
   )
 
   const handleRunTests = () => {
-    if (!isAuthenticated || !challenge) return
+    if (!isAuthenticated || !challenge || !isRunnableLanguage) return
 
     setIsRunning(true)
 
@@ -375,26 +472,63 @@ function RouteComponent() {
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col relative bg-background">
-          <div className="flex-1 font-mono text-sm leading-6">
-            <Editor
-              defaultLanguage="javascript"
-              options={{
-                minimap: { enabled: true },
-                padding: { top: 24 },
-                readOnly: false,
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-              }}
-              value={code}
-              onChange={(value) => setCode(value || '')}
-              theme="lockin-theme"
-              loading={
-                <div className="h-full w-full bg-background animate-pulse" />
-              }
-            />
+        <main className="flex-1 min-h-0 flex flex-col relative bg-background">
+          <div className="flex flex-1 min-h-0 flex-col font-mono text-sm leading-6">
+            <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 bg-muted/10">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Editor Language
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Syntax highlighting and starter templates switch with the selected
+                  language.
+                </p>
+              </div>
+              <Select
+                value={selectedLanguage}
+                onValueChange={(value) =>
+                  setSelectedLanguage(value as EditorLanguage)
+                }
+              >
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-h-0 flex-1">
+              <Editor
+                key={`${id}-${selectedLanguage}`}
+                path={getEditorPath(id, selectedLanguage)}
+                language={selectedLanguage}
+                options={{
+                  minimap: { enabled: true },
+                  padding: { top: 24 },
+                  readOnly: false,
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                }}
+                value={code}
+                onChange={(value) =>
+                  setCodeByLanguage((current) => ({
+                    ...current,
+                    [selectedLanguage]: value || '',
+                  }))
+                }
+                theme="lockin-theme"
+                loading={
+                  <div className="h-full w-full bg-background animate-pulse" />
+                }
+              />
+            </div>
           </div>
-          <div className="flex-1 border-t border-border bg-background flex flex-col overflow-hidden">
+          <div className="flex flex-1 min-h-0 flex-col border-t border-border bg-background overflow-hidden">
             <div className="flex items-center h-10 border-b border-border bg-muted/20 px-4 gap-2">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-4">
                 Test Runner
@@ -413,7 +547,12 @@ function RouteComponent() {
                 <Button
                   variant="outline"
                   onClick={handleRunTests}
-                  disabled={isRunning || !isAuthenticated || testCases.length === 0}
+                  disabled={
+                    isRunning ||
+                    !isAuthenticated ||
+                    testCases.length === 0 ||
+                    !isRunnableLanguage
+                  }
                   className="h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
                 >
                   <Play
@@ -423,9 +562,11 @@ function RouteComponent() {
                 </Button>
 
                 <Button
-                  disabled={!isAuthenticated || testCases.length === 0}
+                  disabled={
+                    !isAuthenticated || testCases.length === 0 || !isRunnableLanguage
+                  }
                   onClick={() => {
-                    if (!isAuthenticated) return
+                    if (!isAuthenticated || !isRunnableLanguage) return
 
                     if (allPassed) {
                       alert(
@@ -450,6 +591,17 @@ function RouteComponent() {
                   <AlertDescription>
                     Guests can view the challenge, but running tests and submitting
                     code require a signed-in account.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : !isRunnableLanguage ? (
+              <div className="border-b border-border p-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Execution Limited To JavaScript</AlertTitle>
+                  <AlertDescription>
+                    Language switching is available in the editor UI, but test
+                    execution and submission currently only work for JavaScript.
                   </AlertDescription>
                 </Alert>
               </div>
