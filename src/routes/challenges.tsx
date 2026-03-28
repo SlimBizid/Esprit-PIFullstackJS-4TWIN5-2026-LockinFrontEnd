@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import {
@@ -40,11 +40,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Label } from '@/components/ui/label'
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Dialog,
   DialogContent,
@@ -181,6 +177,8 @@ function formatType(type: Challenge['type']) {
       return 'Solo'
     case 'teams':
       return 'Teams'
+    default:
+      return type
   }
 }
 
@@ -504,7 +502,9 @@ function RouteComponent() {
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null)
+  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(
+    null,
+  )
   const [adminActionError, setAdminActionError] = useState<string | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -586,8 +586,10 @@ function RouteComponent() {
   const challenges = challengesQuery.data?.data ?? []
 
   const topics = useMemo(
-    () =>
-      ['All Topics', ...new Set(challenges.flatMap((challenge) => challenge.topics))],
+    () => [
+      'All Topics',
+      ...new Set(challenges.flatMap((challenge) => challenge.topics)),
+    ],
     [challenges],
   )
 
@@ -608,18 +610,44 @@ function RouteComponent() {
     [challenges, search, topicFilter, typeFilter],
   )
 
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / ITEMS_PER_PAGE))
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredData.length / ITEMS_PER_PAGE),
+  )
   const paginatedData = filteredData.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   )
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
   const featuredChallenge = filteredData[0] ?? challenges[0] ?? null
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-6">
       <div className="max-w-6xl mx-auto space-y-8">
         {featuredChallenge && (
-          <div className="group relative overflow-hidden border border-primary/20 hover:cursor-pointer select-none hover:shadow-2xl shadow-primary/5 transition-all">
+          <div
+            className="group relative overflow-hidden border border-primary/20 hover:cursor-pointer select-none hover:shadow-2xl shadow-primary/5 transition-all"
+            onClick={() =>
+              navigate({
+                to: '/challenge',
+                search: { id: featuredChallenge.id },
+              })
+            }
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                navigate({
+                  to: '/challenge',
+                  search: { id: featuredChallenge.id },
+                })
+              }
+            }}
+            role="button"
+            tabIndex={0}
+          >
             <div className="absolute inset-0 bg-linear-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative bg-background p-4 flex flex-col md:flex-row justify-between items-center gap-6">
               <div className="flex gap-6 items-center">
@@ -642,8 +670,8 @@ function RouteComponent() {
                     {featuredChallenge.topics[0] ?? 'General'} •
                     <span className="text-primary">
                       {' '}
-                      Acceptance: {Number(featuredChallenge.acceptanceRate).toFixed(1)}
-                      %
+                      Acceptance:{' '}
+                      {Number(featuredChallenge.acceptanceRate).toFixed(1)}%
                     </span>
                   </p>
                 </div>
@@ -878,7 +906,8 @@ function RouteComponent() {
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
               <p className="text-xs text-muted-foreground font-mono">
-                Showing {paginatedData.length} of {filteredData.length} challenges
+                Showing {paginatedData.length} of {filteredData.length}{' '}
+                challenges
               </p>
               <Pagination className="mx-0 w-auto">
                 <PaginationContent>
