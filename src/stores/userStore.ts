@@ -13,16 +13,13 @@ interface UserState {
   clearUser: () => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
-  login: (credentials: { username: string; password: string }) => Promise<void>
+  login: (credentials: { email: string; password: string }) => Promise<void>
   logout: () => Promise<void>
   fetchMe: () => Promise<void>
 }
-const backendurl = import.meta.env.DEV
-  ? '/api'
-  : import.meta.env.VITE_BACKEND_URL?.trim().replace(/\/$/, '') ||
-    'http://localhost:3000'
+const backendurl = import.meta.env.VITE_BACKEND_URL
 export const api = axios.create({
-  baseURL: backendurl,
+  baseURL: `${backendurl}`,
   withCredentials: true,
 })
 

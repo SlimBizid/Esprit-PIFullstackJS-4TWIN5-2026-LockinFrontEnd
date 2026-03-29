@@ -26,19 +26,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Challenge } from '@/models/challenge'
+import type { EditorLanguage } from '@/models/editor-language'
+import type { TestResult } from '@/models/test-result'
 
 const challengeSearchSchema = z.object({
   id: z.coerce.number().int().positive(),
 })
-
-type TestResult = {
-  passed: boolean
-  actual: string
-  expected: string
-  runtime: string
-}
-
-type EditorLanguage = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp'
 
 const LANGUAGE_LABELS: Record<EditorLanguage, string> = {
   javascript: 'JavaScript',
@@ -170,9 +163,8 @@ function RouteComponent() {
   const { theme } = useTheme()
   const [selectedLanguage, setSelectedLanguage] =
     useState<EditorLanguage>('javascript')
-  const [codeByLanguage, setCodeByLanguage] = useState<
-    Record<EditorLanguage, string>
-  >(buildCodeByLanguage)
+  const [codeByLanguage, setCodeByLanguage] =
+    useState<Record<EditorLanguage, string>>(buildCodeByLanguage)
   const [activeTestCase, setActiveTestCase] = useState(0)
   const [testResults, setTestResults] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
@@ -273,7 +265,9 @@ function RouteComponent() {
       }
 
       testCases.forEach((testCase) => {
-        const parsedInputs = testCase.inputs.map((input) => parseValue(input.value))
+        const parsedInputs = testCase.inputs.map((input) =>
+          parseValue(input.value),
+        )
         const expectedValue = parseValue(testCase.expectedOutput)
         const start = performance.now()
 
@@ -380,9 +374,12 @@ function RouteComponent() {
             </div>
 
             <div className="space-y-4 text-sm leading-relaxed text-foreground">
-              {challenge.content.split('\n').filter(Boolean).map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+              {challenge.content
+                .split('\n')
+                .filter(Boolean)
+                .map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
             </div>
 
             <div className="space-y-6">
@@ -423,7 +420,9 @@ function RouteComponent() {
                       <li key={`${constraint}-${index}`}>{constraint}</li>
                     ))
                   ) : (
-                    <li className="text-muted-foreground">No constraints provided.</li>
+                    <li className="text-muted-foreground">
+                      No constraints provided.
+                    </li>
                   )}
                 </ul>
               </div>
@@ -480,8 +479,8 @@ function RouteComponent() {
                   Editor Language
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Syntax highlighting and starter templates switch with the selected
-                  language.
+                  Syntax highlighting and starter templates switch with the
+                  selected language.
                 </p>
               </div>
               <Select
@@ -563,7 +562,9 @@ function RouteComponent() {
 
                 <Button
                   disabled={
-                    !isAuthenticated || testCases.length === 0 || !isRunnableLanguage
+                    !isAuthenticated ||
+                    testCases.length === 0 ||
+                    !isRunnableLanguage
                   }
                   onClick={() => {
                     if (!isAuthenticated || !isRunnableLanguage) return
@@ -589,8 +590,8 @@ function RouteComponent() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Login Required</AlertTitle>
                   <AlertDescription>
-                    Guests can view the challenge, but running tests and submitting
-                    code require a signed-in account.
+                    Guests can view the challenge, but running tests and
+                    submitting code require a signed-in account.
                   </AlertDescription>
                 </Alert>
               </div>
