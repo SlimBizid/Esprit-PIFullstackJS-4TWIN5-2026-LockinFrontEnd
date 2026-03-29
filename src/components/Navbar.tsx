@@ -305,7 +305,17 @@ export default function Navbar() {
                   className="font-medium text-sm"
                   aria-label={`Logged in as ${user?.username}`}
                 >
-                  {user?.username}
+                  <Link
+                    to="/profile/$userId"
+                    params={{ userId: user?.username ?? '' }}
+                    className="font-mono text-sm text-primary hover:opacity-80 transition-opacity tracking-widest uppercase"
+                    aria-label={`View profile of ${user?.username}`}
+                  >
+                    {user?.username}
+                    <span className="animate-peekaboo" aria-hidden="true">
+                      _
+                    </span>
+                  </Link>
                 </span>
                 <Button
                   onClick={handleLogout}
