@@ -28,25 +28,12 @@ import {
 import type { Challenge } from '@/models/challenge'
 import type { EditorLanguage } from '@/models/editor-language'
 import type { TestResult } from '@/models/test-result'
+import { LANGUAGE_FILE_EXTENSIONS } from '@/models/language-file-extensions'
+import { LANGUAGE_LABELS } from '@/models/lagnuage-labels'
 
 const challengeSearchSchema = z.object({
   id: z.coerce.number().int().positive(),
 })
-
-const LANGUAGE_LABELS: Record<EditorLanguage, string> = {
-  javascript: 'JavaScript',
-  typescript: 'TypeScript',
-  python: 'Python',
-  java: 'Java',
-  cpp: 'C++',
-}
-const LANGUAGE_FILE_EXTENSIONS: Record<EditorLanguage, string> = {
-  javascript: 'js',
-  typescript: 'ts',
-  python: 'py',
-  java: 'java',
-  cpp: 'cpp',
-}
 
 function formatDifficulty(difficulty: Challenge['difficulty']) {
   return difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
@@ -629,7 +616,7 @@ function RouteComponent() {
                           <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
                             {input.type}
                           </div>
-                          <div className="text-sm text-foreground break-words">
+                          <div className="text-sm text-foreground wrap-break-word">
                             {input.value}
                           </div>
                         </div>
