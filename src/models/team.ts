@@ -1,4 +1,5 @@
 export type Team = {
+  pendingRequests: never[]
   id: number
   name: string
   teamCreationDate: string

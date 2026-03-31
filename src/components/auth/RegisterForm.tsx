@@ -30,7 +30,7 @@ export function RegisterForm() {
 
   const registerMutation = useMutation({
     mutationFn: async (values: RegisterFormValues) => {
-      const { data } = await api.post<User>('/auth/register', {
+      const { data } = await api.post<User>('/auth/signup', {
         username: values.username,
         email: values.email,
         password: values.password,
