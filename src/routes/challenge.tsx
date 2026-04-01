@@ -269,6 +269,31 @@ function RouteComponent() {
     },
   })
 
+  const submitSoloMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<{
+        id: string
+        verdict:
+          | 'accepted'
+          | 'wrong_answer'
+          | 'compilation_error'
+          | 'runtime_error'
+        passedCount: number
+        totalCount: number
+        results: TestResult[]
+      }>('/submissions', {
+        challengeId: id,
+        language: selectedLanguage,
+        sourceCode: code,
+      })
+
+      return data
+    },
+    onSuccess: (data) => {
+      setTestResults(data.results)
+    },
+  })
+
   useEffect(() => {
     if (typeof window === 'undefined') return
 
@@ -368,9 +393,11 @@ function RouteComponent() {
             ? 'This match has already finished'
             : submitMatchMutation.isPending
               ? 'Submitting to the match'
-              : testCases.length === 0
-                ? 'No test cases available'
-                : 'Submit your solution'
+              : submitSoloMutation.isPending
+                ? 'Submitting your solution'
+                : testCases.length === 0
+                  ? 'No test cases available'
+                  : 'Submit your solution'
 
   const handleRunTests = async () => {
     if (!isAuthenticated || !challenge || !canViewChallenge) return
@@ -437,10 +464,21 @@ function RouteComponent() {
       return
     }
 
-    if (allPassed) {
-      alert('MISSION ACCOMPLISHED: taw nzidou il logic mta3 il submission.')
-    } else {
-      alert('CRITICAL ERROR: code failed.')
+    try {
+      const submission = await submitSoloMutation.mutateAsync()
+      const verdictLabel = submission.verdict.replaceAll('_', ' ').toUpperCase()
+      alert(
+        `Submission ${verdictLabel}: ${submission.passedCount}/${submission.totalCount} test cases passed.`,
+      )
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? Array.isArray(err.response?.data?.message)
+          ? err.response.data.message.join(', ')
+          : (err.response?.data?.message ?? 'Failed to submit this solution.')
+        : err instanceof Error
+          ? err.message
+          : 'Failed to submit this solution.'
+      alert(`Submission Error: ${message}`)
     }
   }
 
@@ -465,10 +503,6 @@ function RouteComponent() {
       </div>
     )
   }
-
-  const allPassed =
-    testResults.length > 0 && testResults.every((result) => result.passed)
-
   return (
     <div className="mt-16 flex min-h-screen flex-col bg-background text-muted-foreground">
       <nav className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -1092,12 +1126,17 @@ function RouteComponent() {
                         disabled={
                           !isAuthenticated ||
                           testCases.length === 0 ||
-                          !canViewChallenge
+                          !canViewChallenge ||
+                          submitMatchMutation.isPending ||
+                          submitSoloMutation.isPending
                         }
                         onClick={handleSubmit}
                         className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
                       >
-                        <Send className="w-3 h-3" /> SUBMIT
+                        <Send className="w-3 h-3" />{' '}
+                        {submitMatchMutation.isPending || submitSoloMutation.isPending
+                          ? 'SUBMITTING...'
+                          : 'SUBMIT'}
                       </Button>
                     </span>
                   </TooltipTrigger>
