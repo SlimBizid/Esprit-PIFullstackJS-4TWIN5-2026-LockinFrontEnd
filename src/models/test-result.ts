@@ -3,4 +3,6 @@ export type TestResult = {
   actual: string
   expected: string
   runtime: string
+  memoryKb?: number | null
+  status?: string
 }

@@ -16,6 +16,7 @@ import { Editor, loader } from '@monaco-editor/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 import { api, useIsAuthenticated } from '@/stores/userStore'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
@@ -43,22 +44,6 @@ const challengeSearchSchema = z.object({
 
 function formatDifficulty(difficulty: Challenge['difficulty']) {
   return difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-}
-
-function parseValue(value: string) {
-  try {
-    return JSON.parse(value)
-  } catch {
-    return value
-  }
-}
-
-function normalizeValue(value: unknown) {
-  if (typeof value === 'string') {
-    return value
-  }
-
-  return JSON.stringify(value)
 }
 
 function getStarterCode() {
@@ -107,14 +92,11 @@ function getStarterCodeForLanguage(
       ].join('\n')
     case 'cpp':
       return [
-        '#include <vector>',
-        '#include <string>',
-        'using namespace std;',
-        '',
         'class Solution {',
         'public:',
-        '    void solution() {',
+        '    JsonValue solution(const std::vector<JsonValue>& args) {',
         '        // Implement your answer here.',
+        '        return args.empty() ? JsonValue(nullptr) : args[0];',
         '    }',
         '};',
       ].join('\n')
@@ -176,7 +158,6 @@ function RouteComponent() {
   const constraints = challenge?.constraints ?? []
   const conditions = challenge?.conditions ?? []
   const code = codeByLanguage[selectedLanguage]
-  const isRunnableLanguage = selectedLanguage === 'javascript'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -241,74 +222,40 @@ function RouteComponent() {
     ? 'Log in to run tests'
     : testCases.length === 0
       ? 'No test cases available'
-      : !isRunnableLanguage
-        ? 'Test execution currently supports JavaScript only'
-        : isRunning
-          ? 'Running tests'
-          : 'Run the visible test cases'
+      : isRunning
+        ? 'Running tests'
+        : 'Run the visible test cases'
   const submitTooltip = !isAuthenticated
     ? 'Log in to submit solutions'
     : testCases.length === 0
       ? 'No test cases available'
-      : !isRunnableLanguage
-        ? 'Submission currently supports JavaScript only'
-        : 'Submit your solution'
+      : 'Submit your solution'
 
-  const handleRunTests = () => {
-    if (!isAuthenticated || !challenge || !isRunnableLanguage) return
+  const handleRunTests = async () => {
+    if (!isAuthenticated || !challenge) return
 
     setIsRunning(true)
 
-    const newResults: TestResult[] = []
-
     try {
-      const userFunction = new Function(`
-        ${code}
-        return typeof solution !== 'undefined' ? solution : null;
-      `)()
-
-      if (!userFunction) {
-        throw new Error(
-          "Function 'solution' not found. Please keep the function name as solution.",
-        )
-      }
-
-      testCases.forEach((testCase) => {
-        const parsedInputs = testCase.inputs.map((input) =>
-          parseValue(input.value),
-        )
-        const expectedValue = parseValue(testCase.expectedOutput)
-        const start = performance.now()
-
-        try {
-          const actualValue = userFunction(...parsedInputs)
-          const end = performance.now()
-          const normalizedActual = normalizeValue(actualValue)
-          const normalizedExpected = normalizeValue(expectedValue)
-
-          newResults.push({
-            passed: normalizedActual === normalizedExpected,
-            actual: normalizedActual,
-            expected: normalizedExpected,
-            runtime: (end - start).toFixed(4),
-          })
-        } catch (execError) {
-          const message =
-            execError instanceof Error ? execError.message : 'Unknown error'
-
-          newResults.push({
-            passed: false,
-            actual: `Runtime Error: ${message}`,
-            expected: normalizeValue(expectedValue),
-            runtime: '0.0000',
-          })
-        }
+      const { data } = await api.post<{
+        language: EditorLanguage
+        results: TestResult[]
+      }>('/code/run', {
+        challengeId: challenge.id,
+        language: selectedLanguage,
+        sourceCode: code,
       })
 
-      setTestResults(newResults)
+      setTestResults(data.results)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      alert(`Compilation Error: ${message}`)
+      const message = axios.isAxiosError(err)
+        ? Array.isArray(err.response?.data?.message)
+          ? err.response.data.message.join(', ')
+          : (err.response?.data?.message ?? 'Failed to run tests.')
+        : err instanceof Error
+          ? err.message
+          : 'Failed to run tests.'
+      alert(`Execution Error: ${message}`)
     } finally {
       setIsRunning(false)
     }
@@ -567,12 +514,7 @@ function RouteComponent() {
                       <Button
                         variant="outline"
                         onClick={handleRunTests}
-                        disabled={
-                          isRunning ||
-                          !isAuthenticated ||
-                          testCases.length === 0 ||
-                          !isRunnableLanguage
-                        }
+                        disabled={isRunning || !isAuthenticated || testCases.length === 0}
                         className="h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
                       >
                         <Play
@@ -589,13 +531,9 @@ function RouteComponent() {
                   <TooltipTrigger asChild>
                     <span tabIndex={0}>
                       <Button
-                        disabled={
-                          !isAuthenticated ||
-                          testCases.length === 0 ||
-                          !isRunnableLanguage
-                        }
+                        disabled={!isAuthenticated || testCases.length === 0}
                         onClick={() => {
-                          if (!isAuthenticated || !isRunnableLanguage) return
+                          if (!isAuthenticated) return
 
                           if (allPassed) {
                             alert(
@@ -624,17 +562,6 @@ function RouteComponent() {
                   <AlertDescription>
                     Guests can view the challenge, but running tests and
                     submitting code require a signed-in account.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            ) : !isRunnableLanguage ? (
-              <div className="border-b border-border p-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Execution Limited To JavaScript</AlertTitle>
-                  <AlertDescription>
-                    Language switching is available in the editor UI, but test
-                    execution and submission currently only work for JavaScript.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -715,6 +642,11 @@ function RouteComponent() {
                           <Terminal className="w-3 h-3" /> Runtime:{' '}
                           {testResults[activeTestCase].runtime}ms
                         </span>
+                        {testResults[activeTestCase].memoryKb != null ? (
+                          <span>
+                            Memory: {testResults[activeTestCase].memoryKb} KB
+                          </span>
+                        ) : null}
                         <span
                           className={
                             testResults[activeTestCase].passed

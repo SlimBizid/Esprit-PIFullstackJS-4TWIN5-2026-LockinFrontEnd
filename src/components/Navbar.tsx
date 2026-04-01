@@ -17,7 +17,7 @@ import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 import { Menu, X } from 'lucide-react'
 
 const NAV_LINKS = [
-  { to: '/home', label: 'Home' },
+  { to: '/', label: 'Home' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/challenges', label: 'Challenges' },
 ] as const
@@ -351,7 +351,9 @@ export default function Navbar() {
                   </TooltipTrigger>
                 </SheetTrigger>
                 <TooltipContent>
-                  {mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                  {mobileOpen
+                    ? 'Close navigation menu'
+                    : 'Open navigation menu'}
                 </TooltipContent>
               </Tooltip>
 

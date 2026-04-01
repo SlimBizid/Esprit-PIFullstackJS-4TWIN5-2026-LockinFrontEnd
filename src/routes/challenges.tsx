@@ -56,6 +56,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import type { Challenge } from '@/models/challenge'
+import type { ChallengeCase } from '@/models/challenge'
 import type { PaginatedChallenges } from '@/models/paginated-challenge'
 
 const ITEMS_PER_PAGE = 10
@@ -123,6 +124,7 @@ type ChallengeFormValues = {
   examples: string
   constraints: string
   conditions: string
+  testCases: string
 }
 
 type ChallengePayload = {
@@ -137,6 +139,7 @@ type ChallengePayload = {
   examples: string[]
   constraints: string[]
   conditions: string[]
+  cases: ChallengeCase[]
 }
 
 function updateCachedChallenges(
@@ -161,6 +164,10 @@ function updateCachedChallenges(
 }
 
 function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
   if (!axios.isAxiosError(error)) {
     return 'Failed to load challenges.'
   }
@@ -221,6 +228,10 @@ function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
     examples: challenge?.examples.join('\n') ?? '',
     constraints: challenge?.constraints.join('\n') ?? '',
     conditions: challenge?.conditions.join('\n') ?? '',
+    testCases:
+      challenge?.cases && challenge.cases.length > 0
+        ? JSON.stringify(challenge.cases, null, 2)
+        : '[]',
   }
 }
 
@@ -229,6 +240,82 @@ function splitMultiline(value: string) {
     .split('\n')
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+function parseChallengeCases(value: string): ChallengeCase[] {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return []
+  }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    throw new Error('Test cases must be valid JSON.')
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('Test cases must be a JSON array.')
+  }
+
+  return parsed.map((item, index) => {
+    if (typeof item !== 'object' || item === null) {
+      throw new Error(`Test case ${index + 1} must be an object.`)
+    }
+
+    const testCase = item as {
+      inputs?: unknown
+      expectedOutput?: unknown
+    }
+
+    if (!Array.isArray(testCase.inputs)) {
+      throw new Error(`Test case ${index + 1} must include an inputs array.`)
+    }
+
+    const inputs = testCase.inputs.map((input, inputIndex) => {
+      if (typeof input !== 'object' || input === null) {
+        throw new Error(
+          `Input ${inputIndex + 1} in test case ${index + 1} must be an object.`,
+        )
+      }
+
+      const challengeInput = input as {
+        type?: unknown
+        value?: unknown
+      }
+
+      if (typeof challengeInput.type !== 'string' || !challengeInput.type.trim()) {
+        throw new Error(
+          `Input ${inputIndex + 1} in test case ${index + 1} must include a string type.`,
+        )
+      }
+
+      if (typeof challengeInput.value !== 'string') {
+        throw new Error(
+          `Input ${inputIndex + 1} in test case ${index + 1} must include a string value.`,
+        )
+      }
+
+      return {
+        type: challengeInput.type.trim(),
+        value: challengeInput.value,
+      }
+    })
+
+    if (typeof testCase.expectedOutput !== 'string') {
+      throw new Error(
+        `Test case ${index + 1} must include a string expectedOutput.`,
+      )
+    }
+
+    return {
+      inputs,
+      expectedOutput: testCase.expectedOutput,
+    }
+  })
 }
 
 function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
@@ -248,6 +335,7 @@ function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
     examples: splitMultiline(values.examples),
     constraints: splitMultiline(values.constraints),
     conditions: splitMultiline(values.conditions),
+    cases: parseChallengeCases(values.testCases),
   }
 }
 
@@ -503,6 +591,34 @@ function ChallengeFormDialog({
                 Select at least one topic.
               </p>
             ) : null}
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="challenge-test-cases">Test Cases</Label>
+            <textarea
+              id="challenge-test-cases"
+              value={values.testCases}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  testCases: event.target.value,
+                }))
+              }
+              className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              placeholder={`[
+  {
+    "inputs": [
+      { "type": "a", "value": "2" },
+      { "type": "b", "value": "3" }
+    ],
+    "expectedOutput": "5"
+  }
+]`}
+            />
+            <p className="text-xs text-muted-foreground">
+              Enter a JSON array. Each input value and expected output should be
+              a string, for example <code>"2"</code> or <code>"[1,2,3]"</code>.
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
