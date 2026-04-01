@@ -287,9 +287,9 @@ function RouteComponent() {
     testResults.length > 0 && testResults.every((result) => result.passed)
 
   return (
-    <div className="flex flex-col h-screen bg-background text-muted-foreground mt-16">
-      <nav className="h-12 border-b border-border flex items-center justify-between px-4">
-        <div className="flex items-center gap-4">
+    <div className="mt-16 flex min-h-screen flex-col bg-background text-muted-foreground">
+      <nav className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -304,33 +304,33 @@ function RouteComponent() {
             </TooltipTrigger>
             <TooltipContent>Back to challenges</TooltipContent>
           </Tooltip>
-          <div className="flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-primary" />
-            <span className="text-foreground text-sm tracking-wider uppercase">
+          <div className="flex min-w-0 items-center gap-2">
+            <Terminal className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate text-foreground text-sm tracking-wider uppercase">
               {challenge.title}
             </span>
-            <Badge className="bg-primary/10 text-primary border-primary text-[10px] h-5 uppercase">
+            <Badge className="h-5 shrink-0 border-primary bg-primary/10 text-[10px] text-primary uppercase">
               {formatDifficulty(challenge.difficulty)}
             </Badge>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex w-full items-center justify-end gap-4 sm:w-auto">
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             Environment Ready
           </div>
         </div>
       </nav>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-100 border-r border-foreground/5 flex flex-col bg-background">
-          <div className="p-6 space-y-8 overflow-y-auto">
+      <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
+        <aside className="w-full border-b border-foreground/5 bg-background lg:w-[26rem] lg:border-r lg:border-b-0">
+          <div className="space-y-8 overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-7rem)]">
             <div className="space-y-2">
               <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
                 Mission Briefing
               </h3>
-              <h1 className="text-3xl text-foreground uppercase tracking-tight">
+              <h1 className="text-2xl text-foreground uppercase tracking-tight sm:text-3xl">
                 {challenge.title}
               </h1>
             </div>
@@ -417,7 +417,7 @@ function RouteComponent() {
             </div>
           </div>
 
-          <div className="mt-auto p-6 border-t border-foreground/5">
+          <div className="border-t border-foreground/5 p-4 sm:p-6">
             <div className="flex justify-between items-end mb-2">
               <span className="text-[10px] font-mono uppercase text-muted-foreground">
                 Acceptance Rate
@@ -433,9 +433,9 @@ function RouteComponent() {
           </div>
         </aside>
 
-        <main className="flex-1 min-h-0 flex flex-col relative bg-background">
-          <div className="flex flex-1 min-h-0 flex-col font-mono text-sm leading-6">
-            <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 bg-muted/10">
+        <main className="relative flex flex-1 flex-col bg-background">
+          <div className="flex min-h-0 flex-col font-mono text-sm leading-6 lg:flex-1">
+            <div className="flex flex-col gap-3 border-b border-border bg-muted/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="grid gap-1">
                 <Label
                   htmlFor="challenge-editor-language"
@@ -454,7 +454,10 @@ function RouteComponent() {
                   setSelectedLanguage(value as EditorLanguage)
                 }
               >
-                <SelectTrigger id="challenge-editor-language" className="w-44">
+                <SelectTrigger
+                  id="challenge-editor-language"
+                  className="w-full sm:w-44"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -466,7 +469,7 @@ function RouteComponent() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="min-h-0 flex-1">
+            <div className="min-h-[22rem] flex-1 lg:min-h-0">
               <Editor
                 key={`${id}-${selectedLanguage}`}
                 path={getEditorPath(id, selectedLanguage)}
@@ -492,9 +495,9 @@ function RouteComponent() {
               />
             </div>
           </div>
-          <div className="flex flex-1 min-h-0 flex-col border-t border-border bg-background overflow-hidden">
-            <div className="flex items-center h-10 border-b border-border bg-muted/20 px-4 gap-2">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-4">
+          <div className="flex min-h-0 flex-col border-t border-border bg-background lg:flex-1">
+            <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
+              <span className="mr-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Test Runner
               </span>
               {testCases.map((_, index) => (
@@ -502,20 +505,20 @@ function RouteComponent() {
                   key={index}
                   onClick={() => setActiveTestCase(index)}
                   variant={activeTestCase === index ? 'default' : 'secondary'}
-                  className="rounded-none h-full font-bold"
+                  className="h-9 rounded-none font-bold"
                 >
                   CASE_{index + 1}
                 </Button>
               ))}
-              <div className="flex h-full gap-3 ml-auto">
+              <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span tabIndex={0}>
+                    <span tabIndex={0} className="w-full sm:w-auto">
                       <Button
                         variant="outline"
                         onClick={handleRunTests}
                         disabled={isRunning || !isAuthenticated || testCases.length === 0}
-                        className="h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
+                        className="h-10 w-full rounded-none border-foreground/10 bg-transparent text-xs font-bold gap-2 hover:bg-primary-foreground sm:w-auto"
                       >
                         <Play
                           className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
@@ -529,7 +532,7 @@ function RouteComponent() {
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span tabIndex={0}>
+                    <span tabIndex={0} className="w-full sm:w-auto">
                       <Button
                         disabled={!isAuthenticated || testCases.length === 0}
                         onClick={() => {
@@ -543,7 +546,7 @@ function RouteComponent() {
                             alert('CRITICAL ERROR: code failed.')
                           }
                         }}
-                        className="h-full rounded-none bg-primary text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] text-xs font-bold gap-2 px-8 disabled:opacity-50"
+                        className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
                       >
                         <Send className="w-3 h-3" /> SUBMIT
                       </Button>
@@ -567,7 +570,7 @@ function RouteComponent() {
               </div>
             ) : null}
 
-            <div className="flex-1 p-6 overflow-y-auto font-mono">
+            <div className="flex-1 overflow-y-auto p-4 font-mono sm:p-6">
               <div className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
@@ -579,7 +582,7 @@ function RouteComponent() {
                   </div>
 
                   {activeCase ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {activeCase.inputs.map((input, index) => (
                         <div
                           key={`${input.type}-${index}`}
@@ -612,7 +615,7 @@ function RouteComponent() {
 
                   {testResults[activeTestCase] ? (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-1">
                           <span className="text-[9px] text-muted-foreground uppercase">
                             Actual
@@ -637,7 +640,7 @@ function RouteComponent() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/50">
+                      <div className="flex flex-col gap-2 border-t border-border/50 pt-2 text-[10px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                         <span className="flex items-center gap-1">
                           <Terminal className="w-3 h-3" /> Runtime:{' '}
                           {testResults[activeTestCase].runtime}ms
@@ -675,8 +678,8 @@ function RouteComponent() {
             </div>
           </div>
 
-          <div className="h-20 border-t border-foreground/5 bg-background flex items-center justify-between px-6">
-            <div className="flex items-center gap-4 bg-primary-foreground border border-foreground/10 p-2 pr-6 rounded-lg">
+          <div className="hidden border-t border-foreground/5 bg-background px-6 py-4 md:flex md:items-center md:justify-between">
+            <div className="flex items-center gap-4 rounded-lg border border-foreground/10 bg-primary-foreground p-2 pr-6">
               <div className="w-10 h-10 rounded bg-linear-to-br from-primary to-blue-600 p-px">
                 <div className="w-full h-full bg-background rounded flex items-center justify-center overflow-hidden">
                   <img
