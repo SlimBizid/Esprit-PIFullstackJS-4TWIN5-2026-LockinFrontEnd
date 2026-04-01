@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import {
@@ -56,6 +56,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import type { Challenge } from '@/models/challenge'
 import type { ChallengeCase } from '@/models/challenge'
 import type { Match } from '@/models/match'
@@ -709,10 +711,14 @@ function RouteComponent() {
   const [selectedPvpChallengeId, setSelectedPvpChallengeId] = useState<
     number | null
   >(null)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [challengePendingDeletion, setChallengePendingDeletion] =
+    useState<Challenge | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isAdmin = useIsAdmin()
   const isAuthenticated = useIsAuthenticated()
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   const challengesQuery = useQuery({
     queryKey: ['challenges'],
@@ -847,6 +853,51 @@ function RouteComponent() {
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages])
+
+  useEffect(() => {
+    const isTextEntryTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+
+      return (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      )
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isShortcutsShortcut =
+        event.key === 'F1' ||
+        (!event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          event.key === '?' &&
+          !isTextEntryTarget(event.target))
+      const isSearchShortcut =
+        ((event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === 'k') ||
+        (!event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          event.key === '/' &&
+          !isTextEntryTarget(event.target))
+
+      if (isShortcutsShortcut) {
+        event.preventDefault()
+        setShortcutsOpen(true)
+        return
+      }
+
+      if (isSearchShortcut) {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
   const featuredChallenge = filteredData[0] ?? challenges[0] ?? null
 
   return (
@@ -863,6 +914,7 @@ function RouteComponent() {
             }
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
                 navigate({
                   to: '/challenge',
                   search: { id: featuredChallenge.id },
@@ -905,7 +957,10 @@ function RouteComponent() {
         )}
 
         {isAdmin ? (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setShortcutsOpen(true)}>
+              Shortcuts
+            </Button>
             <ChallengeFormDialog
               open={isCreateOpen}
               onOpenChange={(open) => {
@@ -1045,21 +1100,30 @@ function RouteComponent() {
             </Select>
           </div>
 
-          <div className="relative w-full xl:w-96">
-            <Label htmlFor="challenge-search" className="sr-only">
-              Search challenges
-            </Label>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="challenge-search"
-              placeholder="Filter problems..."
-              className="pl-10 bg-background border-border"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setCurrentPage(1)
-              }}
-            />
+          <div className="flex w-full items-center gap-2 xl:w-auto">
+            <div className="relative w-full xl:w-96">
+              <Label htmlFor="challenge-search" className="sr-only">
+                Search challenges
+              </Label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                id="challenge-search"
+                placeholder="Filter problems..."
+                className="pl-10 bg-background border-border"
+                aria-keyshortcuts="/ Control+K Meta+K"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setCurrentPage(1)
+                }}
+              />
+            </div>
+            {!isAdmin ? (
+              <Button type="button" variant="ghost" onClick={() => setShortcutsOpen(true)}>
+                Shortcuts
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -1119,12 +1183,23 @@ function RouteComponent() {
                   {paginatedData.map((challenge) => (
                     <TableRow
                       key={challenge.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() =>
                         navigate({
                           to: '/challenge',
                           search: { id: challenge.id },
                         })
                       }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          navigate({
+                            to: '/challenge',
+                            search: { id: challenge.id },
+                          })
+                        }
+                      }}
                       className="border-border hover:bg-primary/5 transition-colors group cursor-pointer h-16"
                     >
                       <TableCell className="font-mono text-muted-foreground px-6">
@@ -1189,21 +1264,9 @@ function RouteComponent() {
                               size="sm"
                               className="gap-2"
                               disabled={deleteChallengeMutation.isPending}
-                              onClick={async (event) => {
+                              onClick={(event) => {
                                 event.stopPropagation()
-
-                                if (
-                                  !window.confirm(
-                                    `Delete challenge "${challenge.title}"?`,
-                                  )
-                                ) {
-                                  return
-                                }
-
-                                setAdminActionError(null)
-                                await deleteChallengeMutation.mutateAsync(
-                                  challenge.id,
-                                )
+                                setChallengePendingDeletion(challenge)
                               }}
                             >
                               <Tooltip>
@@ -1351,6 +1414,55 @@ function RouteComponent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <KeyboardShortcutsDialog
+          open={shortcutsOpen}
+          onOpenChange={setShortcutsOpen}
+          description="The challenge list is keyboard accessible."
+          items={[
+            {
+              action: 'Focus challenge search',
+              shortcuts: ['/', 'Ctrl+K', 'Cmd+K'],
+            },
+            {
+              action: 'Open shortcuts help',
+              shortcuts: ['?', 'F1'],
+            },
+            {
+              action: 'Open a focused challenge card or row',
+              shortcuts: ['Enter', 'Space'],
+            },
+          ]}
+          footerNote="Use Tab and Shift+Tab to move through filters, pagination, and challenge actions without a mouse."
+        />
+        <ConfirmDialog
+          open={!!challengePendingDeletion}
+          onOpenChange={(open) => {
+            if (!open) {
+              setChallengePendingDeletion(null)
+            }
+          }}
+          title="Delete Challenge"
+          description={
+            challengePendingDeletion
+              ? `Delete challenge "${challengePendingDeletion.title}"?`
+              : 'Delete this challenge?'
+          }
+          confirmLabel="Delete Challenge"
+          confirmVariant="destructive"
+          isPending={deleteChallengeMutation.isPending}
+          onConfirm={async () => {
+            if (!challengePendingDeletion) {
+              return
+            }
+
+            setAdminActionError(null)
+            await deleteChallengeMutation.mutateAsync(
+              challengePendingDeletion.id,
+            )
+            setChallengePendingDeletion(null)
+          }}
+        />
       </div>
     </div>
   )

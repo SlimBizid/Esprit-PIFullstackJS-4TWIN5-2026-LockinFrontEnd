@@ -41,7 +41,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Input } from '@/components/ui/input'
+import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
+import {
+  MessageDialog,
+  type MessageDialogState,
+} from '@/components/message-dialog'
 import type { Challenge } from '@/models/challenge'
 import type { EditorLanguage } from '@/models/editor-language'
 import type { Match } from '@/models/match'
@@ -158,6 +164,11 @@ function RouteComponent() {
   const [isRunning, setIsRunning] = useState(false)
   const [joinDialogOpen, setJoinDialogOpen] = useState(false)
   const [joinMatchId, setJoinMatchId] = useState('')
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [messageDialog, setMessageDialog] = useState<MessageDialogState | null>(
+    null,
+  )
+  const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false)
 
   const challengeQuery = useQuery({
     queryKey: ['challenge', id],
@@ -423,7 +434,11 @@ function RouteComponent() {
         : err instanceof Error
           ? err.message
           : 'Failed to run tests.'
-      alert(`Execution Error: ${message}`)
+      setMessageDialog({
+        title: 'Execution Error',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsRunning(false)
     }
@@ -434,17 +449,26 @@ function RouteComponent() {
 
     if (isPvpChallenge) {
       if (!canViewChallenge) {
-        alert('The problem unlocks when both players join the match.')
+        setMessageDialog({
+          title: 'Problem Locked',
+          description: 'The problem unlocks when both players join the match.',
+        })
         return
       }
 
       if (!matchId) {
-        alert('Create or join a 1v1 match first.')
+        setMessageDialog({
+          title: 'Match Required',
+          description: 'Create or join a 1v1 match first.',
+        })
         return
       }
 
       if (!canSubmitToMatch) {
-        alert('This 1v1 match is not ready for submissions.')
+        setMessageDialog({
+          title: 'Match Not Ready',
+          description: 'This 1v1 match is not ready for submissions.',
+        })
         return
       }
 
@@ -458,7 +482,11 @@ function RouteComponent() {
           : err instanceof Error
             ? err.message
             : 'Failed to submit to the match.'
-        alert(`Match Submission Error: ${message}`)
+        setMessageDialog({
+          title: 'Match Submission Error',
+          description: message,
+          variant: 'destructive',
+        })
       }
 
       return
@@ -467,9 +495,10 @@ function RouteComponent() {
     try {
       const submission = await submitSoloMutation.mutateAsync()
       const verdictLabel = submission.verdict.replaceAll('_', ' ').toUpperCase()
-      alert(
-        `Submission ${verdictLabel}: ${submission.passedCount}/${submission.totalCount} test cases passed.`,
-      )
+      setMessageDialog({
+        title: `Submission ${verdictLabel}`,
+        description: `${submission.passedCount}/${submission.totalCount} test cases passed.`,
+      })
     } catch (err) {
       const message = axios.isAxiosError(err)
         ? Array.isArray(err.response?.data?.message)
@@ -478,9 +507,171 @@ function RouteComponent() {
         : err instanceof Error
           ? err.message
           : 'Failed to submit this solution.'
-      alert(`Submission Error: ${message}`)
+      setMessageDialog({
+        title: 'Submission Error',
+        description: message,
+        variant: 'destructive',
+      })
     }
   }
+
+  const handleCopyMatchId = async () => {
+    if (!matchId) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(matchId)
+      setMessageDialog({
+        title: 'Match ID Copied',
+        description: 'The current match ID is ready to share.',
+      })
+    } catch {
+      setMessageDialog({
+        title: 'Copy Failed',
+        description: 'Could not copy the match ID.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  useEffect(() => {
+    const isTextEntryTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+
+      return (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      )
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isDialogOpen =
+        joinDialogOpen ||
+        shortcutsOpen ||
+        surrenderConfirmOpen ||
+        !!messageDialog
+      const isShortcutHelp =
+        event.key === 'F1' ||
+        (!event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          event.key === '?' &&
+          !isTextEntryTarget(event.target))
+      const isNonTypingShortcut = !isTextEntryTarget(event.target)
+      const isRunShortcut =
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        event.key === 'Enter'
+      const isSubmitShortcut =
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        event.key === 'Enter'
+      const isBackShortcut =
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 'b' &&
+        isNonTypingShortcut
+      const isLanguageShortcut =
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 'l' &&
+        isNonTypingShortcut
+      const isPreviousCaseShortcut =
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key === ',' &&
+        isNonTypingShortcut
+      const isNextCaseShortcut =
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key === '.' &&
+        isNonTypingShortcut
+      const isCopyMatchShortcut =
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 'm' &&
+        isNonTypingShortcut
+
+      if (isShortcutHelp) {
+        event.preventDefault()
+        setShortcutsOpen(true)
+        return
+      }
+
+      if (isDialogOpen) {
+        return
+      }
+
+      if (isBackShortcut) {
+        event.preventDefault()
+        navigate({ to: '/challenges' })
+        return
+      }
+
+      if (isLanguageShortcut) {
+        event.preventDefault()
+        document.getElementById('challenge-editor-language')?.focus()
+        return
+      }
+
+      if (isPreviousCaseShortcut && testCases.length > 0) {
+        event.preventDefault()
+        setActiveTestCase((current) =>
+          current === 0 ? testCases.length - 1 : current - 1,
+        )
+        return
+      }
+
+      if (isNextCaseShortcut && testCases.length > 0) {
+        event.preventDefault()
+        setActiveTestCase((current) =>
+          current === testCases.length - 1 ? 0 : current + 1,
+        )
+        return
+      }
+
+      if (isCopyMatchShortcut && matchId) {
+        event.preventDefault()
+        void handleCopyMatchId()
+        return
+      }
+
+      if (isRunShortcut) {
+        event.preventDefault()
+        void handleRunTests()
+        return
+      }
+
+      if (isSubmitShortcut) {
+        event.preventDefault()
+        void handleSubmit()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [
+    joinDialogOpen,
+    shortcutsOpen,
+    surrenderConfirmOpen,
+    messageDialog,
+    isAuthenticated,
+    canViewChallenge,
+    isPvpChallenge,
+    matchId,
+    selectedLanguage,
+    code,
+    navigate,
+    currentMatch,
+    testCases.length,
+  ])
 
   if (challengeQuery.isLoading) {
     return (
@@ -533,6 +724,14 @@ function RouteComponent() {
         </div>
 
         <div className="flex w-full items-center justify-end gap-4 sm:w-auto">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShortcutsOpen(true)}
+          >
+            Shortcuts
+          </Button>
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             Environment Ready
@@ -698,12 +897,7 @@ function RouteComponent() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          navigator.clipboard
-                            .writeText(matchId)
-                            .then(() => alert('Match ID copied.'))
-                            .catch(() => alert('Could not copy the match ID.'))
-                        }
+                        onClick={() => void handleCopyMatchId()}
                       >
                         Copy match ID
                       </Button>
@@ -711,31 +905,7 @@ function RouteComponent() {
                         type="button"
                         variant="destructive"
                         size="sm"
-                        onClick={async () => {
-                          if (
-                            !currentMatch ||
-                            currentMatch.status === 'finished' ||
-                            !window.confirm(
-                              'Surrender this match? This will end the duel immediately.',
-                            )
-                          ) {
-                            return
-                          }
-
-                          try {
-                            await surrenderMatchMutation.mutateAsync()
-                          } catch (err) {
-                            const message = axios.isAxiosError(err)
-                              ? Array.isArray(err.response?.data?.message)
-                                ? err.response.data.message.join(', ')
-                                : (err.response?.data?.message ??
-                                  'Unable to surrender this match.')
-                              : err instanceof Error
-                                ? err.message
-                                : 'Unable to surrender this match.'
-                            alert(`Match Surrender Error: ${message}`)
-                          }
-                        }}
+                        onClick={() => setSurrenderConfirmOpen(true)}
                         disabled={
                           !currentMatch ||
                           currentMatch.status === 'finished' ||
@@ -1101,6 +1271,7 @@ function RouteComponent() {
                       <Button
                         variant="outline"
                         onClick={handleRunTests}
+                        aria-keyshortcuts="Control+Shift+Enter Meta+Shift+Enter"
                         disabled={
                           isRunning ||
                           !isAuthenticated ||
@@ -1116,7 +1287,12 @@ function RouteComponent() {
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>{runTestsTooltip}</TooltipContent>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p>{runTestsTooltip}</p>
+                      <p>`Ctrl/Cmd+Shift+Enter` runs tests</p>
+                    </div>
+                  </TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -1131,6 +1307,7 @@ function RouteComponent() {
                           submitSoloMutation.isPending
                         }
                         onClick={handleSubmit}
+                        aria-keyshortcuts="Control+Enter Meta+Enter"
                         className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
                       >
                         <Send className="w-3 h-3" />{' '}
@@ -1140,7 +1317,12 @@ function RouteComponent() {
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>{submitTooltip}</TooltipContent>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p>{submitTooltip}</p>
+                      <p>`Ctrl/Cmd+Enter` submits</p>
+                    </div>
+                  </TooltipContent>
                 </Tooltip>
               </div>
             </div>
@@ -1350,6 +1532,87 @@ function RouteComponent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        description="The challenge page can be used without a mouse."
+        items={[
+          {
+            action: 'Submit current solution',
+            shortcuts: ['Ctrl+Enter', 'Cmd+Enter'],
+          },
+          {
+            action: 'Run visible test cases',
+            shortcuts: ['Ctrl+Shift+Enter', 'Cmd+Shift+Enter'],
+          },
+          {
+            action: 'Open shortcuts help',
+            shortcuts: ['?', 'F1'],
+          },
+          {
+            action: 'Go back to challenge list',
+            shortcuts: ['Alt+B'],
+          },
+          {
+            action: 'Focus language selector',
+            shortcuts: ['Alt+L'],
+          },
+          {
+            action: 'Previous or next test case',
+            shortcuts: ['Alt+,', 'Alt+.'],
+          },
+          {
+            action: 'Copy current match ID',
+            shortcuts: ['Alt+M'],
+          },
+        ]}
+        footerNote="Use Tab and Shift+Tab to move between the editor toolbar, match controls, dialogs, and test results."
+      />
+      <MessageDialog
+        message={messageDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMessageDialog(null)
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={surrenderConfirmOpen}
+        onOpenChange={setSurrenderConfirmOpen}
+        title="Surrender Match"
+        description="This will end the duel immediately. If your opponent already joined, they win."
+        confirmLabel="Surrender Match"
+        confirmVariant="destructive"
+        isPending={surrenderMatchMutation.isPending}
+        onConfirm={async () => {
+          if (!currentMatch || currentMatch.status === 'finished') {
+            setSurrenderConfirmOpen(false)
+            return
+          }
+
+          try {
+            await surrenderMatchMutation.mutateAsync()
+            setSurrenderConfirmOpen(false)
+          } catch (err) {
+            const message = axios.isAxiosError(err)
+              ? Array.isArray(err.response?.data?.message)
+                ? err.response.data.message.join(', ')
+                : (err.response?.data?.message ??
+                  'Unable to surrender this match.')
+              : err instanceof Error
+                ? err.message
+                : 'Unable to surrender this match.'
+
+            setSurrenderConfirmOpen(false)
+            setMessageDialog({
+              title: 'Match Surrender Error',
+              description: message,
+              variant: 'destructive',
+            })
+          }
+        }}
+      />
     </div>
   )
 }
