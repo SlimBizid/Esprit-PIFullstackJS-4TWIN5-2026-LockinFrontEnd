@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   AlertCircle,
   Code2,
+  Swords,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,9 +16,9 @@ import { Progress } from '@/components/ui/progress'
 import { Editor, loader } from '@monaco-editor/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { api, useIsAuthenticated } from '@/stores/userStore'
+import { api, useIsAuthenticated, useUser } from '@/stores/userStore'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
 import {
@@ -32,14 +33,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import type { Challenge } from '@/models/challenge'
 import type { EditorLanguage } from '@/models/editor-language'
+import type { Match } from '@/models/match'
 import type { TestResult } from '@/models/test-result'
 import { LANGUAGE_FILE_EXTENSIONS } from '@/models/language-file-extensions'
 import { LANGUAGE_LABELS } from '@/models/lagnuage-labels'
 
 const challengeSearchSchema = z.object({
   id: z.coerce.number().int().positive(),
+  matchId: z.string().uuid().optional(),
 })
 
 function formatDifficulty(difficulty: Challenge['difficulty']) {
@@ -133,8 +145,9 @@ export const Route = createFileRoute('/challenge')({
 
 function RouteComponent() {
   const navigate = useNavigate()
-  const { id } = Route.useSearch()
+  const { id, matchId } = Route.useSearch()
   const isAuthenticated = useIsAuthenticated()
+  const user = useUser()
   const { theme } = useTheme()
   const [selectedLanguage, setSelectedLanguage] =
     useState<EditorLanguage>('javascript')
@@ -143,6 +156,8 @@ function RouteComponent() {
   const [activeTestCase, setActiveTestCase] = useState(0)
   const [testResults, setTestResults] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false)
+  const [joinMatchId, setJoinMatchId] = useState('')
 
   const challengeQuery = useQuery({
     queryKey: ['challenge', id],
@@ -158,6 +173,101 @@ function RouteComponent() {
   const constraints = challenge?.constraints ?? []
   const conditions = challenge?.conditions ?? []
   const code = codeByLanguage[selectedLanguage]
+  const isPvpChallenge = challenge?.type === 'pvp'
+
+  const matchQuery = useQuery({
+    queryKey: ['match', matchId],
+    enabled: isAuthenticated && !!matchId,
+    refetchInterval: (query) =>
+      query.state.data && (query.state.data as Match).status !== 'finished'
+        ? 3000
+        : false,
+    queryFn: async () => {
+      const { data } = await api.get<Match>(`/matches/${matchId}`)
+      return data
+    },
+  })
+
+  const publicMatchesQuery = useQuery({
+    queryKey: ['public-matches', id],
+    enabled: isAuthenticated && isPvpChallenge,
+    refetchInterval: 3000,
+    queryFn: async () => {
+      const { data } = await api.get<Match[]>('/matches/public', {
+        params: { challengeId: id },
+      })
+      return data
+    },
+  })
+
+  const createMatchMutation = useMutation({
+    mutationFn: async (visibility: 'private' | 'public') => {
+      const { data } = await api.post<Match>('/matches/queue', {
+        challengeId: id,
+        visibility,
+      })
+      return data
+    },
+    onSuccess: (data) => {
+      navigate({ to: '/challenge', search: { id, matchId: data.id } })
+    },
+  })
+
+  const joinRandomMatchMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<Match>('/matches/random', {
+        challengeId: id,
+      })
+      return data
+    },
+    onSuccess: (data) => {
+      navigate({ to: '/challenge', search: { id, matchId: data.id } })
+    },
+  })
+
+  const joinMatchMutation = useMutation({
+    mutationFn: async (value: string) => {
+      const { data } = await api.post<Match>(`/matches/${value}/join`)
+      return data
+    },
+    onSuccess: (data) => {
+      setJoinDialogOpen(false)
+      setJoinMatchId('')
+      navigate({ to: '/challenge', search: { id, matchId: data.id } })
+    },
+  })
+
+  const surrenderMatchMutation = useMutation({
+    mutationFn: async () => {
+      if (!matchId) {
+        throw new Error('No active match selected.')
+      }
+
+      const { data } = await api.post<Match>(`/matches/${matchId}/surrender`)
+      return data
+    },
+    onSuccess: () => {
+      void matchQuery.refetch()
+    },
+  })
+
+  const submitMatchMutation = useMutation({
+    mutationFn: async () => {
+      if (!matchId) {
+        throw new Error('No active match selected.')
+      }
+
+      const { data } = await api.post<Match>(`/matches/${matchId}/submit`, {
+        language: selectedLanguage,
+        sourceCode: code,
+      })
+
+      return data
+    },
+    onSuccess: () => {
+      void matchQuery.refetch()
+    },
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -218,21 +328,52 @@ function RouteComponent() {
     () => testCases[activeTestCase] ?? null,
     [activeTestCase, testCases],
   )
+  const currentMatch = matchQuery.data
+  const currentPlayerSubmission = currentMatch?.submissions.find(
+    (submission) => submission.userId === user?.id,
+  )
+  const opponentSubmission = currentMatch?.submissions.find(
+    (submission) => submission.userId !== user?.id,
+  )
+  const publicMatches = publicMatchesQuery.data ?? []
+  const isCurrentUserWinner = currentMatch?.winner?.id === user?.id
+  const isCurrentUserLoser =
+    !!currentMatch?.winner?.id &&
+    currentMatch.winner.id !== user?.id &&
+    !!user?.id
+  const isCancelledMatch =
+    currentMatch?.status === 'finished' && !currentMatch.winnerId
+  const canSubmitToMatch =
+    !!currentMatch && currentMatch.status === 'active' && !currentMatch.winnerId
+  const canViewChallenge =
+    !isPvpChallenge || (!!currentMatch && currentMatch.canViewChallenge)
   const runTestsTooltip = !isAuthenticated
     ? 'Log in to run tests'
-    : testCases.length === 0
-      ? 'No test cases available'
-      : isRunning
-        ? 'Running tests'
-        : 'Run the visible test cases'
+    : isPvpChallenge && !canViewChallenge
+      ? 'The problem unlocks when both players join the match'
+      : testCases.length === 0
+        ? 'No test cases available'
+        : isRunning
+          ? 'Running tests'
+          : 'Run the visible test cases'
   const submitTooltip = !isAuthenticated
     ? 'Log in to submit solutions'
-    : testCases.length === 0
-      ? 'No test cases available'
-      : 'Submit your solution'
+    : isPvpChallenge && !canViewChallenge
+      ? 'The problem unlocks when both players join the match'
+      : isPvpChallenge && !matchId
+        ? 'Create or join a 1v1 match first'
+        : isPvpChallenge && currentMatch?.status === 'waiting'
+          ? 'Waiting for a second player to join'
+          : isPvpChallenge && currentMatch?.status === 'finished'
+            ? 'This match has already finished'
+            : submitMatchMutation.isPending
+              ? 'Submitting to the match'
+              : testCases.length === 0
+                ? 'No test cases available'
+                : 'Submit your solution'
 
   const handleRunTests = async () => {
-    if (!isAuthenticated || !challenge) return
+    if (!isAuthenticated || !challenge || !canViewChallenge) return
 
     setIsRunning(true)
 
@@ -258,6 +399,48 @@ function RouteComponent() {
       alert(`Execution Error: ${message}`)
     } finally {
       setIsRunning(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!isAuthenticated) return
+
+    if (isPvpChallenge) {
+      if (!canViewChallenge) {
+        alert('The problem unlocks when both players join the match.')
+        return
+      }
+
+      if (!matchId) {
+        alert('Create or join a 1v1 match first.')
+        return
+      }
+
+      if (!canSubmitToMatch) {
+        alert('This 1v1 match is not ready for submissions.')
+        return
+      }
+
+      try {
+        await submitMatchMutation.mutateAsync()
+      } catch (err) {
+        const message = axios.isAxiosError(err)
+          ? Array.isArray(err.response?.data?.message)
+            ? err.response.data.message.join(', ')
+            : (err.response?.data?.message ?? 'Failed to submit to the match.')
+          : err instanceof Error
+            ? err.message
+            : 'Failed to submit to the match.'
+        alert(`Match Submission Error: ${message}`)
+      }
+
+      return
+    }
+
+    if (allPassed) {
+      alert('MISSION ACCOMPLISHED: taw nzidou il logic mta3 il submission.')
+    } else {
+      alert('CRITICAL ERROR: code failed.')
     }
   }
 
@@ -324,8 +507,329 @@ function RouteComponent() {
       </nav>
 
       <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-        <aside className="w-full border-b border-foreground/5 bg-background lg:w-[26rem] lg:border-r lg:border-b-0">
+        <aside className="w-full border-b border-foreground/5 bg-background lg:w-104 lg:border-r lg:border-b-0">
           <div className="space-y-8 overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-7rem)]">
+            {isPvpChallenge ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
+                      1v1 Match
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Queue a duel or join an existing match by ID.
+                    </p>
+                  </div>
+                  <Badge className="bg-primary/10 text-primary uppercase">
+                    {currentMatch?.status ?? 'lobby'}
+                  </Badge>
+                </div>
+
+                {matchId ? (
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Match ID
+                      </p>
+                      <code className="block break-all text-xs text-foreground">
+                        {matchId}
+                      </code>
+                    </div>
+
+                    {matchQuery.isError ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Match unavailable</AlertTitle>
+                        <AlertDescription>
+                          {axios.isAxiosError(matchQuery.error)
+                            ? (matchQuery.error.response?.data?.message ??
+                              'Unable to load this match.')
+                            : 'Unable to load this match.'}
+                        </AlertDescription>
+                      </Alert>
+                    ) : currentMatch ? (
+                      <div className="space-y-3 text-xs text-foreground">
+                        <p>
+                          Visibility:{' '}
+                          <span className="font-bold uppercase">
+                            {currentMatch.visibility}
+                          </span>
+                        </p>
+                        {currentMatch.status === 'waiting' ? (
+                          <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Waiting For Opponent</AlertTitle>
+                            <AlertDescription>
+                              Share the match ID with another player. The duel
+                              starts as soon as they join.
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
+
+                        {currentMatch.status === 'active' &&
+                        !currentMatch.winner ? (
+                          <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Match In Progress</AlertTitle>
+                            <AlertDescription>
+                              First accepted submission wins this duel.
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
+
+                        {isCurrentUserWinner ? (
+                          <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>You Won</AlertTitle>
+                            <AlertDescription>
+                              Your submission finished first and won the 1v1
+                              match.
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
+
+                        {isCurrentUserLoser ? (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>You Lost</AlertTitle>
+                            <AlertDescription>
+                              {currentMatch.winner?.username ?? 'Your opponent'}{' '}
+                              submitted the first accepted solution.
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
+
+                        {isCancelledMatch ? (
+                          <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Match Cancelled</AlertTitle>
+                            <AlertDescription>
+                              This duel ended before anyone won. You can leave
+                              this view and create a new match.
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
+
+                        <p>
+                          Player One:{' '}
+                          <span className="font-bold">
+                            {currentMatch.playerOne?.id === user?.id
+                              ? 'You'
+                              : (currentMatch.playerOne?.username ??
+                                currentMatch.playerOneId)}
+                          </span>
+                        </p>
+                        <p>
+                          Player Two:{' '}
+                          <span className="font-bold">
+                            {currentMatch.playerTwo
+                              ? currentMatch.playerTwo.id === user?.id
+                                ? 'You'
+                                : currentMatch.playerTwo.username
+                              : 'Waiting for opponent'}
+                          </span>
+                        </p>
+                        <p>
+                          Your latest verdict:{' '}
+                          <span className="font-bold uppercase">
+                            {currentPlayerSubmission?.verdict ?? 'none'}
+                          </span>
+                        </p>
+                        <p>
+                          Opponent latest verdict:{' '}
+                          <span className="font-bold uppercase">
+                            {opponentSubmission?.verdict ?? 'none'}
+                          </span>
+                        </p>
+                        {currentMatch.winnerId ? (
+                          <p className="text-primary">
+                            Winner:{' '}
+                            <span className="font-bold">
+                              {currentMatch.winner?.id === user?.id
+                                ? 'You'
+                                : (currentMatch.winner?.username ??
+                                  currentMatch.winnerId)}
+                            </span>
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Loading match state...
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigator.clipboard
+                            .writeText(matchId)
+                            .then(() => alert('Match ID copied.'))
+                            .catch(() => alert('Could not copy the match ID.'))
+                        }
+                      >
+                        Copy match ID
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          if (
+                            !currentMatch ||
+                            currentMatch.status === 'finished' ||
+                            !window.confirm(
+                              'Surrender this match? This will end the duel immediately.',
+                            )
+                          ) {
+                            return
+                          }
+
+                          try {
+                            await surrenderMatchMutation.mutateAsync()
+                          } catch (err) {
+                            const message = axios.isAxiosError(err)
+                              ? Array.isArray(err.response?.data?.message)
+                                ? err.response.data.message.join(', ')
+                                : (err.response?.data?.message ??
+                                  'Unable to surrender this match.')
+                              : err instanceof Error
+                                ? err.message
+                                : 'Unable to surrender this match.'
+                            alert(`Match Surrender Error: ${message}`)
+                          }
+                        }}
+                        disabled={
+                          !currentMatch ||
+                          currentMatch.status === 'finished' ||
+                          surrenderMatchMutation.isPending
+                        }
+                      >
+                        {surrenderMatchMutation.isPending
+                          ? 'Surrendering...'
+                          : 'Surrender Match'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          navigate({ to: '/challenge', search: { id } })
+                        }
+                      >
+                        Leave match view
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        type="button"
+                        onClick={() => createMatchMutation.mutate('private')}
+                        disabled={
+                          !isAuthenticated || createMatchMutation.isPending
+                        }
+                      >
+                        {createMatchMutation.isPending
+                          ? 'Creating...'
+                          : 'Create Private Match'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => createMatchMutation.mutate('public')}
+                        disabled={
+                          !isAuthenticated || createMatchMutation.isPending
+                        }
+                      >
+                        {createMatchMutation.isPending
+                          ? 'Creating...'
+                          : 'Create Public Match'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setJoinDialogOpen(true)}
+                        disabled={
+                          !isAuthenticated || joinMatchMutation.isPending
+                        }
+                      >
+                        Join by ID
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => joinRandomMatchMutation.mutate()}
+                        disabled={
+                          !isAuthenticated ||
+                          joinRandomMatchMutation.isPending ||
+                          publicMatches.length === 0
+                        }
+                      >
+                        {joinRandomMatchMutation.isPending
+                          ? 'Joining...'
+                          : 'Join Random Public Match'}
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Swords className="h-4 w-4 text-primary" />
+                        <p className="text-xs font-bold uppercase tracking-widest text-foreground">
+                          Public Waiting Matches
+                        </p>
+                      </div>
+                      {publicMatchesQuery.isLoading ? (
+                        <p className="text-xs text-muted-foreground">
+                          Loading public duels...
+                        </p>
+                      ) : publicMatches.length > 0 ? (
+                        <div className="space-y-2">
+                          {publicMatches.map((match) => (
+                            <div
+                              key={match.id}
+                              className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div className="space-y-1">
+                                <p className="text-xs text-foreground">
+                                  Host:{' '}
+                                  <span className="font-bold">
+                                    {match.playerOne?.username ??
+                                      match.playerOneId}
+                                  </span>
+                                </p>
+                                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                  Match ID: {match.id}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() =>
+                                  joinMatchMutation.mutate(match.id)
+                                }
+                                disabled={joinMatchMutation.isPending}
+                              >
+                                Join
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          No public waiting matches yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
                 Mission Briefing
@@ -336,35 +840,55 @@ function RouteComponent() {
             </div>
 
             <div className="space-y-4 text-sm leading-relaxed text-foreground">
-              {challenge.content
-                .split('\n')
-                .filter(Boolean)
-                .map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
+              {canViewChallenge ? (
+                challenge.content
+                  .split('\n')
+                  .filter(Boolean)
+                  .map((paragraph) => <p key={paragraph}>{paragraph}</p>)
+              ) : (
+                <p className="text-muted-foreground">
+                  The challenge briefing is hidden until both players join the
+                  match.
+                </p>
+              )}
             </div>
 
             <div className="space-y-6">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground">
-                <Code2 className="w-4 h-4" /> Examples
-              </div>
-
-              {examples.length > 0 ? (
-                examples.map((example, index) => (
-                  <div
-                    key={`${example}-${index}`}
-                    className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
-                  >
-                    <div className="text-foreground">Example {index + 1}:</div>
-                    <div className="text-muted-foreground whitespace-pre-wrap">
-                      {example}
-                    </div>
+              {canViewChallenge ? (
+                <>
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground">
+                    <Code2 className="w-4 h-4" /> Examples
                   </div>
-                ))
+
+                  {examples.length > 0 ? (
+                    examples.map((example, index) => (
+                      <div
+                        key={`${example}-${index}`}
+                        className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
+                      >
+                        <div className="text-foreground">
+                          Example {index + 1}:
+                        </div>
+                        <div className="text-muted-foreground whitespace-pre-wrap">
+                          {example}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      No examples provided.
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="text-xs text-muted-foreground">
-                  No examples provided.
-                </div>
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Problem Locked</AlertTitle>
+                  <AlertDescription>
+                    The full challenge statement, examples, and editor unlock
+                    once both players are in the match.
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
 
@@ -376,17 +900,23 @@ function RouteComponent() {
                     Constraints
                   </h4>
                 </div>
-                <ul className="space-y-2 font-mono text-[12px] text-foreground">
-                  {constraints.length > 0 ? (
-                    constraints.map((constraint, index) => (
-                      <li key={`${constraint}-${index}`}>{constraint}</li>
-                    ))
-                  ) : (
-                    <li className="text-muted-foreground">
-                      No constraints provided.
-                    </li>
-                  )}
-                </ul>
+                {canViewChallenge ? (
+                  <ul className="space-y-2 font-mono text-[12px] text-foreground">
+                    {constraints.length > 0 ? (
+                      constraints.map((constraint, index) => (
+                        <li key={`${constraint}-${index}`}>{constraint}</li>
+                      ))
+                    ) : (
+                      <li className="text-muted-foreground">
+                        No constraints provided.
+                      </li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Constraints are hidden until the duel begins.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -397,23 +927,29 @@ function RouteComponent() {
                   Victory Conditions
                 </h4>
               </div>
-              <ul className="space-y-3">
-                {conditions.length > 0 ? (
-                  conditions.map((condition, index) => (
-                    <li
-                      key={`${condition}-${index}`}
-                      className="flex items-start gap-3 text-xs text-foreground"
-                    >
-                      <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
-                      {condition}
+              {canViewChallenge ? (
+                <ul className="space-y-3">
+                  {conditions.length > 0 ? (
+                    conditions.map((condition, index) => (
+                      <li
+                        key={`${condition}-${index}`}
+                        className="flex items-start gap-3 text-xs text-foreground"
+                      >
+                        <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
+                        {condition}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-xs text-muted-foreground">
+                      No specific victory conditions provided.
                     </li>
-                  ))
-                ) : (
-                  <li className="text-xs text-muted-foreground">
-                    No specific victory conditions provided.
-                  </li>
-                )}
-              </ul>
+                  )}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Victory conditions are hidden until the duel begins.
+                </p>
+              )}
             </div>
           </div>
 
@@ -469,31 +1005,45 @@ function RouteComponent() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="min-h-[22rem] flex-1 lg:min-h-0">
-              <Editor
-                key={`${id}-${selectedLanguage}`}
-                path={getEditorPath(id, selectedLanguage)}
-                language={selectedLanguage}
-                options={{
-                  minimap: { enabled: true },
-                  padding: { top: 24 },
-                  readOnly: false,
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                }}
-                value={code}
-                onChange={(value) =>
-                  setCodeByLanguage((current) => ({
-                    ...current,
-                    [selectedLanguage]: value || '',
-                  }))
-                }
-                theme="lockin-theme"
-                loading={
-                  <div className="h-full w-full bg-background animate-pulse" />
-                }
-              />
-            </div>
+            {canViewChallenge ? (
+              <div className="min-h-88 flex-1 lg:min-h-0">
+                <Editor
+                  key={`${id}-${selectedLanguage}`}
+                  path={getEditorPath(id, selectedLanguage)}
+                  language={selectedLanguage}
+                  options={{
+                    minimap: { enabled: true },
+                    padding: { top: 24 },
+                    readOnly: false,
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                  }}
+                  value={code}
+                  onChange={(value) =>
+                    setCodeByLanguage((current) => ({
+                      ...current,
+                      [selectedLanguage]: value || '',
+                    }))
+                  }
+                  theme="lockin-theme"
+                  loading={
+                    <div className="h-full w-full bg-background animate-pulse" />
+                  }
+                />
+              </div>
+            ) : (
+              <div className="flex min-h-88 items-center justify-center border-t border-border bg-background p-6 text-center">
+                <div className="max-w-md space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
+                    Editor Locked
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    The code editor unlocks as soon as a second player joins
+                    this 1v1 match.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex min-h-0 flex-col border-t border-border bg-background lg:flex-1">
             <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
@@ -517,7 +1067,12 @@ function RouteComponent() {
                       <Button
                         variant="outline"
                         onClick={handleRunTests}
-                        disabled={isRunning || !isAuthenticated || testCases.length === 0}
+                        disabled={
+                          isRunning ||
+                          !isAuthenticated ||
+                          testCases.length === 0 ||
+                          !canViewChallenge
+                        }
                         className="h-10 w-full rounded-none border-foreground/10 bg-transparent text-xs font-bold gap-2 hover:bg-primary-foreground sm:w-auto"
                       >
                         <Play
@@ -534,18 +1089,12 @@ function RouteComponent() {
                   <TooltipTrigger asChild>
                     <span tabIndex={0} className="w-full sm:w-auto">
                       <Button
-                        disabled={!isAuthenticated || testCases.length === 0}
-                        onClick={() => {
-                          if (!isAuthenticated) return
-
-                          if (allPassed) {
-                            alert(
-                              'MISSION ACCOMPLISHED: taw nzidou il logic mta3 il submission.',
-                            )
-                          } else {
-                            alert('CRITICAL ERROR: code failed.')
-                          }
-                        }}
+                        disabled={
+                          !isAuthenticated ||
+                          testCases.length === 0 ||
+                          !canViewChallenge
+                        }
+                        onClick={handleSubmit}
                         className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
                       >
                         <Send className="w-3 h-3" /> SUBMIT
@@ -581,7 +1130,7 @@ function RouteComponent() {
                     <div className="h-px w-4 bg-border" />
                   </div>
 
-                  {activeCase ? (
+                  {canViewChallenge && activeCase ? (
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {activeCase.inputs.map((input, index) => (
                         <div
@@ -597,9 +1146,13 @@ function RouteComponent() {
                         </div>
                       ))}
                     </div>
-                  ) : (
+                  ) : canViewChallenge ? (
                     <div className="text-sm text-muted-foreground">
                       No test cases available for this challenge.
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Test inputs unlock when both players join the duel.
                     </div>
                   )}
                 </div>
@@ -663,13 +1216,22 @@ function RouteComponent() {
                         </span>
                       </div>
                     </div>
-                  ) : (
+                  ) : canViewChallenge ? (
                     <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/5">
                       <div className="p-3 rounded-full bg-muted/20 mb-2">
                         <Play className="w-5 h-5 text-muted-foreground/50" />
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase tracking-widest animate-pulse">
                         Waiting for compilation...
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="h-32 flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/5">
+                      <div className="p-3 rounded-full bg-muted/20 mb-2">
+                        <AlertCircle className="w-5 h-5 text-muted-foreground/50" />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
+                        Execution panel locked until match start
                       </p>
                     </div>
                   )}
@@ -701,6 +1263,54 @@ function RouteComponent() {
           </div>
         </main>
       </div>
+
+      <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join 1v1 Match</DialogTitle>
+            <DialogDescription>
+              Paste a match ID for this challenge to join the duel.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="join-match-id">Match ID</Label>
+            <Input
+              id="join-match-id"
+              value={joinMatchId}
+              onChange={(event) => setJoinMatchId(event.target.value)}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            />
+          </div>
+          {joinMatchMutation.isError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Join failed</AlertTitle>
+              <AlertDescription>
+                {axios.isAxiosError(joinMatchMutation.error)
+                  ? (joinMatchMutation.error.response?.data?.message ??
+                    'Unable to join this match.')
+                  : 'Unable to join this match.'}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setJoinDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => joinMatchMutation.mutate(joinMatchId.trim())}
+              disabled={!joinMatchId.trim() || joinMatchMutation.isPending}
+            >
+              {joinMatchMutation.isPending ? 'Joining...' : 'Join match'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

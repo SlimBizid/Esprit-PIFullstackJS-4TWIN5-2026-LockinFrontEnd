@@ -11,9 +11,10 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Swords,
 } from 'lucide-react'
 import { api } from '@/stores/userStore'
-import { useIsAdmin } from '@/stores/userStore'
+import { useIsAdmin, useIsAuthenticated } from '@/stores/userStore'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -57,6 +58,7 @@ import {
 } from '@/components/ui/dialog'
 import type { Challenge } from '@/models/challenge'
 import type { ChallengeCase } from '@/models/challenge'
+import type { Match } from '@/models/match'
 import type { PaginatedChallenges } from '@/models/paginated-challenge'
 
 const ITEMS_PER_PAGE = 10
@@ -702,9 +704,15 @@ function RouteComponent() {
     null,
   )
   const [adminActionError, setAdminActionError] = useState<string | null>(null)
+  const [joinPvpDialogOpen, setJoinPvpDialogOpen] = useState(false)
+  const [joinPvpMatchId, setJoinPvpMatchId] = useState('')
+  const [selectedPvpChallengeId, setSelectedPvpChallengeId] = useState<
+    number | null
+  >(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isAdmin = useIsAdmin()
+  const isAuthenticated = useIsAuthenticated()
 
   const challengesQuery = useQuery({
     queryKey: ['challenges'],
@@ -779,7 +787,27 @@ function RouteComponent() {
     },
   })
 
+  const joinPvpMatchMutation = useMutation({
+    mutationFn: async (value: string) => {
+      const { data } = await api.post<Match>(`/matches/${value}/join`)
+      return data
+    },
+    onSuccess: (data) => {
+      setJoinPvpDialogOpen(false)
+      setJoinPvpMatchId('')
+      setSelectedPvpChallengeId(null)
+      navigate({
+        to: '/challenge',
+        search: { id: data.challenge.id, matchId: data.id },
+      })
+    },
+  })
+
   const challenges = challengesQuery.data?.data ?? []
+  const pvpChallenges = useMemo(
+    () => challenges.filter((challenge) => challenge.type === 'pvp'),
+    [challenges],
+  )
 
   const topics = useMemo(
     () => [
@@ -898,6 +926,79 @@ function RouteComponent() {
                 </Button>
               }
             />
+          </div>
+        ) : null}
+
+        {pvpChallenges.length > 0 ? (
+          <div className="space-y-4 border border-primary/20 bg-primary/5 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-bold uppercase tracking-widest text-foreground">
+                  <Swords className="h-4 w-4 text-primary" />
+                  1v1 Quick Access
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Open a duel challenge or join an existing match by ID.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!isAuthenticated}
+                onClick={() => {
+                  setJoinPvpDialogOpen(true)
+                  setSelectedPvpChallengeId(null)
+                }}
+              >
+                Join Match By ID
+              </Button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {pvpChallenges.map((challenge) => (
+                <div
+                  key={challenge.id}
+                  className="space-y-3 rounded-lg border border-border bg-background p-4"
+                >
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-widest text-primary">
+                      1v1 Challenge
+                    </p>
+                    <h3 className="font-bold text-foreground">
+                      #{challenge.id.toString().padStart(3, '0')} {challenge.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDifficulty(challenge.difficulty)} •{' '}
+                      {challenge.topics[0] ?? 'General'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        navigate({
+                          to: '/challenge',
+                          search: { id: challenge.id },
+                        })
+                      }
+                    >
+                      Open 1v1
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!isAuthenticated}
+                      onClick={() => {
+                        setSelectedPvpChallengeId(challenge.id)
+                        setJoinPvpDialogOpen(true)
+                      }}
+                    >
+                      Join By ID
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -1194,6 +1295,62 @@ function RouteComponent() {
             errorMessage={adminActionError}
           />
         ) : null}
+
+        <Dialog open={joinPvpDialogOpen} onOpenChange={setJoinPvpDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Join 1v1 Match</DialogTitle>
+              <DialogDescription>
+                Paste a match ID to join an active duel.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="join-pvp-match-id">Match ID</Label>
+              <Input
+                id="join-pvp-match-id"
+                value={joinPvpMatchId}
+                onChange={(event) => setJoinPvpMatchId(event.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+              {selectedPvpChallengeId ? (
+                <p className="text-xs text-muted-foreground">
+                  Selected from challenge #{selectedPvpChallengeId}.
+                </p>
+              ) : null}
+            </div>
+            {joinPvpMatchMutation.isError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Join failed</AlertTitle>
+                <AlertDescription>
+                  {getErrorMessage(joinPvpMatchMutation.error)}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setJoinPvpDialogOpen(false)
+                  setJoinPvpMatchId('')
+                  setSelectedPvpChallengeId(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={!joinPvpMatchId.trim() || joinPvpMatchMutation.isPending}
+                onClick={() =>
+                  joinPvpMatchMutation.mutate(joinPvpMatchId.trim())
+                }
+              >
+                {joinPvpMatchMutation.isPending ? 'Joining...' : 'Join Match'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
