@@ -18,6 +18,12 @@ import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { api, useIsAuthenticated } from '@/stores/userStore'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -231,6 +237,22 @@ function RouteComponent() {
     () => testCases[activeTestCase] ?? null,
     [activeTestCase, testCases],
   )
+  const runTestsTooltip = !isAuthenticated
+    ? 'Log in to run tests'
+    : testCases.length === 0
+      ? 'No test cases available'
+      : !isRunnableLanguage
+        ? 'Test execution currently supports JavaScript only'
+        : isRunning
+          ? 'Running tests'
+          : 'Run the visible test cases'
+  const submitTooltip = !isAuthenticated
+    ? 'Log in to submit solutions'
+    : testCases.length === 0
+      ? 'No test cases available'
+      : !isRunnableLanguage
+        ? 'Submission currently supports JavaScript only'
+        : 'Submit your solution'
 
   const handleRunTests = () => {
     if (!isAuthenticated || !challenge || !isRunnableLanguage) return
@@ -321,14 +343,20 @@ function RouteComponent() {
     <div className="flex flex-col h-screen bg-background text-muted-foreground mt-16">
       <nav className="h-12 border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hover:bg-primary-foreground"
-            onClick={() => navigate({ to: '/challenges' })}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-primary-foreground"
+                onClick={() => navigate({ to: '/challenges' })}
+                aria-label="Back to challenges"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Back to challenges</TooltipContent>
+          </Tooltip>
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-primary" />
             <span className="text-foreground text-sm tracking-wider uppercase">
@@ -461,10 +489,13 @@ function RouteComponent() {
         <main className="flex-1 min-h-0 flex flex-col relative bg-background">
           <div className="flex flex-1 min-h-0 flex-col font-mono text-sm leading-6">
             <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 bg-muted/10">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <div className="grid gap-1">
+                <Label
+                  htmlFor="challenge-editor-language"
+                  className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                >
                   Editor Language
-                </p>
+                </Label>
                 <p className="text-xs text-muted-foreground">
                   Syntax highlighting and starter templates switch with the
                   selected language.
@@ -476,7 +507,7 @@ function RouteComponent() {
                   setSelectedLanguage(value as EditorLanguage)
                 }
               >
-                <SelectTrigger className="w-44">
+                <SelectTrigger id="challenge-editor-language" className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -530,44 +561,58 @@ function RouteComponent() {
                 </Button>
               ))}
               <div className="flex h-full gap-3 ml-auto">
-                <Button
-                  variant="outline"
-                  onClick={handleRunTests}
-                  disabled={
-                    isRunning ||
-                    !isAuthenticated ||
-                    testCases.length === 0 ||
-                    !isRunnableLanguage
-                  }
-                  className="h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
-                >
-                  <Play
-                    className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
-                  />
-                  {isRunning ? 'EXECUTING...' : 'RUN TESTS'}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button
+                        variant="outline"
+                        onClick={handleRunTests}
+                        disabled={
+                          isRunning ||
+                          !isAuthenticated ||
+                          testCases.length === 0 ||
+                          !isRunnableLanguage
+                        }
+                        className="h-full rounded-none bg-transparent border-foreground/10 hover:bg-primary-foreground text-xs font-bold gap-2"
+                      >
+                        <Play
+                          className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
+                        />
+                        {isRunning ? 'EXECUTING...' : 'RUN TESTS'}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{runTestsTooltip}</TooltipContent>
+                </Tooltip>
 
-                <Button
-                  disabled={
-                    !isAuthenticated ||
-                    testCases.length === 0 ||
-                    !isRunnableLanguage
-                  }
-                  onClick={() => {
-                    if (!isAuthenticated || !isRunnableLanguage) return
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button
+                        disabled={
+                          !isAuthenticated ||
+                          testCases.length === 0 ||
+                          !isRunnableLanguage
+                        }
+                        onClick={() => {
+                          if (!isAuthenticated || !isRunnableLanguage) return
 
-                    if (allPassed) {
-                      alert(
-                        'MISSION ACCOMPLISHED: taw nzidou il logic mta3 il submission.',
-                      )
-                    } else {
-                      alert('CRITICAL ERROR: code failed.')
-                    }
-                  }}
-                  className="h-full rounded-none bg-primary text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] text-xs font-bold gap-2 px-8 disabled:opacity-50"
-                >
-                  <Send className="w-3 h-3" /> SUBMIT
-                </Button>
+                          if (allPassed) {
+                            alert(
+                              'MISSION ACCOMPLISHED: taw nzidou il logic mta3 il submission.',
+                            )
+                          } else {
+                            alert('CRITICAL ERROR: code failed.')
+                          }
+                        }}
+                        className="h-full rounded-none bg-primary text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] text-xs font-bold gap-2 px-8 disabled:opacity-50"
+                      >
+                        <Send className="w-3 h-3" /> SUBMIT
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{submitTooltip}</TooltipContent>
+                </Tooltip>
               </div>
             </div>
 

@@ -42,6 +42,11 @@ import { Progress } from '@/components/ui/progress'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -345,13 +350,17 @@ function ChallengeFormDialog({
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-4">
               <Label htmlFor="challenge-starter-code">Starter Code</Label>
+              <div className="grid gap-1 justify-items-end">
+                <Label htmlFor="challenge-starter-language" className="text-xs">
+                  Starter Code Language
+                </Label>
               <Select
                 value={activeStarterLanguage}
                 onValueChange={(value) =>
                   setActiveStarterLanguage(value as EditorLanguage)
                 }
               >
-                <SelectTrigger className="w-44">
+                <SelectTrigger id="challenge-starter-language" className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -362,6 +371,7 @@ function ChallengeFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+              </div>
             </div>
             <textarea
               id="challenge-starter-code"
@@ -799,7 +809,13 @@ function RouteComponent() {
               }}
               defaultValue="All Topics"
             >
-              <SelectTrigger className="w-45 bg-background border-border">
+              <Label htmlFor="challenge-topic-filter" className="sr-only">
+                Filter challenges by topic
+              </Label>
+              <SelectTrigger
+                id="challenge-topic-filter"
+                className="w-45 bg-background border-border"
+              >
                 <SelectValue placeholder="Topic" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
@@ -813,8 +829,12 @@ function RouteComponent() {
           </div>
 
           <div className="relative w-full xl:w-96">
+            <Label htmlFor="challenge-search" className="sr-only">
+              Search challenges
+            </Label>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              id="challenge-search"
               placeholder="Filter problems..."
               className="pl-10 bg-background border-border"
               value={search}
@@ -936,8 +956,15 @@ function RouteComponent() {
                                 setEditingChallenge(challenge)
                               }}
                             >
-                              <Pencil className="h-4 w-4" />
-                              Edit
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-2">
+                                    <Pencil className="h-4 w-4" />
+                                    Edit
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Update this challenge</TooltipContent>
+                              </Tooltip>
                             </Button>
                             <Button
                               type="button"
@@ -962,8 +989,15 @@ function RouteComponent() {
                                 )
                               }}
                             >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-2">
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete this challenge</TooltipContent>
+                              </Tooltip>
                             </Button>
                           </div>
                         </TableCell>

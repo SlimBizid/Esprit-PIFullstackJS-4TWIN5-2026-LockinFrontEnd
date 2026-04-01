@@ -1,5 +1,10 @@
 import { Button } from '@/components/ui/button'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Sheet,
   SheetContent,
   SheetTrigger,
@@ -322,26 +327,33 @@ export default function Navbar() {
 
           <div className="md:hidden">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={
-                    mobileOpen
-                      ? 'Close navigation menu'
-                      : 'Open navigation menu'
-                  }
-                  aria-expanded={mobileOpen}
-                  aria-controls="mobile-nav-panel"
-                  className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                >
-                  {mobileOpen ? (
-                    <X className="h-5 w-5" aria-hidden="true" />
-                  ) : (
-                    <Menu className="h-5 w-5" aria-hidden="true" />
-                  )}
-                </Button>
-              </SheetTrigger>
+              <Tooltip>
+                <SheetTrigger asChild>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={
+                        mobileOpen
+                          ? 'Close navigation menu'
+                          : 'Open navigation menu'
+                      }
+                      aria-expanded={mobileOpen}
+                      aria-controls="mobile-nav-panel"
+                      className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      {mobileOpen ? (
+                        <X className="h-5 w-5" aria-hidden="true" />
+                      ) : (
+                        <Menu className="h-5 w-5" aria-hidden="true" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                </SheetTrigger>
+                <TooltipContent>
+                  {mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                </TooltipContent>
+              </Tooltip>
 
               <SheetContent
                 id="mobile-nav-panel"

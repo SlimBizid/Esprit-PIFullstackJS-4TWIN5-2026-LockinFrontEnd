@@ -1,5 +1,6 @@
 import { Avatar, AvatarImage, AvatarFallback, AvatarGroup } from './ui/avatar'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { useTheme } from 'next-themes'
 import { Moon, Sun } from 'lucide-react'
 
@@ -163,21 +164,28 @@ export default function Footer() {
               © 2026 LockIN — All rights reserved
             </small>
 
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              aria-label={
-                isDark ? 'Switch to light mode' : 'Switch to dark mode'
-              }
-              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              {isDark ? (
-                <Moon className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Sun className="h-4 w-4" aria-hidden="true" />
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                  aria-label={
+                    isDark ? 'Switch to light mode' : 'Switch to dark mode'
+                  }
+                  className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  {isDark ? (
+                    <Moon className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Sun className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
