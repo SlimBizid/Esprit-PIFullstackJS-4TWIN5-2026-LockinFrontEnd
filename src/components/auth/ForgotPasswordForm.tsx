@@ -120,6 +120,28 @@ export function ForgotPasswordForm() {
             We'll send a one-time reset link to this address.
           </p>
         )}
+
+        <h2 className="text-center font-semibold mt-4">or</h2>
+        <Label htmlFor={`${uid}-emaill`} className="text-sm font-medium">
+          Phone number
+        </Label>
+        <Input
+          id={`${uid}-emaill`}
+          type="text"
+          aria-invalid={!!errors.email}
+          aria-describedby={
+            errors.email ? `${uid}-email-err` : `${uid}-email-hint`
+          }
+          {...register('email', {
+            required: 'Please enter your email address.',
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: 'Please enter a valid email address.',
+            },
+          })}
+          className="h-11"
+          placeholder="98988988"
+        />
       </div>
 
       <Button

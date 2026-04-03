@@ -20,7 +20,7 @@ export default function HeroSection() {
 
       <div
         aria-hidden="true"
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none bg-gradient-to-t from-background from-20% to-emerald-300/0 to-50% z-20"
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none bg-linear-to-t from-background from-20% to-emerald-300/0 to-50% z-20"
       />
 
       <div className="relative z-30 text-center px-4 sm:px-6 max-w-5xl space-y-4 pt-16">

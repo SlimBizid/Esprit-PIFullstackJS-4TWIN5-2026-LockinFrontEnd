@@ -733,7 +733,7 @@ function RouteComponent() {
             Shortcuts
           </Button>
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <div className="h-2 w-2  bg-primary animate-pulse" />
             Environment Ready
           </div>
         </div>
@@ -743,7 +743,7 @@ function RouteComponent() {
         <aside className="w-full border-b border-foreground/5 bg-background lg:w-104 lg:border-r lg:border-b-0">
           <div className="space-y-8 overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-7rem)]">
             {isPvpChallenge ? (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
+              <div className="border border-primary/20 bg-primary/5 p-4 space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -759,7 +759,7 @@ function RouteComponent() {
                 </div>
 
                 {matchId ? (
-                  <div className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-3">
+                  <div className="space-y-3 border border-border/60 bg-background/60 p-3">
                     <div className="space-y-1">
                       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                         Match ID
@@ -932,6 +932,7 @@ function RouteComponent() {
                   <div className="space-y-4">
                     <div className="flex flex-wrap gap-3">
                       <Button
+                        className="rounded-none"
                         type="button"
                         onClick={() => createMatchMutation.mutate('private')}
                         disabled={
@@ -940,9 +941,10 @@ function RouteComponent() {
                       >
                         {createMatchMutation.isPending
                           ? 'Creating...'
-                          : 'Create Private Match'}
+                          : 'Create Private'}
                       </Button>
                       <Button
+                        className="rounded-none"
                         type="button"
                         variant="outline"
                         onClick={() => createMatchMutation.mutate('public')}
@@ -952,9 +954,10 @@ function RouteComponent() {
                       >
                         {createMatchMutation.isPending
                           ? 'Creating...'
-                          : 'Create Public Match'}
+                          : 'Create Public'}
                       </Button>
                       <Button
+                        className="rounded-none"
                         type="button"
                         variant="outline"
                         onClick={() => setJoinDialogOpen(true)}
@@ -965,6 +968,7 @@ function RouteComponent() {
                         Join by ID
                       </Button>
                       <Button
+                        className="rounded-none"
                         type="button"
                         variant="outline"
                         onClick={() => joinRandomMatchMutation.mutate()}
@@ -996,7 +1000,7 @@ function RouteComponent() {
                           {publicMatches.map((match) => (
                             <div
                               key={match.id}
-                              className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                              className="flex flex-col gap-2  border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div className="space-y-1">
                                 <p className="text-xs text-foreground">
@@ -1068,7 +1072,7 @@ function RouteComponent() {
                     examples.map((example, index) => (
                       <div
                         key={`${example}-${index}`}
-                        className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
+                        className=" border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
                       >
                         <div className="text-foreground">
                           Example {index + 1}:
@@ -1085,7 +1089,7 @@ function RouteComponent() {
                   )}
                 </>
               ) : (
-                <Alert>
+                <Alert className="rounded-none">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Problem Locked</AlertTitle>
                   <AlertDescription>
@@ -1096,7 +1100,7 @@ function RouteComponent() {
               )}
             </div>
 
-            <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-6">
+            <div className=" border border-foreground/5 bg-foreground/2 p-6 space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-rarity-legendary">
                   <AlertCircle className="w-4 h-4" />
@@ -1124,7 +1128,7 @@ function RouteComponent() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-4">
+            <div className=" border border-foreground/5 bg-foreground/2 p-6 space-y-4">
               <div className="flex items-center gap-2 text-primary">
                 <ShieldCheck className="w-4 h-4" />
                 <h4 className="text-xs font-bold uppercase tracking-widest">
@@ -1139,7 +1143,7 @@ function RouteComponent() {
                         key={`${condition}-${index}`}
                         className="flex items-start gap-3 text-xs text-foreground"
                       >
-                        <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
+                        <div className="w-1 h-1  bg-foreground mt-1.5" />
                         {condition}
                       </li>
                     ))
@@ -1311,7 +1315,8 @@ function RouteComponent() {
                         className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
                       >
                         <Send className="w-3 h-3" />{' '}
-                        {submitMatchMutation.isPending || submitSoloMutation.isPending
+                        {submitMatchMutation.isPending ||
+                        submitSoloMutation.isPending
                           ? 'SUBMITTING...'
                           : 'SUBMIT'}
                       </Button>
@@ -1356,7 +1361,7 @@ function RouteComponent() {
                       {activeCase.inputs.map((input, index) => (
                         <div
                           key={`${input.type}-${index}`}
-                          className="bg-muted/30 p-3 rounded border border-border/50"
+                          className="bg-muted/30 p-3 border border-border/50"
                         >
                           <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
                             {input.type}
@@ -1395,7 +1400,7 @@ function RouteComponent() {
                             Actual
                           </span>
                           <div
-                            className={`p-3 rounded border font-bold ${
+                            className={`p-3 border font-bold ${
                               testResults[activeTestCase].passed
                                 ? 'bg-green-500/5 border-green-500/20 text-green-500'
                                 : 'bg-destructive/5 border-destructive/20 text-destructive'
@@ -1408,7 +1413,7 @@ function RouteComponent() {
                           <span className="text-[9px] text-muted-foreground uppercase">
                             Expected
                           </span>
-                          <div className="bg-muted/30 p-3 rounded border border-border text-foreground">
+                          <div className="bg-muted/30 p-3 border border-border text-foreground">
                             {testResults[activeTestCase].expected}
                           </div>
                         </div>
@@ -1438,8 +1443,8 @@ function RouteComponent() {
                       </div>
                     </div>
                   ) : canViewChallenge ? (
-                    <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/5">
-                      <div className="p-3 rounded-full bg-muted/20 mb-2">
+                    <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border  bg-muted/5">
+                      <div className="p-3  bg-muted/20 mb-2">
                         <Play className="w-5 h-5 text-muted-foreground/50" />
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase tracking-widest animate-pulse">
@@ -1447,8 +1452,8 @@ function RouteComponent() {
                       </p>
                     </div>
                   ) : (
-                    <div className="h-32 flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/5">
-                      <div className="p-3 rounded-full bg-muted/20 mb-2">
+                    <div className="h-32 flex flex-col items-center justify-center  border border-dashed border-border bg-muted/5">
+                      <div className="p-3  bg-muted/20 mb-2">
                         <AlertCircle className="w-5 h-5 text-muted-foreground/50" />
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
@@ -1462,9 +1467,9 @@ function RouteComponent() {
           </div>
 
           <div className="hidden border-t border-foreground/5 bg-background px-6 py-4 md:flex md:items-center md:justify-between">
-            <div className="flex items-center gap-4 rounded-lg border border-foreground/10 bg-primary-foreground p-2 pr-6">
-              <div className="w-10 h-10 rounded bg-linear-to-br from-primary to-blue-600 p-px">
-                <div className="w-full h-full bg-background rounded flex items-center justify-center overflow-hidden">
+            <div className="flex items-center gap-4  border border-foreground/10 bg-primary-foreground p-2 pr-6">
+              <div className="w-10 h-10 bg-linear-to-br from-primary to-blue-600 p-px">
+                <div className="w-full h-full bg-background flex items-center justify-center overflow-hidden">
                   <img
                     src="/cat.jpg"
                     alt="Pet"

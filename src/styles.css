@@ -26,14 +26,14 @@ code {
 }
 
 :root {
-  --background: #ffffff;
+  --background: #f4f4f4;
   --foreground: #02060d;
-  --card: #ffffff;
+  --card: #f4f4f4;
   --card-foreground: #02060d;
-  --popover: #ffffff;
+  --popover: #f4f4f4;
   --popover-foreground: #02060d;
 
-  --primary: #00cfba;
+  --primary: #214888;
   --primary-foreground: #f3faff;
 
   --secondary: #edf2f8;
@@ -49,10 +49,10 @@ code {
   --ring: #00cfba;
   --radius: 0.5rem;
 
-  --common: #94a3b8;
-  --rare: #3b82f6;
-  --epic: #a855f7;
-  --legendary: #e9bf42;
+  --common: #67707d;
+  --rare: #3b57f6;
+  --epic: #8e27ef;
+  --legendary: #e99e42;
 }
 
 .dark {
