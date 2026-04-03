@@ -5,7 +5,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import type { CarouselApi } from '@/components/ui/carousel'
 
 const BENEFITS = [
@@ -40,12 +40,10 @@ const BENEFITS = [
 ]
 
 export default function BenefitsSection() {
-  const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(1)
 
   const handleSetApi = useCallback((carouselApi: CarouselApi) => {
     if (!carouselApi) return
-    setApi(carouselApi)
     setCurrent(carouselApi.selectedScrollSnap() + 1)
     carouselApi.on('select', () => {
       setCurrent(carouselApi.selectedScrollSnap() + 1)
