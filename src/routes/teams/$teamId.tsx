@@ -30,7 +30,6 @@ export function TeamPage() {
 
   const fetchTeams = useTeamStore((s) => s.fetchTeams)
   const deleteTeam = useTeamStore((s) => s.deleteTeam)
-  const updateTeam = useTeamStore((s) => s.updateTeam)
   const inviteUser = useTeamStore((s) => s.inviteUser)
 
   const [team, setTeam] = useState<Team | null>(null)

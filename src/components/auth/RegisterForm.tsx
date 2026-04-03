@@ -17,10 +17,6 @@ type RegisterFormValues = {
   confirmPassword: string
 }
 
-type RegisterResult = {
-  user: User | null
-}
-
 function getErrorMessage(error: unknown) {
   if (!axios.isAxiosError(error)) {
     return 'Registration failed. Please try again.'
@@ -53,7 +49,7 @@ export function RegisterForm() {
 
   const registerMutation = useMutation({
     mutationFn: async (values: RegisterFormValues) => {
-      const { data } = await api.post<User>('/auth/signup', {
+      await api.post<User>('/auth/signup', {
         username: values.username,
         email: values.email,
         password: values.password,
