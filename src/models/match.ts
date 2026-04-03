@@ -15,6 +15,15 @@ export type MatchSubmissionSummary = {
   createdAt: string
 }
 
+export type MatchMessage = {
+  id: string
+  matchId: string
+  userId: string
+  username: string | null
+  content: string
+  createdAt: string
+}
+
 export type Match = {
   id: string
   status: 'waiting' | 'active' | 'finished'
