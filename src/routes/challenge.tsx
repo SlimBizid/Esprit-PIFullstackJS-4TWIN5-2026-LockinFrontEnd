@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Code2,
   Swords,
+  MessageCircle,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,7 +51,7 @@ import {
 } from '@/components/message-dialog'
 import type { Challenge } from '@/models/challenge'
 import type { EditorLanguage } from '@/models/editor-language'
-import type { Match } from '@/models/match'
+import type { Match, MatchMessage } from '@/models/match'
 import type { TestResult } from '@/models/test-result'
 import { LANGUAGE_FILE_EXTENSIONS } from '@/models/language-file-extensions'
 import { LANGUAGE_LABELS } from '@/models/lagnuage-labels'
@@ -144,6 +145,13 @@ function getEditorPath(id: number, language: EditorLanguage) {
   return `challenge-${id}/solution.${LANGUAGE_FILE_EXTENSIONS[language]}`
 }
 
+function formatMessageTime(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 export const Route = createFileRoute('/challenge')({
   validateSearch: challengeSearchSchema,
   component: RouteComponent,
@@ -160,10 +168,14 @@ function RouteComponent() {
   const [codeByLanguage, setCodeByLanguage] =
     useState<Record<EditorLanguage, string>>(buildCodeByLanguage)
   const [activeTestCase, setActiveTestCase] = useState(0)
+  const [activeSidebarTab, setActiveSidebarTab] = useState<
+    'content' | 'reviews' | 'chat'
+  >('content')
   const [testResults, setTestResults] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const [joinDialogOpen, setJoinDialogOpen] = useState(false)
   const [joinMatchId, setJoinMatchId] = useState('')
+  const [chatDraft, setChatDraft] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [messageDialog, setMessageDialog] = useState<MessageDialogState | null>(
     null,
@@ -207,6 +219,22 @@ function RouteComponent() {
       const { data } = await api.get<Match[]>('/matches/public', {
         params: { challengeId: id },
       })
+      return data
+    },
+  })
+
+  const chatMessagesQuery = useQuery({
+    queryKey: ['match-messages', matchId],
+    enabled:
+      isAuthenticated &&
+      isPvpChallenge &&
+      !!matchId &&
+      activeSidebarTab === 'chat',
+    refetchInterval: 3000,
+    queryFn: async () => {
+      const { data } = await api.get<MatchMessage[]>(
+        `/matches/${matchId}/messages`,
+      )
       return data
     },
   })
@@ -305,6 +333,27 @@ function RouteComponent() {
     },
   })
 
+  const sendChatMessageMutation = useMutation({
+    mutationFn: async () => {
+      if (!matchId) {
+        throw new Error('No active match selected.')
+      }
+
+      const { data } = await api.post<MatchMessage>(
+        `/matches/${matchId}/messages`,
+        {
+          content: chatDraft.trim(),
+        },
+      )
+
+      return data
+    },
+    onSuccess: async () => {
+      setChatDraft('')
+      await chatMessagesQuery.refetch()
+    },
+  })
+
   useEffect(() => {
     if (typeof window === 'undefined') return
 
@@ -358,6 +407,8 @@ function RouteComponent() {
     setTestResults([])
     setSelectedLanguage('javascript')
     setCodeByLanguage(buildCodeByLanguage(challenge))
+    setActiveSidebarTab('content')
+    setChatDraft('')
   }, [challenge, id])
 
   const activeCase = useMemo(
@@ -365,6 +416,7 @@ function RouteComponent() {
     [activeTestCase, testCases],
   )
   const currentMatch = matchQuery.data
+  const chatMessages = chatMessagesQuery.data ?? []
   const currentPlayerSubmission = currentMatch?.submissions.find(
     (submission) => submission.userId === user?.id,
   )
@@ -383,6 +435,11 @@ function RouteComponent() {
     !!currentMatch && currentMatch.status === 'active' && !currentMatch.winnerId
   const canViewChallenge =
     !isPvpChallenge || (!!currentMatch && currentMatch.canViewChallenge)
+  const canUseMatchChat =
+    !!currentMatch &&
+    !!currentMatch.playerTwoId &&
+    currentMatch.status !== 'waiting' &&
+    !!matchId
   const runTestsTooltip = !isAuthenticated
     ? 'Log in to run tests'
     : isPvpChallenge && !canViewChallenge
@@ -530,6 +587,29 @@ function RouteComponent() {
       setMessageDialog({
         title: 'Copy Failed',
         description: 'Could not copy the match ID.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleSendChatMessage = async () => {
+    if (!canUseMatchChat || !chatDraft.trim()) {
+      return
+    }
+
+    try {
+      await sendChatMessageMutation.mutateAsync()
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? Array.isArray(err.response?.data?.message)
+          ? err.response.data.message.join(', ')
+          : (err.response?.data?.message ?? 'Failed to send this message.')
+        : err instanceof Error
+          ? err.message
+          : 'Failed to send this message.'
+      setMessageDialog({
+        title: 'Chat Error',
+        description: message,
         variant: 'destructive',
       })
     }
@@ -741,436 +821,594 @@ function RouteComponent() {
 
       <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
         <aside className="w-full border-b border-foreground/5 bg-background lg:w-104 lg:border-r lg:border-b-0">
-          <div className="space-y-8 overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-7rem)]">
+          <div className="w-full border-b border-border">
+            <Button
+              className="rounded-none border-r border-border font-semibold"
+              variant={activeSidebarTab === 'content' ? 'default' : 'secondary'}
+              onClick={() => setActiveSidebarTab('content')}
+            >
+              Content
+            </Button>
+            <Button
+              variant={activeSidebarTab === 'reviews' ? 'default' : 'secondary'}
+              className="rounded-none border-r border-border font-semibold"
+              onClick={() => setActiveSidebarTab('reviews')}
+            >
+              Reviews
+            </Button>
             {isPvpChallenge ? (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
-                      1v1 Match
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Queue a duel or join an existing match by ID.
-                    </p>
-                  </div>
-                  <Badge className="bg-primary/10 text-primary uppercase">
-                    {currentMatch?.status ?? 'lobby'}
-                  </Badge>
-                </div>
-
-                {matchId ? (
-                  <div className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-3">
-                    <div className="space-y-1">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Match ID
-                      </p>
-                      <code className="block break-all text-xs text-foreground">
-                        {matchId}
-                      </code>
+              <Button
+                variant={activeSidebarTab === 'chat' ? 'default' : 'secondary'}
+                className="rounded-none border-r border-border font-semibold"
+                onClick={() => setActiveSidebarTab('chat')}
+              >
+                Chat
+              </Button>
+            ) : null}
+          </div>
+          <div className="space-y-8 overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-7rem)]">
+            {activeSidebarTab === 'content' ? (
+              <>
+                {isPvpChallenge ? (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
+                          1v1 Match
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Queue a duel or join an existing match by ID.
+                        </p>
+                      </div>
+                      <Badge className="bg-primary/10 text-primary uppercase">
+                        {currentMatch?.status ?? 'lobby'}
+                      </Badge>
                     </div>
 
-                    {matchQuery.isError ? (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Match unavailable</AlertTitle>
-                        <AlertDescription>
-                          {axios.isAxiosError(matchQuery.error)
-                            ? (matchQuery.error.response?.data?.message ??
-                              'Unable to load this match.')
-                            : 'Unable to load this match.'}
-                        </AlertDescription>
-                      </Alert>
-                    ) : currentMatch ? (
-                      <div className="space-y-3 text-xs text-foreground">
-                        <p>
-                          Visibility:{' '}
-                          <span className="font-bold uppercase">
-                            {currentMatch.visibility}
-                          </span>
-                        </p>
-                        {currentMatch.status === 'waiting' ? (
-                          <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Waiting For Opponent</AlertTitle>
-                            <AlertDescription>
-                              Share the match ID with another player. The duel
-                              starts as soon as they join.
-                            </AlertDescription>
-                          </Alert>
-                        ) : null}
+                    {matchId ? (
+                      <div className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-3">
+                        <div className="space-y-1">
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Match ID
+                          </p>
+                          <code className="block break-all text-xs text-foreground">
+                            {matchId}
+                          </code>
+                        </div>
 
-                        {currentMatch.status === 'active' &&
-                        !currentMatch.winner ? (
-                          <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Match In Progress</AlertTitle>
-                            <AlertDescription>
-                              First accepted submission wins this duel.
-                            </AlertDescription>
-                          </Alert>
-                        ) : null}
-
-                        {isCurrentUserWinner ? (
-                          <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>You Won</AlertTitle>
-                            <AlertDescription>
-                              Your submission finished first and won the 1v1
-                              match.
-                            </AlertDescription>
-                          </Alert>
-                        ) : null}
-
-                        {isCurrentUserLoser ? (
+                        {matchQuery.isError ? (
                           <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>You Lost</AlertTitle>
+                            <AlertTitle>Match unavailable</AlertTitle>
                             <AlertDescription>
-                              {currentMatch.winner?.username ?? 'Your opponent'}{' '}
-                              submitted the first accepted solution.
+                              {axios.isAxiosError(matchQuery.error)
+                                ? (matchQuery.error.response?.data?.message ??
+                                  'Unable to load this match.')
+                                : 'Unable to load this match.'}
                             </AlertDescription>
                           </Alert>
-                        ) : null}
+                        ) : currentMatch ? (
+                          <div className="space-y-3 text-xs text-foreground">
+                            <p>
+                              Visibility:{' '}
+                              <span className="font-bold uppercase">
+                                {currentMatch.visibility}
+                              </span>
+                            </p>
+                            {currentMatch.status === 'waiting' ? (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Waiting For Opponent</AlertTitle>
+                                <AlertDescription>
+                                  Share the match ID with another player. The
+                                  duel starts as soon as they join.
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
 
-                        {isCancelledMatch ? (
-                          <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Match Cancelled</AlertTitle>
-                            <AlertDescription>
-                              This duel ended before anyone won. You can leave
-                              this view and create a new match.
-                            </AlertDescription>
-                          </Alert>
-                        ) : null}
+                            {currentMatch.status === 'active' &&
+                            !currentMatch.winner ? (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Match In Progress</AlertTitle>
+                                <AlertDescription>
+                                  First accepted submission wins this duel.
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
 
-                        <p>
-                          Player One:{' '}
-                          <span className="font-bold">
-                            {currentMatch.playerOne?.id === user?.id
-                              ? 'You'
-                              : (currentMatch.playerOne?.username ??
-                                currentMatch.playerOneId)}
-                          </span>
-                        </p>
-                        <p>
-                          Player Two:{' '}
-                          <span className="font-bold">
-                            {currentMatch.playerTwo
-                              ? currentMatch.playerTwo.id === user?.id
-                                ? 'You'
-                                : currentMatch.playerTwo.username
-                              : 'Waiting for opponent'}
-                          </span>
-                        </p>
-                        <p>
-                          Your latest verdict:{' '}
-                          <span className="font-bold uppercase">
-                            {currentPlayerSubmission?.verdict ?? 'none'}
-                          </span>
-                        </p>
-                        <p>
-                          Opponent latest verdict:{' '}
-                          <span className="font-bold uppercase">
-                            {opponentSubmission?.verdict ?? 'none'}
-                          </span>
-                        </p>
-                        {currentMatch.winnerId ? (
-                          <p className="text-primary">
-                            Winner:{' '}
-                            <span className="font-bold">
-                              {currentMatch.winner?.id === user?.id
-                                ? 'You'
-                                : (currentMatch.winner?.username ??
-                                  currentMatch.winnerId)}
-                            </span>
+                            {isCurrentUserWinner ? (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>You Won</AlertTitle>
+                                <AlertDescription>
+                                  Your submission finished first and won the 1v1
+                                  match.
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
+
+                            {isCurrentUserLoser ? (
+                              <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>You Lost</AlertTitle>
+                                <AlertDescription>
+                                  {currentMatch.winner?.username ??
+                                    'Your opponent'}{' '}
+                                  submitted the first accepted solution.
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
+
+                            {isCancelledMatch ? (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Match Cancelled</AlertTitle>
+                                <AlertDescription>
+                                  This duel ended before anyone won. You can
+                                  leave this view and create a new match.
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
+
+                            <p>
+                              Player One:{' '}
+                              <span className="font-bold">
+                                {currentMatch.playerOne?.id === user?.id
+                                  ? 'You'
+                                  : (currentMatch.playerOne?.username ??
+                                    currentMatch.playerOneId)}
+                              </span>
+                            </p>
+                            <p>
+                              Player Two:{' '}
+                              <span className="font-bold">
+                                {currentMatch.playerTwo
+                                  ? currentMatch.playerTwo.id === user?.id
+                                    ? 'You'
+                                    : currentMatch.playerTwo.username
+                                  : 'Waiting for opponent'}
+                              </span>
+                            </p>
+                            <p>
+                              Your latest verdict:{' '}
+                              <span className="font-bold uppercase">
+                                {currentPlayerSubmission?.verdict ?? 'none'}
+                              </span>
+                            </p>
+                            <p>
+                              Opponent latest verdict:{' '}
+                              <span className="font-bold uppercase">
+                                {opponentSubmission?.verdict ?? 'none'}
+                              </span>
+                            </p>
+                            {currentMatch.winnerId ? (
+                              <p className="text-primary">
+                                Winner:{' '}
+                                <span className="font-bold">
+                                  {currentMatch.winner?.id === user?.id
+                                    ? 'You'
+                                    : (currentMatch.winner?.username ??
+                                      currentMatch.winnerId)}
+                                </span>
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Loading match state...
                           </p>
-                        ) : null}
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleCopyMatchId()}
+                          >
+                            Copy match ID
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setSurrenderConfirmOpen(true)}
+                            disabled={
+                              !currentMatch ||
+                              currentMatch.status === 'finished' ||
+                              surrenderMatchMutation.isPending
+                            }
+                          >
+                            {surrenderMatchMutation.isPending
+                              ? 'Surrendering...'
+                              : 'Surrender Match'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              navigate({ to: '/challenge', search: { id } })
+                            }
+                          >
+                            Leave match view
+                          </Button>
+                        </div>
                       </div>
                     ) : (
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            type="button"
+                            onClick={() =>
+                              createMatchMutation.mutate('private')
+                            }
+                            disabled={
+                              !isAuthenticated || createMatchMutation.isPending
+                            }
+                          >
+                            {createMatchMutation.isPending
+                              ? 'Creating...'
+                              : 'Create Private Match'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => createMatchMutation.mutate('public')}
+                            disabled={
+                              !isAuthenticated || createMatchMutation.isPending
+                            }
+                          >
+                            {createMatchMutation.isPending
+                              ? 'Creating...'
+                              : 'Create Public Match'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setJoinDialogOpen(true)}
+                            disabled={
+                              !isAuthenticated || joinMatchMutation.isPending
+                            }
+                          >
+                            Join by ID
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => joinRandomMatchMutation.mutate()}
+                            disabled={
+                              !isAuthenticated ||
+                              joinRandomMatchMutation.isPending ||
+                              publicMatches.length === 0
+                            }
+                          >
+                            {joinRandomMatchMutation.isPending
+                              ? 'Joining...'
+                              : 'Join Random Public Match'}
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Swords className="h-4 w-4 text-primary" />
+                            <p className="text-xs font-bold uppercase tracking-widest text-foreground">
+                              Public Waiting Matches
+                            </p>
+                          </div>
+                          {publicMatchesQuery.isLoading ? (
+                            <p className="text-xs text-muted-foreground">
+                              Loading public duels...
+                            </p>
+                          ) : publicMatches.length > 0 ? (
+                            <div className="space-y-2">
+                              {publicMatches.map((match) => (
+                                <div
+                                  key={match.id}
+                                  className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-foreground">
+                                      Host:{' '}
+                                      <span className="font-bold">
+                                        {match.playerOne?.username ??
+                                          match.playerOneId}
+                                      </span>
+                                    </p>
+                                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                      Match ID: {match.id}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() =>
+                                      joinMatchMutation.mutate(match.id)
+                                    }
+                                    disabled={joinMatchMutation.isPending}
+                                  >
+                                    Join
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No public waiting matches yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
+                    Mission Briefing
+                  </h3>
+                  <h1 className="text-2xl text-foreground uppercase tracking-tight sm:text-3xl">
+                    {challenge.title}
+                  </h1>
+                </div>
+
+                <div className="space-y-4 text-sm leading-relaxed text-foreground">
+                  {canViewChallenge ? (
+                    challenge.content
+                      .split('\n')
+                      .filter(Boolean)
+                      .map((paragraph) => <p key={paragraph}>{paragraph}</p>)
+                  ) : (
+                    <p className="text-muted-foreground">
+                      The challenge briefing is hidden until both players join
+                      the match.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-6">
+                  {canViewChallenge ? (
+                    <>
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground">
+                        <Code2 className="w-4 h-4" /> Examples
+                      </div>
+
+                      {examples.length > 0 ? (
+                        examples.map((example, index) => (
+                          <div
+                            key={`${example}-${index}`}
+                            className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
+                          >
+                            <div className="text-foreground">
+                              Example {index + 1}:
+                            </div>
+                            <div className="text-muted-foreground whitespace-pre-wrap">
+                              {example}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          No examples provided.
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Problem Locked</AlertTitle>
+                      <AlertDescription>
+                        The full challenge statement, examples, and editor
+                        unlock once both players are in the match.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-rarity-legendary">
+                      <AlertCircle className="w-4 h-4" />
+                      <h4 className="text-xs font-bold uppercase tracking-widest">
+                        Constraints
+                      </h4>
+                    </div>
+                    {canViewChallenge ? (
+                      <ul className="space-y-2 font-mono text-[12px] text-foreground">
+                        {constraints.length > 0 ? (
+                          constraints.map((constraint, index) => (
+                            <li key={`${constraint}-${index}`}>{constraint}</li>
+                          ))
+                        ) : (
+                          <li className="text-muted-foreground">
+                            No constraints provided.
+                          </li>
+                        )}
+                      </ul>
+                    ) : (
                       <p className="text-xs text-muted-foreground">
-                        Loading match state...
+                        Constraints are hidden until the duel begins.
                       </p>
                     )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void handleCopyMatchId()}
-                      >
-                        Copy match ID
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setSurrenderConfirmOpen(true)}
-                        disabled={
-                          !currentMatch ||
-                          currentMatch.status === 'finished' ||
-                          surrenderMatchMutation.isPending
-                        }
-                      >
-                        {surrenderMatchMutation.isPending
-                          ? 'Surrendering...'
-                          : 'Surrender Match'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          navigate({ to: '/challenge', search: { id } })
-                        }
-                      >
-                        Leave match view
-                      </Button>
-                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        type="button"
-                        onClick={() => createMatchMutation.mutate('private')}
-                        disabled={
-                          !isAuthenticated || createMatchMutation.isPending
-                        }
-                      >
-                        {createMatchMutation.isPending
-                          ? 'Creating...'
-                          : 'Create Private Match'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => createMatchMutation.mutate('public')}
-                        disabled={
-                          !isAuthenticated || createMatchMutation.isPending
-                        }
-                      >
-                        {createMatchMutation.isPending
-                          ? 'Creating...'
-                          : 'Create Public Match'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setJoinDialogOpen(true)}
-                        disabled={
-                          !isAuthenticated || joinMatchMutation.isPending
-                        }
-                      >
-                        Join by ID
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => joinRandomMatchMutation.mutate()}
-                        disabled={
-                          !isAuthenticated ||
-                          joinRandomMatchMutation.isPending ||
-                          publicMatches.length === 0
-                        }
-                      >
-                        {joinRandomMatchMutation.isPending
-                          ? 'Joining...'
-                          : 'Join Random Public Match'}
-                      </Button>
-                    </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Swords className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-bold uppercase tracking-widest text-foreground">
-                          Public Waiting Matches
-                        </p>
-                      </div>
-                      {publicMatchesQuery.isLoading ? (
-                        <p className="text-xs text-muted-foreground">
-                          Loading public duels...
-                        </p>
-                      ) : publicMatches.length > 0 ? (
-                        <div className="space-y-2">
-                          {publicMatches.map((match) => (
-                            <div
-                              key={match.id}
-                              className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                              <div className="space-y-1">
-                                <p className="text-xs text-foreground">
-                                  Host:{' '}
-                                  <span className="font-bold">
-                                    {match.playerOne?.username ??
-                                      match.playerOneId}
-                                  </span>
-                                </p>
-                                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                                  Match ID: {match.id}
-                                </p>
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() =>
-                                  joinMatchMutation.mutate(match.id)
-                                }
-                                disabled={joinMatchMutation.isPending}
-                              >
-                                Join
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
+                <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <ShieldCheck className="w-4 h-4" />
+                    <h4 className="text-xs font-bold uppercase tracking-widest">
+                      Victory Conditions
+                    </h4>
+                  </div>
+                  {canViewChallenge ? (
+                    <ul className="space-y-3">
+                      {conditions.length > 0 ? (
+                        conditions.map((condition, index) => (
+                          <li
+                            key={`${condition}-${index}`}
+                            className="flex items-start gap-3 text-xs text-foreground"
+                          >
+                            <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
+                            {condition}
+                          </li>
+                        ))
                       ) : (
-                        <p className="text-xs text-muted-foreground">
-                          No public waiting matches yet.
-                        </p>
+                        <li className="text-xs text-muted-foreground">
+                          No specific victory conditions provided.
+                        </li>
                       )}
-                    </div>
-                  </div>
-                )}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Victory conditions are hidden until the duel begins.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            {activeSidebarTab === 'reviews' ? (
+              <div className="rounded-xl border border-border bg-background/60 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Challenge reviews are not wired yet.
+                </p>
               </div>
             ) : null}
 
-            <div className="space-y-2">
-              <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
-                Mission Briefing
-              </h3>
-              <h1 className="text-2xl text-foreground uppercase tracking-tight sm:text-3xl">
-                {challenge.title}
-              </h1>
-            </div>
-
-            <div className="space-y-4 text-sm leading-relaxed text-foreground">
-              {canViewChallenge ? (
-                challenge.content
-                  .split('\n')
-                  .filter(Boolean)
-                  .map((paragraph) => <p key={paragraph}>{paragraph}</p>)
-              ) : (
-                <p className="text-muted-foreground">
-                  The challenge briefing is hidden until both players join the
-                  match.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-6">
-              {canViewChallenge ? (
-                <>
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground">
-                    <Code2 className="w-4 h-4" /> Examples
-                  </div>
-
-                  {examples.length > 0 ? (
-                    examples.map((example, index) => (
-                      <div
-                        key={`${example}-${index}`}
-                        className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
-                      >
-                        <div className="text-foreground">
-                          Example {index + 1}:
-                        </div>
-                        <div className="text-muted-foreground whitespace-pre-wrap">
-                          {example}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      No examples provided.
-                    </div>
-                  )}
-                </>
-              ) : (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Problem Locked</AlertTitle>
-                  <AlertDescription>
-                    The full challenge statement, examples, and editor unlock
-                    once both players are in the match.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-6">
+            {activeSidebarTab === 'chat' ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-rarity-legendary">
-                  <AlertCircle className="w-4 h-4" />
-                  <h4 className="text-xs font-bold uppercase tracking-widest">
-                    Constraints
-                  </h4>
-                </div>
-                {canViewChallenge ? (
-                  <ul className="space-y-2 font-mono text-[12px] text-foreground">
-                    {constraints.length > 0 ? (
-                      constraints.map((constraint, index) => (
-                        <li key={`${constraint}-${index}`}>{constraint}</li>
-                      ))
-                    ) : (
-                      <li className="text-muted-foreground">
-                        No constraints provided.
-                      </li>
-                    )}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Constraints are hidden until the duel begins.
+                <div className="space-y-2">
+                  <h3 className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.3em] text-muted-foreground">
+                    <MessageCircle className="h-4 w-4 text-primary" />
+                    Match Chat
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Talk with the other competitor in this 1v1 match.
                   </p>
+                </div>
+
+                {!matchId ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>No Match Selected</AlertTitle>
+                    <AlertDescription>
+                      Create or join a 1v1 match first to unlock chat.
+                    </AlertDescription>
+                  </Alert>
+                ) : !canUseMatchChat ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Chat Locked</AlertTitle>
+                    <AlertDescription>
+                      Chat unlocks when both players are in the match.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    <div className="max-h-80 space-y-3 overflow-y-auto rounded-xl border border-border bg-background/60 p-4">
+                      {chatMessagesQuery.isLoading ? (
+                        <p className="text-sm text-muted-foreground">
+                          Loading messages...
+                        </p>
+                      ) : chatMessages.length > 0 ? (
+                        chatMessages.map((message) => {
+                          const isCurrentUserMessage =
+                            message.userId === user?.id
+
+                          return (
+                            <div
+                              key={message.id}
+                              className={`flex ${
+                                isCurrentUserMessage
+                                  ? 'justify-end'
+                                  : 'justify-start'
+                              }`}
+                            >
+                              <div
+                                className={`max-w-[85%] rounded-xl border p-3 ${
+                                  isCurrentUserMessage
+                                    ? 'border-primary/30 bg-primary/10 text-foreground'
+                                    : 'border-border bg-background text-foreground'
+                                }`}
+                              >
+                                <div className="mb-1 flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                                  <span>
+                                    {isCurrentUserMessage
+                                      ? 'You'
+                                      : (message.username ?? 'Opponent')}
+                                  </span>
+                                  <span>
+                                    {formatMessageTime(message.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="whitespace-pre-wrap text-sm">
+                                  {message.content}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No messages yet. Say something.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3">
+                      <textarea
+                        value={chatDraft}
+                        onChange={(event) => setChatDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (
+                            event.key === 'Enter' &&
+                            !event.shiftKey &&
+                            !sendChatMessageMutation.isPending
+                          ) {
+                            event.preventDefault()
+                            void handleSendChatMessage()
+                          }
+                        }}
+                        className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        placeholder="Send a message to your opponent..."
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          onClick={() => void handleSendChatMessage()}
+                          disabled={
+                            !chatDraft.trim() ||
+                            sendChatMessageMutation.isPending
+                          }
+                        >
+                          {sendChatMessageMutation.isPending
+                            ? 'Sending...'
+                            : 'Send message'}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
-            </div>
+            ) : null}
+          </div>
 
-            <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-4">
-              <div className="flex items-center gap-2 text-primary">
-                <ShieldCheck className="w-4 h-4" />
-                <h4 className="text-xs font-bold uppercase tracking-widest">
-                  Victory Conditions
-                </h4>
+          {activeSidebarTab === 'content' ? (
+            <div className="border-t border-foreground/5 p-4 sm:p-6">
+              <div className="mb-2 flex items-end justify-between">
+                <span className="text-[10px] font-mono uppercase text-muted-foreground">
+                  Acceptance Rate
+                </span>
+                <span className="text-[10px] font-mono text-primary">
+                  {Number(challenge.acceptanceRate).toFixed(1)}%
+                </span>
               </div>
-              {canViewChallenge ? (
-                <ul className="space-y-3">
-                  {conditions.length > 0 ? (
-                    conditions.map((condition, index) => (
-                      <li
-                        key={`${condition}-${index}`}
-                        className="flex items-start gap-3 text-xs text-foreground"
-                      >
-                        <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
-                        {condition}
-                      </li>
-                    ))
-                  ) : (
-                    <li className="text-xs text-muted-foreground">
-                      No specific victory conditions provided.
-                    </li>
-                  )}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Victory conditions are hidden until the duel begins.
-                </p>
-              )}
+              <Progress
+                value={Number(challenge.acceptanceRate)}
+                className="h-1 bg-primary-foreground"
+              />
             </div>
-          </div>
-
-          <div className="border-t border-foreground/5 p-4 sm:p-6">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                Acceptance Rate
-              </span>
-              <span className="text-[10px] font-mono text-primary">
-                {Number(challenge.acceptanceRate).toFixed(1)}%
-              </span>
-            </div>
-            <Progress
-              value={Number(challenge.acceptanceRate)}
-              className="h-1 bg-primary-foreground"
-            />
-          </div>
+          ) : null}
         </aside>
 
         <main className="relative flex flex-1 flex-col bg-background">
@@ -1311,7 +1549,8 @@ function RouteComponent() {
                         className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
                       >
                         <Send className="w-3 h-3" />{' '}
-                        {submitMatchMutation.isPending || submitSoloMutation.isPending
+                        {submitMatchMutation.isPending ||
+                        submitSoloMutation.isPending
                           ? 'SUBMITTING...'
                           : 'SUBMIT'}
                       </Button>
