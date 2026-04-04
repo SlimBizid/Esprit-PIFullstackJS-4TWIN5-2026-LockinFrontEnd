@@ -30,6 +30,11 @@ export default function Navbar() {
             Challenges
           </li>
         </Link>
+        <Link to="/cosmetics" activeProps={{ className: 'text-primary' }}>
+          <li className=" hover:text-primary select-none cursor-pointer">
+            Cosmetics
+          </li>
+        </Link>
       </ul>
       <div className="flex gap-2">
         <Button
