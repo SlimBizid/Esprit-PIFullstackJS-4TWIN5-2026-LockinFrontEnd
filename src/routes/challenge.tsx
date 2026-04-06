@@ -155,6 +155,12 @@ function formatMessageTime(value: string) {
   }).format(new Date(value))
 }
 
+function buildInitialQuizAnswers(challenge?: Challenge) {
+  return Object.fromEntries(
+    (challenge?.quizQuestions ?? []).map((question) => [question.id, []]),
+  ) as Record<string, string[]>
+}
+
 export const Route = createFileRoute('/challenge')({
   validateSearch: challengeSearchSchema,
   component: RouteComponent,
@@ -183,6 +189,7 @@ function RouteComponent() {
   const [joinImposterMatchId, setJoinImposterMatchId] = useState('')
   const [selectedVoteTargetId, setSelectedVoteTargetId] = useState('')
   const [chatDraft, setChatDraft] = useState('')
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string[]>>({})
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [messageDialog, setMessageDialog] = useState<MessageDialogState | null>(
     null,
@@ -204,11 +211,16 @@ function RouteComponent() {
 
   const challenge = challengeQuery.data
   const testCases = challenge?.cases ?? []
+  const quizQuestions = challenge?.quizQuestions ?? []
   const examples = challenge?.examples ?? []
   const constraints = challenge?.constraints ?? []
   const conditions = challenge?.conditions ?? []
   const code = codeByLanguage[selectedLanguage]
-  const isPvpChallenge = challenge?.type === 'pvp'
+  const isQuizChallenge =
+    challenge?.type === 'quiz' || challenge?.type === 'quiz_pvp'
+  const isQuizPvpChallenge = challenge?.type === 'quiz_pvp'
+  const isPvpChallenge =
+    challenge?.type === 'pvp' || challenge?.type === 'quiz_pvp'
   const isImposterChallenge = challenge?.type === 'imposter'
 
   const matchQuery = useQuery({
@@ -383,14 +395,37 @@ function RouteComponent() {
         throw new Error('No active match selected.')
       }
 
-      const { data } = await api.post<Match>(`/matches/${matchId}/submit`, {
-        language: selectedLanguage,
-        sourceCode: code,
+      const { data } = await api.post<{
+        match: Match
+        submission: {
+          id: string
+          userId: string
+          language: string
+          verdict:
+            | 'accepted'
+            | 'wrong_answer'
+            | 'compilation_error'
+            | 'runtime_error'
+          passedCount: number
+          totalCount: number
+          results: TestResult[]
+          createdAt: string
+        }
+      }>(`/matches/${matchId}/submit`, {
+        ...(isQuizPvpChallenge
+          ? {
+              answers: quizAnswers,
+            }
+          : {
+              language: selectedLanguage,
+              sourceCode: code,
+            }),
       })
 
       return data
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      setTestResults(data.submission.results)
       await queryClient.invalidateQueries({
         queryKey: ['challenge-reviews', id],
       })
@@ -470,8 +505,14 @@ function RouteComponent() {
         results: TestResult[]
       }>('/submissions', {
         challengeId: id,
-        language: selectedLanguage,
-        sourceCode: code,
+        ...(isQuizChallenge
+          ? {
+              answers: quizAnswers,
+            }
+          : {
+              language: selectedLanguage,
+              sourceCode: code,
+            }),
       })
 
       return data
@@ -558,6 +599,7 @@ function RouteComponent() {
     setTestResults([])
     setSelectedLanguage('javascript')
     setCodeByLanguage(buildCodeByLanguage(challenge))
+    setQuizAnswers(buildInitialQuizAnswers(challenge))
     setActiveSidebarTab('content')
     setChatDraft('')
     setJoinImposterMatchId('')
@@ -626,6 +668,8 @@ function RouteComponent() {
     !!matchId
   const runTestsTooltip = !isAuthenticated
     ? 'Log in to run tests'
+    : isQuizChallenge
+      ? 'Quiz challenges do not use the code test runner'
     : isPvpChallenge && !canViewChallenge
       ? 'The problem unlocks when both players join the match'
       : isImposterChallenge && !canViewChallenge
@@ -661,9 +705,11 @@ function RouteComponent() {
                   ? 'Submitting to the imposter match'
                 : submitSoloMutation.isPending
                   ? 'Submitting your solution'
-                  : testCases.length === 0
+                  : !isQuizChallenge && testCases.length === 0
                   ? 'No test cases available'
-                    : 'Submit your solution'
+                    : isQuizChallenge
+                      ? 'Submit your selected answers'
+                      : 'Submit your solution'
   const lockReason = isPvpChallenge
     ? 'both players join the match'
     : isImposterChallenge
@@ -696,7 +742,9 @@ function RouteComponent() {
       setMatchResultDialog({
         title: 'You Won',
         description: endedByAcceptedSubmission
-          ? 'Your accepted submission finished first and won the match.'
+          ? currentMatch.challenge.type === 'quiz_pvp'
+            ? 'Your fully correct quiz submission finished first and won the match.'
+            : 'Your accepted submission finished first and won the match.'
           : 'Your opponent surrendered, so you win by forfeit.',
       })
       setSeenMatchResultKey(resultKey)
@@ -707,7 +755,9 @@ function RouteComponent() {
       setMatchResultDialog({
         title: 'You Lost',
         description: endedByAcceptedSubmission
-          ? `${currentMatch.winner?.username ?? 'Your opponent'} submitted the first accepted solution.`
+          ? currentMatch.challenge.type === 'quiz_pvp'
+            ? `${currentMatch.winner?.username ?? 'Your opponent'} submitted the first fully correct quiz answers.`
+            : `${currentMatch.winner?.username ?? 'Your opponent'} submitted the first accepted solution.`
           : 'You surrendered the match, so your opponent wins by forfeit.',
         variant: 'destructive',
       })
@@ -777,7 +827,9 @@ function RouteComponent() {
   }, [currentImposterMatch, isImposterUserWinner, seenMatchResultKey])
 
   const handleRunTests = async () => {
-    if (!isAuthenticated || !challenge || !canViewChallenge) return
+    if (!isAuthenticated || !challenge || !canViewChallenge || isQuizChallenge) {
+      return
+    }
 
     setIsRunning(true)
 
@@ -911,7 +963,9 @@ function RouteComponent() {
       const verdictLabel = submission.verdict.replaceAll('_', ' ').toUpperCase()
       setMessageDialog({
         title: `Submission ${verdictLabel}`,
-        description: `${submission.passedCount}/${submission.totalCount} test cases passed.`,
+        description: isQuizChallenge
+          ? `${submission.passedCount}/${submission.totalCount} quiz questions matched the correct answers.`
+          : `${submission.passedCount}/${submission.totalCount} test cases passed.`,
       })
     } catch (err) {
       const message = axios.isAxiosError(err)
@@ -927,6 +981,20 @@ function RouteComponent() {
         variant: 'destructive',
       })
     }
+  }
+
+  const handleToggleQuizAnswer = (questionId: string, optionId: string) => {
+    setQuizAnswers((current) => {
+      const selectedOptions = current[questionId] ?? []
+      const nextQuestionAnswers = selectedOptions.includes(optionId)
+        ? selectedOptions.filter((value) => value !== optionId)
+        : [...selectedOptions, optionId]
+
+      return {
+        ...current,
+        [questionId]: nextQuestionAnswers,
+      }
+    })
   }
 
   const handleCopyMatchId = async () => {
@@ -2218,294 +2286,487 @@ function RouteComponent() {
         </aside>
 
         <main className="relative flex flex-1 flex-col bg-background">
-          <div className="flex min-h-0 flex-col font-mono text-sm leading-6 lg:flex-1">
-            <div className="flex flex-col gap-3 border-b border-border bg-muted/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="grid gap-1">
-                <Label
-                  htmlFor="challenge-editor-language"
-                  className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                >
-                  Editor Language
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Syntax highlighting and starter templates switch with the
-                  selected language.
-                </p>
-              </div>
-              <Select
-                value={selectedLanguage}
-                onValueChange={(value) =>
-                  setSelectedLanguage(value as EditorLanguage)
-                }
-              >
-                <SelectTrigger
-                  id="challenge-editor-language"
-                  className="w-full sm:w-44"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {canViewChallenge ? (
-              <div className="min-h-88 flex-1 lg:min-h-0">
-                <Editor
-                  key={`${id}-${selectedLanguage}`}
-                  path={getEditorPath(id, selectedLanguage)}
-                  language={selectedLanguage}
-                  options={{
-                    minimap: { enabled: true },
-                    padding: { top: 24 },
-                    readOnly: false,
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                  }}
-                  value={code}
-                  onChange={(value) =>
-                    setCodeByLanguage((current) => ({
-                      ...current,
-                      [selectedLanguage]: value || '',
-                    }))
-                  }
-                  theme="lockin-theme"
-                  loading={
-                    <div className="h-full w-full bg-background animate-pulse" />
-                  }
-                />
-              </div>
-            ) : (
-              <div className="flex min-h-88 items-center justify-center border-t border-border bg-background p-6 text-center">
-                <div className="max-w-md space-y-3">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
-                    Editor Locked
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    The code editor unlocks once {lockReason}.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex min-h-0 flex-col border-t border-border bg-background lg:flex-1">
-            <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
-              <span className="mr-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                Test Runner
-              </span>
-              {testCases.map((_, index) => (
-                <Button
-                  key={index}
-                  onClick={() => setActiveTestCase(index)}
-                  variant={activeTestCase === index ? 'default' : 'secondary'}
-                  className="h-9 rounded-none font-bold"
-                >
-                  CASE_{index + 1}
-                </Button>
-              ))}
-              <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0} className="w-full sm:w-auto">
-                      <Button
-                        variant="outline"
-                        onClick={handleRunTests}
-                        aria-keyshortcuts="Control+Shift+Enter Meta+Shift+Enter"
-                        disabled={
-                          isRunning ||
-                          !isAuthenticated ||
-                          testCases.length === 0 ||
-                          !canViewChallenge
-                        }
-                        className="h-10 w-full rounded-none border-foreground/10 bg-transparent text-xs font-bold gap-2 hover:bg-primary-foreground sm:w-auto"
-                      >
-                        <Play
-                          className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
-                        />
-                        {isRunning ? 'EXECUTING...' : 'RUN TESTS'}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p>{runTestsTooltip}</p>
-                      <p>`Ctrl/Cmd+Shift+Enter` runs tests</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0} className="w-full sm:w-auto">
-                      <Button
-                        disabled={
-                          !isAuthenticated ||
-                          testCases.length === 0 ||
-                          !canViewChallenge ||
-                          submitMatchMutation.isPending ||
+          {isQuizChallenge ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
+                <span className="mr-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Quiz Submission
+                </span>
+                {quizQuestions.map((question, index) => (
+                  <Button
+                    key={question.id}
+                    onClick={() => setActiveTestCase(index)}
+                    variant={activeTestCase === index ? 'default' : 'secondary'}
+                    className="h-9 rounded-none font-bold"
+                  >
+                    Q{index + 1}
+                  </Button>
+                ))}
+                <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} className="w-full sm:w-auto">
+                        <Button
+                          disabled={
+                            !isAuthenticated ||
+                            quizQuestions.length === 0 ||
+                            !canViewChallenge ||
+                            submitMatchMutation.isPending ||
+                            submitImposterMatchMutation.isPending ||
+                            submitSoloMutation.isPending
+                          }
+                          onClick={handleSubmit}
+                          aria-keyshortcuts="Control+Enter Meta+Enter"
+                          className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
+                        >
+                          <Send className="w-3 h-3" />
+                          {submitMatchMutation.isPending ||
                           submitImposterMatchMutation.isPending ||
                           submitSoloMutation.isPending
-                        }
-                        onClick={handleSubmit}
-                        aria-keyshortcuts="Control+Enter Meta+Enter"
-                        className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
-                      >
-                        <Send className="w-3 h-3" />{' '}
-                        {submitMatchMutation.isPending ||
-                        submitImposterMatchMutation.isPending ||
-                        submitSoloMutation.isPending
-                          ? 'SUBMITTING...'
-                          : 'SUBMIT'}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p>{submitTooltip}</p>
-                      <p>`Ctrl/Cmd+Enter` submits</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                            ? 'SUBMITTING...'
+                            : 'SUBMIT ANSWERS'}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>{submitTooltip}</p>
+                        <p>`Ctrl/Cmd+Enter` submits</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
 
-            {!isAuthenticated ? (
-              <div className="border-b border-border p-4">
-                <Alert variant="destructive" className="rounded-none">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Login Required</AlertTitle>
-                  <AlertDescription>
-                    Guests can view the challenge, but running tests and
-                    submitting code require a signed-in account.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            ) : null}
+              {!isAuthenticated ? (
+                <div className="border-b border-border p-4">
+                  <Alert variant="destructive" className="rounded-none">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Login Required</AlertTitle>
+                    <AlertDescription>
+                      Guests can read the quiz, but submitting answers requires a signed-in account.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              ) : null}
 
-            <div className="flex-1 overflow-y-auto p-4 font-mono sm:p-6">
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                      Input Parameters
-                    </span>
-                    <div className="h-px w-4 bg-border" />
-                  </div>
+              <div className="grid flex-1 gap-0 lg:grid-cols-[minmax(0,1.2fr)_420px]">
+                <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+                  {canViewChallenge ? (
+                    quizQuestions.length > 0 ? (
+                      <div className="space-y-6">
+                        {quizQuestions.map((question, questionIndex) => {
+                          const selectedOptions = quizAnswers[question.id] ?? []
 
-                  {canViewChallenge && activeCase ? (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {activeCase.inputs.map((input, index) => (
-                        <div
-                          key={`${input.type}-${index}`}
-                          className="bg-muted/30 p-3 rounded border border-border/50"
-                        >
-                          <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
-                            {input.type}
-                          </div>
-                          <div className="text-sm text-foreground wrap-break-word">
-                            {input.value}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : canViewChallenge ? (
-                    <div className="text-sm text-muted-foreground">
-                      No test cases available for this challenge.
-                    </div>
+                          return (
+                            <section
+                              key={question.id}
+                              className="space-y-4 rounded-none border border-border bg-card/30 p-4"
+                            >
+                              <div className="space-y-2">
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                                  Question {questionIndex + 1}
+                                </div>
+                                <h3 className="text-base font-semibold text-foreground">
+                                  {question.prompt}
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                  Multiple answers may be correct.
+                                </p>
+                              </div>
+                              <div className="space-y-3">
+                                {question.options.map((option) => {
+                                  const inputId = `quiz-${question.id}-${option.id}`
+                                  const checked = selectedOptions.includes(option.id)
+
+                                  return (
+                                    <label
+                                      key={option.id}
+                                      htmlFor={inputId}
+                                      className="flex cursor-pointer items-start gap-3 rounded-none border border-border bg-background/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40"
+                                    >
+                                      <input
+                                        id={inputId}
+                                        type="checkbox"
+                                        className="mt-0.5 h-4 w-4 accent-primary"
+                                        checked={checked}
+                                        onChange={() =>
+                                          handleToggleQuizAnswer(
+                                            question.id,
+                                            option.id,
+                                          )
+                                        }
+                                      />
+                                      <span>{option.text}</span>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </section>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <Alert className="rounded-none">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>No quiz questions</AlertTitle>
+                        <AlertDescription>
+                          This quiz challenge does not have any questions configured yet.
+                        </AlertDescription>
+                      </Alert>
+                    )
                   ) : (
-                    <div className="text-sm text-muted-foreground">
-                      Test inputs unlock once {lockReason}.
+                    <div className="flex min-h-full items-center justify-center rounded-none border border-dashed border-border bg-muted/5 p-6 text-center">
+                      <div className="max-w-md space-y-3">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
+                          Quiz Locked
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          The quiz unlocks once {lockReason}.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                      Execution Output
-                    </span>
-                    <div className="h-px w-4 bg-border" />
+                <div className="border-t border-border bg-background lg:border-l lg:border-t-0">
+                  <div className="border-b border-border px-4 py-3">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Answer Review
+                    </h3>
                   </div>
-
-                  {testResults[activeTestCase] ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-4 p-4 font-mono sm:p-6">
+                    {testResults[activeTestCase] ? (
+                      <div className="space-y-4">
                         <div className="space-y-1">
-                          <span className="text-[9px] text-muted-foreground uppercase">
-                            Actual
+                          <span className="text-[9px] uppercase text-muted-foreground">
+                            Your Selection
                           </span>
                           <div
-                            className={`p-3 rounded border font-bold ${
+                            className={`rounded border p-3 font-bold ${
                               testResults[activeTestCase].passed
-                                ? 'bg-green-500/5 border-green-500/20 text-green-500'
-                                : 'bg-destructive/5 border-destructive/20 text-destructive'
+                                ? 'border-green-500/20 bg-green-500/5 text-green-500'
+                                : 'border-destructive/20 bg-destructive/5 text-destructive'
                             }`}
                           >
                             {testResults[activeTestCase].actual}
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[9px] text-muted-foreground uppercase">
-                            Expected
+                          <span className="text-[9px] uppercase text-muted-foreground">
+                            Correct Answers
                           </span>
-                          <div className="bg-muted/30 p-3 rounded border border-border text-foreground">
+                          <div className="rounded border border-border bg-muted/30 p-3 text-foreground">
                             {testResults[activeTestCase].expected}
                           </div>
                         </div>
+                        <div className="rounded border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+                          {testResults[activeTestCase].status}
+                        </div>
                       </div>
-
-                      <div className="flex flex-col gap-2 border-t border-border/50 pt-2 text-[10px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                        <span className="flex items-center gap-1">
-                          <Terminal className="w-3 h-3" /> Runtime:{' '}
-                          {testResults[activeTestCase].runtime}ms
-                        </span>
-                        {testResults[activeTestCase].memoryKb != null ? (
-                          <span>
-                            Memory: {testResults[activeTestCase].memoryKb} KB
-                          </span>
-                        ) : null}
-                        <span
-                          className={
-                            testResults[activeTestCase].passed
-                              ? 'text-green-500'
-                              : 'text-destructive'
-                          }
-                        >
-                          {testResults[activeTestCase].passed
-                            ? 'STATUS: SUCCESS'
-                            : 'STATUS: FAILURE'}
-                        </span>
+                    ) : (
+                      <div className="rounded-none border border-dashed border-border bg-muted/5 p-6 text-center">
+                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                          Submit your answers to review each question.
+                        </p>
                       </div>
-                    </div>
-                  ) : canViewChallenge ? (
-                    <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border rounded-none bg-muted/5">
-                      <div className="p-3 rounded-none bg-muted/20 mb-2">
-                        <Play className="w-5 h-5 text-muted-foreground/50" />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground uppercase tracking-widest animate-pulse">
-                        Waiting for compilation...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="h-32 flex flex-col items-center justify-center rounded-none border border-dashed border-border bg-muted/5">
-                      <div className="p-3 rounded-none bg-muted/20 mb-2">
-                        <AlertCircle className="w-5 h-5 text-muted-foreground/50" />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
-                        Execution panel locked until match start
-                      </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex min-h-0 flex-col font-mono text-sm leading-6 lg:flex-1">
+                <div className="flex flex-col gap-3 border-b border-border bg-muted/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="grid gap-1">
+                    <Label
+                      htmlFor="challenge-editor-language"
+                      className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                    >
+                      Editor Language
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Syntax highlighting and starter templates switch with the
+                      selected language.
+                    </p>
+                  </div>
+                  <Select
+                    value={selectedLanguage}
+                    onValueChange={(value) =>
+                      setSelectedLanguage(value as EditorLanguage)
+                    }
+                  >
+                    <SelectTrigger
+                      id="challenge-editor-language"
+                      className="w-full sm:w-44"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {canViewChallenge ? (
+                  <div className="min-h-88 flex-1 lg:min-h-0">
+                    <Editor
+                      key={`${id}-${selectedLanguage}`}
+                      path={getEditorPath(id, selectedLanguage)}
+                      language={selectedLanguage}
+                      options={{
+                        minimap: { enabled: true },
+                        padding: { top: 24 },
+                        readOnly: false,
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                      }}
+                      value={code}
+                      onChange={(value) =>
+                        setCodeByLanguage((current) => ({
+                          ...current,
+                          [selectedLanguage]: value || '',
+                        }))
+                      }
+                      theme="lockin-theme"
+                      loading={
+                        <div className="h-full w-full animate-pulse bg-background" />
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="flex min-h-88 items-center justify-center border-t border-border bg-background p-6 text-center">
+                    <div className="max-w-md space-y-3">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
+                        Editor Locked
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        The code editor unlocks once {lockReason}.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex min-h-0 flex-col border-t border-border bg-background lg:flex-1">
+                <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
+                  <span className="mr-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Test Runner
+                  </span>
+                  {testCases.map((_, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => setActiveTestCase(index)}
+                      variant={activeTestCase === index ? 'default' : 'secondary'}
+                      className="h-9 rounded-none font-bold"
+                    >
+                      CASE_{index + 1}
+                    </Button>
+                  ))}
+                  <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span tabIndex={0} className="w-full sm:w-auto">
+                          <Button
+                            variant="outline"
+                            onClick={handleRunTests}
+                            aria-keyshortcuts="Control+Shift+Enter Meta+Shift+Enter"
+                            disabled={
+                              isRunning ||
+                              !isAuthenticated ||
+                              testCases.length === 0 ||
+                              !canViewChallenge
+                            }
+                            className="h-10 w-full rounded-none border-foreground/10 bg-transparent text-xs font-bold gap-2 hover:bg-primary-foreground sm:w-auto"
+                          >
+                            <Play
+                              className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
+                            />
+                            {isRunning ? 'EXECUTING...' : 'RUN TESTS'}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>{runTestsTooltip}</p>
+                          <p>`Ctrl/Cmd+Shift+Enter` runs tests</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span tabIndex={0} className="w-full sm:w-auto">
+                          <Button
+                            disabled={
+                              !isAuthenticated ||
+                              testCases.length === 0 ||
+                              !canViewChallenge ||
+                              submitMatchMutation.isPending ||
+                              submitImposterMatchMutation.isPending ||
+                              submitSoloMutation.isPending
+                            }
+                            onClick={handleSubmit}
+                            aria-keyshortcuts="Control+Enter Meta+Enter"
+                            className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
+                          >
+                            <Send className="w-3 h-3" />{' '}
+                            {submitMatchMutation.isPending ||
+                            submitImposterMatchMutation.isPending ||
+                            submitSoloMutation.isPending
+                              ? 'SUBMITTING...'
+                              : 'SUBMIT'}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>{submitTooltip}</p>
+                          <p>`Ctrl/Cmd+Enter` submits</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+
+                {!isAuthenticated ? (
+                  <div className="border-b border-border p-4">
+                    <Alert variant="destructive" className="rounded-none">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Login Required</AlertTitle>
+                      <AlertDescription>
+                        Guests can view the challenge, but running tests and
+                        submitting code require a signed-in account.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                ) : null}
+
+                <div className="flex-1 overflow-y-auto p-4 font-mono sm:p-6">
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-px flex-1 bg-border" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                          Input Parameters
+                        </span>
+                        <div className="h-px w-4 bg-border" />
+                      </div>
+
+                      {canViewChallenge && activeCase ? (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          {activeCase.inputs.map((input, index) => (
+                            <div
+                              key={`${input.type}-${index}`}
+                              className="bg-muted/30 p-3 rounded border border-border/50"
+                            >
+                              <div className="text-[9px] text-primary mb-1 uppercase tracking-tighter">
+                                {input.type}
+                              </div>
+                              <div className="text-sm text-foreground wrap-break-word">
+                                {input.value}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : canViewChallenge ? (
+                        <div className="text-sm text-muted-foreground">
+                          No test cases available for this challenge.
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Test inputs unlock once {lockReason}.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-px flex-1 bg-border" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                          Execution Output
+                        </span>
+                        <div className="h-px w-4 bg-border" />
+                      </div>
+
+                      {testResults[activeTestCase] ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="space-y-1">
+                              <span className="text-[9px] text-muted-foreground uppercase">
+                                Actual
+                              </span>
+                              <div
+                                className={`p-3 rounded border font-bold ${
+                                  testResults[activeTestCase].passed
+                                    ? 'bg-green-500/5 border-green-500/20 text-green-500'
+                                    : 'bg-destructive/5 border-destructive/20 text-destructive'
+                                }`}
+                              >
+                                {testResults[activeTestCase].actual}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-[9px] text-muted-foreground uppercase">
+                                Expected
+                              </span>
+                              <div className="bg-muted/30 p-3 rounded border border-border text-foreground">
+                                {testResults[activeTestCase].expected}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2 border-t border-border/50 pt-2 text-[10px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                            <span className="flex items-center gap-1">
+                              <Terminal className="w-3 h-3" /> Runtime:{' '}
+                              {testResults[activeTestCase].runtime}ms
+                            </span>
+                            {testResults[activeTestCase].memoryKb != null ? (
+                              <span>
+                                Memory: {testResults[activeTestCase].memoryKb} KB
+                              </span>
+                            ) : null}
+                            <span
+                              className={
+                                testResults[activeTestCase].passed
+                                  ? 'text-green-500'
+                                  : 'text-destructive'
+                              }
+                            >
+                              {testResults[activeTestCase].passed
+                                ? 'STATUS: SUCCESS'
+                                : 'STATUS: FAILURE'}
+                            </span>
+                          </div>
+                        </div>
+                      ) : canViewChallenge ? (
+                        <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border rounded-none bg-muted/5">
+                          <div className="p-3 rounded-none bg-muted/20 mb-2">
+                            <Play className="w-5 h-5 text-muted-foreground/50" />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground uppercase tracking-widest animate-pulse">
+                            Waiting for compilation...
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="h-32 flex flex-col items-center justify-center rounded-none border border-dashed border-border bg-muted/5">
+                          <div className="p-3 rounded-none bg-muted/20 mb-2">
+                            <AlertCircle className="w-5 h-5 text-muted-foreground/50" />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
+                            Execution panel locked until match start
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="hidden border-t border-foreground/5 bg-background px-6 py-4 md:flex md:items-center md:justify-between">
             <div className="flex items-center gap-4 rounded-none border border-foreground/10 bg-primary-foreground p-2 pr-6">

@@ -60,6 +60,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import type { Challenge } from '@/models/challenge'
 import type { ChallengeCase } from '@/models/challenge'
+import type { ChallengeQuizQuestion } from '@/models/challenge'
 import type { Match } from '@/models/match'
 import type { PaginatedChallenges } from '@/models/paginated-challenge'
 
@@ -129,6 +130,7 @@ type ChallengeFormValues = {
   constraints: string
   conditions: string
   testCases: string
+  quizQuestions: string
 }
 
 type ChallengePayload = {
@@ -144,6 +146,7 @@ type ChallengePayload = {
   constraints: string[]
   conditions: string[]
   cases: ChallengeCase[]
+  quizQuestions: ChallengeQuizQuestion[]
 }
 
 function updateCachedChallenges(
@@ -201,6 +204,10 @@ function formatType(type: Challenge['type']) {
   switch (type) {
     case 'pvp':
       return '1v1'
+    case 'quiz':
+      return 'Quiz'
+    case 'quiz_pvp':
+      return 'Quiz 1v1'
     case 'imposter':
       return 'Coders vs Imposter'
     case 'solo':
@@ -237,6 +244,10 @@ function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
     testCases:
       challenge?.cases && challenge.cases.length > 0
         ? JSON.stringify(challenge.cases, null, 2)
+        : '[]',
+    quizQuestions:
+      challenge?.quizQuestions && challenge.quizQuestions.length > 0
+        ? JSON.stringify(challenge.quizQuestions, null, 2)
         : '[]',
   }
 }
@@ -327,14 +338,125 @@ function parseChallengeCases(value: string): ChallengeCase[] {
   })
 }
 
+function parseQuizQuestions(value: string): ChallengeQuizQuestion[] {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return []
+  }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    throw new Error('Quiz questions must be valid JSON.')
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('Quiz questions must be a JSON array.')
+  }
+
+  return parsed.map((item, index) => {
+    if (typeof item !== 'object' || item === null) {
+      throw new Error(`Quiz question ${index + 1} must be an object.`)
+    }
+
+    const question = item as {
+      id?: unknown
+      prompt?: unknown
+      options?: unknown
+      correctOptionIds?: unknown
+      explanation?: unknown
+    }
+
+    if (typeof question.id !== 'string' || !question.id.trim()) {
+      throw new Error(`Quiz question ${index + 1} must include a string id.`)
+    }
+
+    if (typeof question.prompt !== 'string' || !question.prompt.trim()) {
+      throw new Error(
+        `Quiz question ${index + 1} must include a string prompt.`,
+      )
+    }
+
+    if (!Array.isArray(question.options) || question.options.length < 2) {
+      throw new Error(
+        `Quiz question ${index + 1} must include at least two options.`,
+      )
+    }
+
+    const options = question.options.map((option, optionIndex) => {
+      if (typeof option !== 'object' || option === null) {
+        throw new Error(
+          `Option ${optionIndex + 1} in quiz question ${index + 1} must be an object.`,
+        )
+      }
+
+      const quizOption = option as {
+        id?: unknown
+        text?: unknown
+      }
+
+      if (typeof quizOption.id !== 'string' || !quizOption.id.trim()) {
+        throw new Error(
+          `Option ${optionIndex + 1} in quiz question ${index + 1} must include a string id.`,
+        )
+      }
+
+      if (typeof quizOption.text !== 'string' || !quizOption.text.trim()) {
+        throw new Error(
+          `Option ${optionIndex + 1} in quiz question ${index + 1} must include display text.`,
+        )
+      }
+
+      return {
+        id: quizOption.id.trim(),
+        text: quizOption.text.trim(),
+      }
+    })
+
+    if (
+      !Array.isArray(question.correctOptionIds) ||
+      question.correctOptionIds.length === 0 ||
+      question.correctOptionIds.some((value) => typeof value !== 'string')
+    ) {
+      throw new Error(
+        `Quiz question ${index + 1} must include one or more correctOptionIds.`,
+      )
+    }
+
+    return {
+      id: question.id.trim(),
+      prompt: question.prompt.trim(),
+      options,
+      correctOptionIds: question.correctOptionIds as string[],
+      explanation:
+        typeof question.explanation === 'string' &&
+        question.explanation.trim().length > 0
+          ? question.explanation.trim()
+          : undefined,
+    }
+  })
+}
+
 function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
   const parsedAcceptanceRate = Number(values.acceptanceRate)
+  const isQuizType = values.type === 'quiz' || values.type === 'quiz_pvp'
 
   return {
     title: values.title.trim(),
     content: values.content.trim(),
-    starterCode: values.starterCodes.javascript,
-    starterCodes: values.starterCodes,
+    starterCode: isQuizType ? '' : values.starterCodes.javascript,
+    starterCodes: isQuizType
+      ? {
+          javascript: '',
+          typescript: '',
+          python: '',
+          java: '',
+          cpp: '',
+        }
+      : values.starterCodes,
     difficulty: values.difficulty,
     type: values.type,
     topics: values.topics,
@@ -344,7 +466,8 @@ function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
     examples: splitMultiline(values.examples),
     constraints: splitMultiline(values.constraints),
     conditions: splitMultiline(values.conditions),
-    cases: parseChallengeCases(values.testCases),
+    cases: isQuizType ? [] : parseChallengeCases(values.testCases),
+    quizQuestions: isQuizType ? parseQuizQuestions(values.quizQuestions) : [],
   }
 }
 
@@ -376,6 +499,7 @@ function ChallengeFormDialog({
     ? 'Update the challenge details and save the changes.'
     : 'Create a new challenge that will appear in the admin list.'
   const hasTopics = values.topics.length > 0
+  const isQuizType = values.type === 'quiz' || values.type === 'quiz_pvp'
 
   return (
     <Dialog
@@ -444,55 +568,57 @@ function ChallengeFormDialog({
             />
           </div>
 
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="challenge-starter-code">Starter Code</Label>
-              <div className="grid gap-1 justify-items-end">
-                <Label htmlFor="challenge-starter-language" className="text-xs">
-                  Starter Code Language
-                </Label>
-                <Select
-                  value={activeStarterLanguage}
-                  onValueChange={(value) =>
-                    setActiveStarterLanguage(value as EditorLanguage)
-                  }
-                >
-                  <SelectTrigger
-                    id="challenge-starter-language"
-                    className="w-44"
+          {!isQuizType ? (
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="challenge-starter-code">Starter Code</Label>
+                <div className="grid gap-1 justify-items-end">
+                  <Label htmlFor="challenge-starter-language" className="text-xs">
+                    Starter Code Language
+                  </Label>
+                  <Select
+                    value={activeStarterLanguage}
+                    onValueChange={(value) =>
+                      setActiveStarterLanguage(value as EditorLanguage)
+                    }
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EDITOR_LANGUAGES.map((language) => (
-                      <SelectItem key={language} value={language}>
-                        {language}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      id="challenge-starter-language"
+                      className="w-44"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EDITOR_LANGUAGES.map((language) => (
+                        <SelectItem key={language} value={language}>
+                          {language}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              <textarea
+                id="challenge-starter-code"
+                value={values.starterCodes[activeStarterLanguage]}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    starterCode:
+                      activeStarterLanguage === 'javascript'
+                        ? event.target.value
+                        : current.starterCode,
+                    starterCodes: {
+                      ...current.starterCodes,
+                      [activeStarterLanguage]: event.target.value,
+                    },
+                  }))
+                }
+                className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 font-mono"
+                placeholder="Starter code for the selected language"
+              />
             </div>
-            <textarea
-              id="challenge-starter-code"
-              value={values.starterCodes[activeStarterLanguage]}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  starterCode:
-                    activeStarterLanguage === 'javascript'
-                      ? event.target.value
-                      : current.starterCode,
-                  starterCodes: {
-                    ...current.starterCodes,
-                    [activeStarterLanguage]: event.target.value,
-                  },
-                }))
-              }
-              className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 font-mono"
-              placeholder="Starter code for the selected language"
-            />
-          </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
@@ -533,7 +659,9 @@ function ChallengeFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="solo">Solo</SelectItem>
+                  <SelectItem value="quiz">Quiz</SelectItem>
                   <SelectItem value="pvp">1v1</SelectItem>
+                  <SelectItem value="quiz_pvp">Quiz 1v1</SelectItem>
                   <SelectItem value="teams">Teams</SelectItem>
                   <SelectItem value="imposter">Coders vs Imposter</SelectItem>
                 </SelectContent>
@@ -606,19 +734,52 @@ function ChallengeFormDialog({
             ) : null}
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="challenge-test-cases">Test Cases</Label>
-            <textarea
-              id="challenge-test-cases"
-              value={values.testCases}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  testCases: event.target.value,
-                }))
-              }
-              className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              placeholder={`[
+          {isQuizType ? (
+            <div className="grid gap-2">
+              <Label htmlFor="challenge-quiz-questions">Quiz Questions</Label>
+              <textarea
+                id="challenge-quiz-questions"
+                value={values.quizQuestions}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    quizQuestions: event.target.value,
+                  }))
+                }
+                className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                placeholder={`[
+  {
+    "id": "q1",
+    "prompt": "Which of these are sorting algorithms?",
+    "options": [
+      { "id": "merge", "text": "Merge Sort" },
+      { "id": "stack", "text": "Stack" },
+      { "id": "heap", "text": "Heap Sort" }
+    ],
+    "correctOptionIds": ["merge", "heap"],
+    "explanation": "Merge Sort and Heap Sort are sorting algorithms."
+  }
+]`}
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter a JSON array with question ids, prompts, options, and one
+                or more <code>correctOptionIds</code>.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="challenge-test-cases">Test Cases</Label>
+              <textarea
+                id="challenge-test-cases"
+                value={values.testCases}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    testCases: event.target.value,
+                  }))
+                }
+                className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                placeholder={`[
   {
     "inputs": [
       { "type": "a", "value": "2" },
@@ -627,12 +788,13 @@ function ChallengeFormDialog({
     "expectedOutput": "5"
   }
 ]`}
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter a JSON array. Each input value and expected output should be
-              a string, for example <code>"2"</code> or <code>"[1,2,3]"</code>.
-            </p>
-          </div>
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter a JSON array. Each input value and expected output should
+                be a string, for example <code>"2"</code> or <code>"[1,2,3]"</code>.
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
@@ -820,7 +982,11 @@ function RouteComponent() {
 
   const challenges = challengesQuery.data?.data ?? []
   const pvpChallenges = useMemo(
-    () => challenges.filter((challenge) => challenge.type === 'pvp'),
+    () =>
+      challenges.filter(
+        (challenge) =>
+          challenge.type === 'pvp' || challenge.type === 'quiz_pvp',
+      ),
     [challenges],
   )
 
@@ -1082,7 +1248,9 @@ function RouteComponent() {
               <TabsList className="bg-background border border-border">
                 <TabsTrigger value="All">All</TabsTrigger>
                 <TabsTrigger value="Solo">Solo</TabsTrigger>
+                <TabsTrigger value="Quiz">Quiz</TabsTrigger>
                 <TabsTrigger value="1v1">1v1</TabsTrigger>
+                <TabsTrigger value="Quiz 1v1">Quiz 1v1</TabsTrigger>
                 <TabsTrigger value="Teams">Teams</TabsTrigger>
                 <TabsTrigger value="Coders vs Imposter">
                   Coders vs Imposter
