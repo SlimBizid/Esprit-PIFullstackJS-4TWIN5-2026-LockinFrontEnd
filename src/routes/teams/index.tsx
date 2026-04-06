@@ -138,7 +138,7 @@ export function TeamsRoute() {
             className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
           >
             {allTeams.map(team => {
-              const leader = team.users?.[0]?.username || 'N/A'
+              const leader = team.users?.[0]?.username 
 
               return (
                 <div

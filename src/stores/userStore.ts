@@ -22,6 +22,14 @@ export const api = axios.create({
   baseURL: `${backendurl}`,
   withCredentials: true,
 })
+const sanitizeUserArray = (data: any): User[] => {
+  if (!data) return []
+  if (Array.isArray(data)) return data
+  if ('id' in data) return [data] // single user
+  if (data.data) return sanitizeUserArray(data.data) // pagination case
+  if (data.users) return sanitizeUserArray(data.users) // custom backend
+  return []
+}
 
 export const useUserStore = create<UserState>()(
   persist(
@@ -101,6 +109,8 @@ export const useUserStore = create<UserState>()(
       }),
     },
   ),
+  
+
 )
 export const useUser = () => useUserStore((s) => s.user)
 export const useIsAuthenticated = () => useUserStore((s) => s.isAuthenticated)
