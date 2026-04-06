@@ -20,6 +20,7 @@ import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-qu
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -76,6 +77,11 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/auth/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminReviewReportsRoute = AdminReviewReportsRouteImport.update({
+  id: '/admin/review-reports',
+  path: '/admin/review-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/challenges': typeof ChallengesRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/challenges': typeof ChallengesRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/challenges': typeof ChallengesRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/challenges'
     | '/home'
     | '/leaderboard'
+    | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/challenges'
     | '/home'
     | '/leaderboard'
+    | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/challenges'
     | '/home'
     | '/leaderboard'
+    | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   ChallengesRoute: typeof ChallengesRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  AdminReviewReportsRoute: typeof AdminReviewReportsRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/review-reports': {
+      id: '/admin/review-reports'
+      path: '/admin/review-reports'
+      fullPath: '/admin/review-reports'
+      preLoaderRoute: typeof AdminReviewReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChallengesRoute: ChallengesRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,
+  AdminReviewReportsRoute: AdminReviewReportsRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
