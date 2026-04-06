@@ -2,6 +2,11 @@ import { Link } from '@tanstack/react-router'
 
 import { useState } from 'react'
 import { Home, Menu, Network, X } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -9,13 +14,18 @@ export default function Header() {
   return (
     <>
       <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu size={24} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setIsOpen(true)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu size={24} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Open menu</TooltipContent>
+        </Tooltip>
         <h1 className="ml-4 text-xl font-semibold">
           <Link to="/">
             <img
@@ -34,13 +44,18 @@ export default function Header() {
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <h2 className="text-xl font-bold">Navigation</h2>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Close menu"
-          >
-            <X size={24} />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                aria-label="Close menu"
+              >
+                <X size={24} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Close menu</TooltipContent>
+          </Tooltip>
         </div>
 
         <nav className="flex-1 p-4 overflow-y-auto">

@@ -1,6 +1,12 @@
 import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState, useRef } from 'react'
-import { Users, ChevronLeft, MessageCircle, Mail, ShieldCheck } from 'lucide-react'
+import {
+  Users,
+  ChevronLeft,
+  MessageCircle,
+  Mail,
+  ShieldCheck,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,9 +15,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 import { useTeamStore } from '@/stores/teamStore'
-import { useUserStore } from '@/stores/userStore'
+import { api, useUserStore } from '@/stores/userStore'
 import type { Team } from '@/models/team'
-import type {  User } from '@/models/user'
+import type { User } from '@/models/user'
 
 export const Route = createFileRoute('/teams/$teamId')({
   component: TeamPage,
@@ -24,7 +30,6 @@ export function TeamPage() {
 
   const fetchTeams = useTeamStore((s) => s.fetchTeams)
   const deleteTeam = useTeamStore((s) => s.deleteTeam)
-  const updateTeam = useTeamStore((s) => s.updateTeam)
   const inviteUser = useTeamStore((s) => s.inviteUser)
 
   const [team, setTeam] = useState<Team | null>(null)
@@ -45,11 +50,12 @@ export function TeamPage() {
 
         // Load full users for pending invitations
         if (t.pendingInvitations?.length) {
+          // pending invitations either rodha usernames msh id or user w baad lawej f .map (async (u)=> /profile/${u.username})
           const pendingUsers = await Promise.all(
-            t.pendingInvitations.map(async (id) => {
-              const user = await useUserStore.getState().fetchUserById?.(id)
-              return user
-            })
+            t.pendingInvitations.map(async (username) => {
+              const user = await api.get(`/profile/${username}`)
+              return user.data
+            }),
           )
           setRequestedUsers(pendingUsers.filter(Boolean) as User[])
         }
@@ -186,7 +192,9 @@ export function TeamPage() {
               <p className="text-[10px] text-muted-foreground uppercase">
                 Leader
               </p>
-              <p className="text-lg font-semibold">{leader?.username ?? 'N/A'}</p>
+              <p className="text-lg font-semibold">
+                {leader?.username ?? 'N/A'}
+              </p>
             </CardContent>
           </Card>
 
@@ -203,7 +211,9 @@ export function TeamPage() {
           {/* Members */}
           <Card>
             <CardContent className="space-y-1">
-              <p className="text-[10px] text-muted-foreground uppercase">Members</p>
+              <p className="text-[10px] text-muted-foreground uppercase">
+                Members
+              </p>
               <div className="flex -space-x-2">
                 {(team.users ?? []).map((m) => (
                   <Avatar key={m.id} className="border">
@@ -274,7 +284,9 @@ export function TeamPage() {
             <div>
               <h2 className="text-2xl font-bold mb-4">Team Chat</h2>
               <div className="border border-border/10 rounded-lg p-4 h-64 overflow-y-auto bg-muted/5">
-                <p className="text-sm text-muted-foreground">Chat coming soon...</p>
+                <p className="text-sm text-muted-foreground">
+                  Chat coming soon...
+                </p>
               </div>
             </div>
           </div>

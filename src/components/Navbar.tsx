@@ -1,5 +1,10 @@
 import { Button } from '@/components/ui/button'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Sheet,
   SheetContent,
   SheetTrigger,
@@ -12,7 +17,7 @@ import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 import { Menu, X } from 'lucide-react'
 
 const NAV_LINKS = [
-  { to: '/home', label: 'Home' },
+  { to: '/', label: 'Home' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/challenges', label: 'Challenges' },
 ] as const
@@ -232,7 +237,7 @@ export default function Navbar() {
       <a
         href="#main-content"
         className="
-          sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100]
+          sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100
           focus:rounded-md focus:bg-primary focus:px-4 focus:py-2
           focus:text-primary-foreground focus:font-semibold focus:shadow-lg
           focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
@@ -248,7 +253,7 @@ export default function Navbar() {
         <nav
           id={navId}
           aria-label="Main navigation"
-          className="flex items-center justify-between px-4 h-16 max-w-screen-xl mx-auto"
+          className="flex items-center justify-between px-4 h-16 max-w-7xl mx-auto"
         >
           <Link
             to="/"
@@ -302,7 +307,7 @@ export default function Navbar() {
             ) : (
               <>
                 <span
-                  className="font-medium text-sm"
+                  className="text-primary font-bold"
                   aria-label={`Logged in as ${user?.username}`}
                 >
                   {user?.username}
@@ -311,7 +316,8 @@ export default function Navbar() {
                   onClick={handleLogout}
                   disabled={isLoading}
                   aria-busy={isLoading}
-                  className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  variant={'link'}
+                  className="text-destructive"
                 >
                   {isLoading ? 'Logging out…' : 'Logout'}
                 </Button>
@@ -321,26 +327,35 @@ export default function Navbar() {
 
           <div className="md:hidden">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={
-                    mobileOpen
-                      ? 'Close navigation menu'
-                      : 'Open navigation menu'
-                  }
-                  aria-expanded={mobileOpen}
-                  aria-controls="mobile-nav-panel"
-                  className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                >
-                  {mobileOpen ? (
-                    <X className="h-5 w-5" aria-hidden="true" />
-                  ) : (
-                    <Menu className="h-5 w-5" aria-hidden="true" />
-                  )}
-                </Button>
-              </SheetTrigger>
+              <Tooltip>
+                <SheetTrigger asChild>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={
+                        mobileOpen
+                          ? 'Close navigation menu'
+                          : 'Open navigation menu'
+                      }
+                      aria-expanded={mobileOpen}
+                      aria-controls="mobile-nav-panel"
+                      className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      {mobileOpen ? (
+                        <X className="h-5 w-5" aria-hidden="true" />
+                      ) : (
+                        <Menu className="h-5 w-5" aria-hidden="true" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                </SheetTrigger>
+                <TooltipContent>
+                  {mobileOpen
+                    ? 'Close navigation menu'
+                    : 'Open navigation menu'}
+                </TooltipContent>
+              </Tooltip>
 
               <SheetContent
                 id="mobile-nav-panel"
@@ -418,8 +433,8 @@ export default function Navbar() {
                           setMobileOpen(false)
                           handleLogout()
                         }}
-                        variant="destructive"
-                        className="w-full h-12"
+                        variant="link"
+                        className="w-full h-12 text-destructive"
                       >
                         Logout
                       </Button>
