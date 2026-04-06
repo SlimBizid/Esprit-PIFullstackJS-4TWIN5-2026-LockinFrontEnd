@@ -52,6 +52,7 @@ import {
 } from '@/components/message-dialog'
 import type { Challenge } from '@/models/challenge'
 import type { EditorLanguage } from '@/models/editor-language'
+import type { ImposterLobbySummary, ImposterMatch } from '@/models/imposter-match'
 import type { Match, MatchMessage } from '@/models/match'
 import type { TestResult } from '@/models/test-result'
 import { LANGUAGE_FILE_EXTENSIONS } from '@/models/language-file-extensions'
@@ -60,6 +61,7 @@ import { LANGUAGE_LABELS } from '@/models/lagnuage-labels'
 const challengeSearchSchema = z.object({
   id: z.coerce.number().int().positive(),
   matchId: z.string().uuid().optional(),
+  imposterMatchId: z.string().uuid().optional(),
 })
 
 function formatDifficulty(difficulty: Challenge['difficulty']) {
@@ -160,7 +162,7 @@ export const Route = createFileRoute('/challenge')({
 
 function RouteComponent() {
   const navigate = useNavigate()
-  const { id, matchId } = Route.useSearch()
+  const { id, matchId, imposterMatchId } = Route.useSearch()
   const queryClient = useQueryClient()
   const isAuthenticated = useIsAuthenticated()
   const user = useUser()
@@ -177,6 +179,9 @@ function RouteComponent() {
   const [isRunning, setIsRunning] = useState(false)
   const [joinDialogOpen, setJoinDialogOpen] = useState(false)
   const [joinMatchId, setJoinMatchId] = useState('')
+  const [joinImposterDialogOpen, setJoinImposterDialogOpen] = useState(false)
+  const [joinImposterMatchId, setJoinImposterMatchId] = useState('')
+  const [selectedVoteTargetId, setSelectedVoteTargetId] = useState('')
   const [chatDraft, setChatDraft] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [messageDialog, setMessageDialog] = useState<MessageDialogState | null>(
@@ -204,6 +209,7 @@ function RouteComponent() {
   const conditions = challenge?.conditions ?? []
   const code = codeByLanguage[selectedLanguage]
   const isPvpChallenge = challenge?.type === 'pvp'
+  const isImposterChallenge = challenge?.type === 'imposter'
 
   const matchQuery = useQuery({
     queryKey: ['match', matchId],
@@ -218,6 +224,22 @@ function RouteComponent() {
     },
   })
 
+  const imposterMatchQuery = useQuery({
+    queryKey: ['imposter-match', imposterMatchId],
+    enabled: isAuthenticated && isImposterChallenge && !!imposterMatchId,
+    refetchInterval: (query) =>
+      query.state.data &&
+      (query.state.data as ImposterMatch).status !== 'finished'
+        ? 3000
+        : false,
+    queryFn: async () => {
+      const { data } = await api.get<ImposterMatch>(
+        `/imposter-matches/${imposterMatchId}`,
+      )
+      return data
+    },
+  })
+
   const publicMatchesQuery = useQuery({
     queryKey: ['public-matches', id],
     enabled: isAuthenticated && isPvpChallenge,
@@ -226,6 +248,21 @@ function RouteComponent() {
       const { data } = await api.get<Match[]>('/matches/public', {
         params: { challengeId: id },
       })
+      return data
+    },
+  })
+
+  const publicImposterMatchesQuery = useQuery({
+    queryKey: ['public-imposter-matches', id],
+    enabled: isAuthenticated && isImposterChallenge,
+    refetchInterval: 3000,
+    queryFn: async () => {
+      const { data } = await api.get<ImposterLobbySummary[]>(
+        '/imposter-matches/public',
+        {
+          params: { challengeId: id },
+        },
+      )
       return data
     },
   })
@@ -259,6 +296,19 @@ function RouteComponent() {
     },
   })
 
+  const createImposterMatchMutation = useMutation({
+    mutationFn: async (visibility: 'private' | 'public') => {
+      const { data } = await api.post<ImposterMatch>('/imposter-matches', {
+        challengeId: id,
+        visibility,
+      })
+      return data
+    },
+    onSuccess: (data) => {
+      navigate({ to: '/challenge', search: { id, imposterMatchId: data.id } })
+    },
+  })
+
   const joinRandomMatchMutation = useMutation({
     mutationFn: async () => {
       const { data } = await api.post<Match>('/matches/random', {
@@ -280,6 +330,36 @@ function RouteComponent() {
       setJoinDialogOpen(false)
       setJoinMatchId('')
       navigate({ to: '/challenge', search: { id, matchId: data.id } })
+    },
+  })
+
+  const joinImposterMatchMutation = useMutation({
+    mutationFn: async (value: string) => {
+      const { data } = await api.post<ImposterMatch>(
+        `/imposter-matches/${value}/join`,
+      )
+      return data
+    },
+    onSuccess: (data) => {
+      setJoinImposterDialogOpen(false)
+      setJoinImposterMatchId('')
+      navigate({ to: '/challenge', search: { id, imposterMatchId: data.id } })
+    },
+  })
+
+  const startImposterMatchMutation = useMutation({
+    mutationFn: async () => {
+      if (!imposterMatchId) {
+        throw new Error('No imposter match selected.')
+      }
+
+      const { data } = await api.post<ImposterMatch>(
+        `/imposter-matches/${imposterMatchId}/start`,
+      )
+      return data
+    },
+    onSuccess: () => {
+      void imposterMatchQuery.refetch()
     },
   })
 
@@ -315,6 +395,64 @@ function RouteComponent() {
         queryKey: ['challenge-reviews', id],
       })
       void matchQuery.refetch()
+    },
+  })
+
+  const submitImposterMatchMutation = useMutation({
+    mutationFn: async () => {
+      if (!imposterMatchId) {
+        throw new Error('No imposter match selected.')
+      }
+
+      const { data } = await api.post<{
+        match: ImposterMatch
+        submission: {
+          id: string
+          userId: string
+          language: string
+          verdict:
+            | 'accepted'
+            | 'wrong_answer'
+            | 'compilation_error'
+            | 'runtime_error'
+          passedCount: number
+          totalCount: number
+          results: TestResult[]
+          createdAt: string
+        }
+      }>(`/imposter-matches/${imposterMatchId}/submit`, {
+        language: selectedLanguage,
+        sourceCode: code,
+      })
+
+      return data
+    },
+    onSuccess: async (data) => {
+      setTestResults(data.submission.results)
+      await queryClient.invalidateQueries({
+        queryKey: ['challenge-reviews', id],
+      })
+      void imposterMatchQuery.refetch()
+    },
+  })
+
+  const voteInImposterMatchMutation = useMutation({
+    mutationFn: async (targetUserId: string) => {
+      if (!imposterMatchId) {
+        throw new Error('No imposter match selected.')
+      }
+
+      const { data } = await api.post<ImposterMatch>(
+        `/imposter-matches/${imposterMatchId}/vote`,
+        {
+          targetUserId,
+        },
+      )
+      return data
+    },
+    onSuccess: async () => {
+      setSelectedVoteTargetId('')
+      void imposterMatchQuery.refetch()
     },
   })
 
@@ -422,6 +560,8 @@ function RouteComponent() {
     setCodeByLanguage(buildCodeByLanguage(challenge))
     setActiveSidebarTab('content')
     setChatDraft('')
+    setJoinImposterMatchId('')
+    setSelectedVoteTargetId('')
     setSeenMatchResultKey(null)
   }, [challenge, id])
 
@@ -430,6 +570,7 @@ function RouteComponent() {
     [activeTestCase, testCases],
   )
   const currentMatch = matchQuery.data
+  const currentImposterMatch = imposterMatchQuery.data
   const chatMessages = chatMessagesQuery.data ?? []
   const currentPlayerSubmission = currentMatch?.submissions.find(
     (submission) => submission.userId === user?.id,
@@ -445,6 +586,7 @@ function RouteComponent() {
       )
     : null
   const publicMatches = publicMatchesQuery.data ?? []
+  const publicImposterMatches = publicImposterMatchesQuery.data ?? []
   const isCurrentUserWinner = currentMatch?.winner?.id === user?.id
   const isCurrentUserLoser =
     !!currentMatch?.winner?.id &&
@@ -453,10 +595,30 @@ function RouteComponent() {
   const isCancelledMatch =
     currentMatch?.status === 'finished' && !currentMatch.winnerId
   const endedByAcceptedSubmission = !!winningAcceptedSubmission
+  const currentImposterParticipant = currentImposterMatch?.participants.find(
+    (participant) => participant.userId === user?.id,
+  )
+  const currentUserVoteTargetId =
+    currentImposterParticipant?.currentUserVoteTargetId ?? null
+  const imposterVoteOptions =
+    currentImposterMatch?.participants.filter(
+      (participant) => participant.userId !== user?.id,
+    ) ?? []
+  const isImposterUserWinner =
+    currentImposterMatch?.status === 'finished' &&
+    !!currentImposterMatch.currentUserRole &&
+    ((currentImposterMatch.currentUserRole === 'imposter' &&
+      currentImposterMatch.winningSide === 'imposter') ||
+      (currentImposterMatch.currentUserRole === 'coder' &&
+        currentImposterMatch.winningSide === 'coders'))
   const canSubmitToMatch =
     !!currentMatch && currentMatch.status === 'active' && !currentMatch.winnerId
   const canViewChallenge =
-    !isPvpChallenge || (!!currentMatch && currentMatch.canViewChallenge)
+    isPvpChallenge
+      ? !!currentMatch && currentMatch.canViewChallenge
+      : isImposterChallenge
+        ? !!currentImposterMatch && currentImposterMatch.canViewChallenge
+        : true
   const canUseMatchChat =
     !!currentMatch &&
     !!currentMatch.playerTwoId &&
@@ -466,6 +628,8 @@ function RouteComponent() {
     ? 'Log in to run tests'
     : isPvpChallenge && !canViewChallenge
       ? 'The problem unlocks when both players join the match'
+      : isImposterChallenge && !canViewChallenge
+        ? 'The problem unlocks once the host starts the imposter lobby'
       : testCases.length === 0
         ? 'No test cases available'
         : isRunning
@@ -481,13 +645,30 @@ function RouteComponent() {
           ? 'Waiting for a second player to join'
           : isPvpChallenge && currentMatch?.status === 'finished'
             ? 'This match has already finished'
-            : submitMatchMutation.isPending
-              ? 'Submitting to the match'
-              : submitSoloMutation.isPending
-                ? 'Submitting your solution'
-                : testCases.length === 0
+            : isImposterChallenge && !canViewChallenge
+              ? 'The host must start the Coders vs Imposter lobby first'
+              : isImposterChallenge && !imposterMatchId
+                ? 'Create or join a Coders vs Imposter match first'
+                : isImposterChallenge &&
+                    currentImposterMatch?.status === 'finished'
+                  ? 'This match has already finished'
+                  : isImposterChallenge &&
+                      currentImposterMatch?.status === 'lobby'
+                    ? 'The host must start the lobby before submissions open'
+              : submitMatchMutation.isPending
+                ? 'Submitting to the match'
+                : submitImposterMatchMutation.isPending
+                  ? 'Submitting to the imposter match'
+                : submitSoloMutation.isPending
+                  ? 'Submitting your solution'
+                  : testCases.length === 0
                   ? 'No test cases available'
-                  : 'Submit your solution'
+                    : 'Submit your solution'
+  const lockReason = isPvpChallenge
+    ? 'both players join the match'
+    : isImposterChallenge
+      ? 'the host starts the Coders vs Imposter lobby'
+      : 'the challenge is available'
 
   useEffect(() => {
     if (!currentMatch || currentMatch.status !== 'finished') {
@@ -540,6 +721,60 @@ function RouteComponent() {
     isCurrentUserWinner,
     seenMatchResultKey,
   ])
+
+  useEffect(() => {
+    if (!currentImposterMatch || currentImposterMatch.status !== 'finished') {
+      return
+    }
+
+    if (!currentImposterMatch.currentUserRole) {
+      return
+    }
+
+    const resultKey = `imposter:${currentImposterMatch.id}:${
+      currentImposterMatch.endedAt ?? currentImposterMatch.updatedAt
+    }`
+
+    if (seenMatchResultKey === resultKey) {
+      return
+    }
+
+    if (isImposterUserWinner) {
+      setMatchResultDialog({
+        title: 'You Won',
+        description:
+          currentImposterMatch.currentUserRole === 'imposter'
+            ? currentImposterMatch.accusedPlayer
+              ? `The coders voted out ${currentImposterMatch.accusedPlayer.username}, and the imposter escaped with the win.`
+              : 'The coders failed to coordinate well enough, so the imposter wins.'
+            : `${
+                currentImposterMatch.acceptedSolver?.username ?? 'A coder'
+              } landed an accepted solution and the team exposed ${
+                currentImposterMatch.imposter?.username ?? 'the imposter'
+              }.`,
+      })
+      setSeenMatchResultKey(resultKey)
+      return
+    }
+
+    setMatchResultDialog({
+      title: 'You Lost',
+      description:
+        currentImposterMatch.currentUserRole === 'imposter'
+          ? `${
+              currentImposterMatch.acceptedSolver?.username ?? 'A coder'
+            } landed an accepted solution and the coders correctly identified the imposter.`
+          : currentImposterMatch.accusedPlayer
+            ? `The team voted out ${
+                currentImposterMatch.accusedPlayer.username
+              }, while the real imposter was ${
+                currentImposterMatch.imposter?.username ?? 'someone else'
+              }.`
+            : 'The team failed to produce both a correct solution and a clear accusation.',
+      variant: 'destructive',
+    })
+    setSeenMatchResultKey(resultKey)
+  }, [currentImposterMatch, isImposterUserWinner, seenMatchResultKey])
 
   const handleRunTests = async () => {
     if (!isAuthenticated || !challenge || !canViewChallenge) return
@@ -623,6 +858,54 @@ function RouteComponent() {
       return
     }
 
+    if (isImposterChallenge) {
+      if (!canViewChallenge) {
+        setMessageDialog({
+          title: 'Lobby Not Started',
+          description:
+            'The host must start the Coders vs Imposter lobby before submissions unlock.',
+        })
+        return
+      }
+
+      if (!imposterMatchId) {
+        setMessageDialog({
+          title: 'Match Required',
+          description: 'Create or join a Coders vs Imposter match first.',
+        })
+        return
+      }
+
+      if (currentImposterMatch?.status !== 'active') {
+        setMessageDialog({
+          title: 'Match Not Active',
+          description:
+            'This Coders vs Imposter match is not accepting submissions right now.',
+        })
+        return
+      }
+
+      try {
+        await submitImposterMatchMutation.mutateAsync()
+      } catch (err) {
+        const message = axios.isAxiosError(err)
+          ? Array.isArray(err.response?.data?.message)
+            ? err.response.data.message.join(', ')
+            : (err.response?.data?.message ??
+              'Failed to submit to the imposter match.')
+          : err instanceof Error
+            ? err.message
+            : 'Failed to submit to the imposter match.'
+        setMessageDialog({
+          title: 'Imposter Match Submission Error',
+          description: message,
+          variant: 'destructive',
+        })
+      }
+
+      return
+    }
+
     try {
       const submission = await submitSoloMutation.mutateAsync()
       const verdictLabel = submission.verdict.replaceAll('_', ' ').toUpperCase()
@@ -647,12 +930,14 @@ function RouteComponent() {
   }
 
   const handleCopyMatchId = async () => {
-    if (!matchId) {
+    const activeMatchId = matchId ?? imposterMatchId
+
+    if (!activeMatchId) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(matchId)
+      await navigator.clipboard.writeText(activeMatchId)
       setMessageDialog({
         title: 'Match ID Copied',
         description: 'The current match ID is ready to share.',
@@ -689,6 +974,50 @@ function RouteComponent() {
     }
   }
 
+  const handleStartImposterMatch = async () => {
+    try {
+      await startImposterMatchMutation.mutateAsync()
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? Array.isArray(err.response?.data?.message)
+          ? err.response.data.message.join(', ')
+          : (err.response?.data?.message ?? 'Unable to start this match.')
+        : err instanceof Error
+          ? err.message
+          : 'Unable to start this match.'
+
+      setMessageDialog({
+        title: 'Start Failed',
+        description: message,
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleVoteInImposterMatch = async () => {
+    if (!selectedVoteTargetId) {
+      return
+    }
+
+    try {
+      await voteInImposterMatchMutation.mutateAsync(selectedVoteTargetId)
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? Array.isArray(err.response?.data?.message)
+          ? err.response.data.message.join(', ')
+          : (err.response?.data?.message ?? 'Unable to cast your vote.')
+        : err instanceof Error
+          ? err.message
+          : 'Unable to cast your vote.'
+
+      setMessageDialog({
+        title: 'Vote Failed',
+        description: message,
+        variant: 'destructive',
+      })
+    }
+  }
+
   useEffect(() => {
     const isTextEntryTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false
@@ -703,9 +1032,11 @@ function RouteComponent() {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isDialogOpen =
         joinDialogOpen ||
+        joinImposterDialogOpen ||
         shortcutsOpen ||
         surrenderConfirmOpen ||
-        !!messageDialog
+        !!messageDialog ||
+        !!matchResultDialog
       const isShortcutHelp =
         event.key === 'F1' ||
         (!event.metaKey &&
@@ -791,7 +1122,7 @@ function RouteComponent() {
         return
       }
 
-      if (isCopyMatchShortcut && matchId) {
+      if (isCopyMatchShortcut && (matchId || imposterMatchId)) {
         event.preventDefault()
         void handleCopyMatchId()
         return
@@ -813,17 +1144,22 @@ function RouteComponent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
     joinDialogOpen,
+    joinImposterDialogOpen,
     shortcutsOpen,
     surrenderConfirmOpen,
     messageDialog,
+    matchResultDialog,
     isAuthenticated,
     canViewChallenge,
     isPvpChallenge,
+    isImposterChallenge,
     matchId,
+    imposterMatchId,
     selectedLanguage,
     code,
     navigate,
     currentMatch,
+    currentImposterMatch,
     testCases.length,
   ])
 
@@ -1227,6 +1563,396 @@ function RouteComponent() {
                     )}
                   </div>
                 ) : null}
+                {isImposterChallenge ? (
+                  <div className="rounded-none border border-primary/20 bg-primary/5 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
+                          Coders vs Imposter
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Gather 3-6 players, start the lobby, submit code, then
+                          vote out the suspected imposter.
+                        </p>
+                      </div>
+                      <Badge className="rounded-none bg-primary/10 text-primary uppercase">
+                        {currentImposterMatch?.status ?? 'lobby'}
+                      </Badge>
+                    </div>
+
+                    {imposterMatchId ? (
+                      <div className="space-y-3 rounded-none border border-border/60 bg-background/60 p-3">
+                        <div className="space-y-1">
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Match ID
+                          </p>
+                          <code className="block break-all text-xs text-foreground">
+                            {imposterMatchId}
+                          </code>
+                        </div>
+
+                        {imposterMatchQuery.isError ? (
+                          <Alert variant="destructive" className="rounded-none">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Match unavailable</AlertTitle>
+                            <AlertDescription>
+                              {axios.isAxiosError(imposterMatchQuery.error)
+                                ? (imposterMatchQuery.error.response?.data
+                                    ?.message ?? 'Unable to load this match.')
+                                : 'Unable to load this match.'}
+                            </AlertDescription>
+                          </Alert>
+                        ) : currentImposterMatch ? (
+                          <div className="space-y-3 text-xs text-foreground">
+                            <p>
+                              Visibility:{' '}
+                              <span className="font-bold uppercase">
+                                {currentImposterMatch.visibility}
+                              </span>
+                            </p>
+                            <p>
+                              Players:{' '}
+                              <span className="font-bold">
+                                {currentImposterMatch.playerCount}/
+                                {currentImposterMatch.maxPlayers}
+                              </span>
+                            </p>
+
+                            {currentImposterMatch.status === 'lobby' ? (
+                              <Alert className="rounded-none">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Lobby Open</AlertTitle>
+                                <AlertDescription>
+                                  The host can start once at least{' '}
+                                  {currentImposterMatch.minimumPlayers} players
+                                  join.
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
+
+                            {currentImposterMatch.status === 'active' ? (
+                              <Alert
+                                variant={
+                                  currentImposterMatch.currentUserRole ===
+                                  'imposter'
+                                    ? 'destructive'
+                                    : 'default'
+                                }
+                                className="rounded-none"
+                              >
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>
+                                  {currentImposterMatch.currentUserRole ===
+                                  'imposter'
+                                    ? 'You Are The Imposter'
+                                    : 'You Are A Coder'}
+                                </AlertTitle>
+                                <AlertDescription>
+                                  {currentImposterMatch.currentUserRole ===
+                                  'imposter'
+                                    ? 'Prevent the coders from producing an accepted solution or surviving the vote.'
+                                    : 'Get an accepted solution and identify the imposter before voting ends.'}
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
+
+                            {currentImposterMatch.status === 'finished' ? (
+                              <Alert
+                                variant={
+                                  isImposterUserWinner
+                                    ? 'default'
+                                    : 'destructive'
+                                }
+                                className="rounded-none"
+                              >
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>
+                                  {currentImposterMatch.winningSide ===
+                                  'coders'
+                                    ? 'Coders Win'
+                                    : 'Imposter Wins'}
+                                </AlertTitle>
+                                <AlertDescription>
+                                  Revealed imposter:{' '}
+                                  {currentImposterMatch.imposter?.username ??
+                                    'Unknown'}
+                                  {currentImposterMatch.accusedPlayer
+                                    ? ` · Accused player: ${currentImposterMatch.accusedPlayer.username}`
+                                    : ''}
+                                </AlertDescription>
+                              </Alert>
+                            ) : null}
+
+                            <div className="space-y-2">
+                              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                Participants
+                              </p>
+                              {currentImposterMatch.participants.map(
+                                (participant) => (
+                                  <div
+                                    key={participant.userId}
+                                    className="rounded-none border border-border/60 bg-background/70 p-3"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold">
+                                          {participant.userId === user?.id
+                                            ? 'You'
+                                            : participant.username}
+                                        </span>
+                                        {participant.isHost ? (
+                                          <Badge
+                                            variant="outline"
+                                            className="rounded-none"
+                                          >
+                                            Host
+                                          </Badge>
+                                        ) : null}
+                                        {participant.hasVoted ? (
+                                          <Badge
+                                            variant="secondary"
+                                            className="rounded-none"
+                                          >
+                                            Voted
+                                          </Badge>
+                                        ) : null}
+                                      </div>
+                                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                        {participant.latestSubmission
+                                          ? `${participant.latestSubmission.verdict} · ${participant.latestSubmission.passedCount}/${participant.latestSubmission.totalCount}`
+                                          : 'No submission yet'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ),
+                              )}
+                            </div>
+
+                            {currentImposterMatch.status === 'lobby' &&
+                            currentImposterMatch.host?.id === user?.id ? (
+                              <Button
+                                type="button"
+                                className="rounded-none"
+                                onClick={() => void handleStartImposterMatch()}
+                                disabled={
+                                  startImposterMatchMutation.isPending ||
+                                  currentImposterMatch.playerCount <
+                                    currentImposterMatch.minimumPlayers
+                                }
+                              >
+                                {startImposterMatchMutation.isPending
+                                  ? 'Starting...'
+                                  : 'Start Match'}
+                              </Button>
+                            ) : null}
+
+                            {currentImposterMatch.status === 'active' ? (
+                              <div className="space-y-3 rounded-none border border-border/60 bg-background/70 p-3">
+                                <div className="space-y-1">
+                                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                    Voting
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {currentUserVoteTargetId
+                                      ? `You already voted for ${
+                                          imposterVoteOptions.find(
+                                            (participant) =>
+                                              participant.userId ===
+                                              currentUserVoteTargetId,
+                                          )?.username ?? 'another player'
+                                        }.`
+                                      : 'Cast your one vote when you are ready. The match resolves when everyone votes.'}
+                                  </p>
+                                </div>
+                                {!currentUserVoteTargetId ? (
+                                  <div className="flex flex-col gap-3 sm:flex-row">
+                                    <Select
+                                      value={selectedVoteTargetId}
+                                      onValueChange={setSelectedVoteTargetId}
+                                    >
+                                      <SelectTrigger className="w-full rounded-none sm:w-56">
+                                        <SelectValue placeholder="Select a suspect" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {imposterVoteOptions.map((participant) => (
+                                          <SelectItem
+                                            key={participant.userId}
+                                            value={participant.userId}
+                                          >
+                                            {participant.username}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      type="button"
+                                      className="rounded-none"
+                                      disabled={
+                                        !selectedVoteTargetId ||
+                                        voteInImposterMatchMutation.isPending
+                                      }
+                                      onClick={() =>
+                                        void handleVoteInImposterMatch()
+                                      }
+                                    >
+                                      {voteInImposterMatchMutation.isPending
+                                        ? 'Voting...'
+                                        : 'Cast Vote'}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Loading match state...
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="rounded-none"
+                            onClick={() => void handleCopyMatchId()}
+                          >
+                            Copy match ID
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-none"
+                            onClick={() =>
+                              navigate({ to: '/challenge', search: { id } })
+                            }
+                          >
+                            Leave match view
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            type="button"
+                            className="rounded-none"
+                            onClick={() =>
+                              createImposterMatchMutation.mutate('private')
+                            }
+                            disabled={
+                              !isAuthenticated ||
+                              createImposterMatchMutation.isPending
+                            }
+                          >
+                            {createImposterMatchMutation.isPending
+                              ? 'Creating...'
+                              : 'Create Private Match'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-none"
+                            onClick={() =>
+                              createImposterMatchMutation.mutate('public')
+                            }
+                            disabled={
+                              !isAuthenticated ||
+                              createImposterMatchMutation.isPending
+                            }
+                          >
+                            {createImposterMatchMutation.isPending
+                              ? 'Creating...'
+                              : 'Create Public Match'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-none"
+                            onClick={() => setJoinImposterDialogOpen(true)}
+                            disabled={
+                              !isAuthenticated ||
+                              joinImposterMatchMutation.isPending
+                            }
+                          >
+                            Join by ID
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Swords className="h-4 w-4 text-primary" />
+                            <p className="text-xs font-bold uppercase tracking-widest text-foreground">
+                              Public Lobbies
+                            </p>
+                          </div>
+                          {publicImposterMatchesQuery.isLoading ? (
+                            <p className="text-xs text-muted-foreground">
+                              Loading public lobbies...
+                            </p>
+                          ) : publicImposterMatchesQuery.isError ? (
+                            <p className="text-xs text-destructive">
+                              Unable to load public lobbies right now.
+                            </p>
+                          ) : publicImposterMatches.length > 0 ? (
+                            <div className="space-y-2">
+                              {publicImposterMatches.map((match) => (
+                                <div
+                                  key={match.id}
+                                  className="flex flex-col gap-2 rounded-none border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-foreground">
+                                      Host:{' '}
+                                      <span className="font-bold">
+                                        {match.host?.username ?? 'Unknown'}
+                                      </span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Players: {match.playerCount}/
+                                      {match.maxPlayers}
+                                    </p>
+                                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                      Match ID: {match.id}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    className="rounded-none"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (match.isJoinedByCurrentUser) {
+                                        navigate({
+                                          to: '/challenge',
+                                          search: { id, imposterMatchId: match.id },
+                                        })
+                                        return
+                                      }
+
+                                      joinImposterMatchMutation.mutate(match.id)
+                                    }}
+                                    disabled={
+                                      !match.isJoinedByCurrentUser &&
+                                      joinImposterMatchMutation.isPending
+                                    }
+                                  >
+                                    {match.isJoinedByCurrentUser ? 'Open' : 'Join'}
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No public imposter lobbies yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
                 <div className="space-y-2">
                   <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
                     Mission Briefing
@@ -1244,8 +1970,7 @@ function RouteComponent() {
                       .map((paragraph) => <p key={paragraph}>{paragraph}</p>)
                   ) : (
                     <p className="text-muted-foreground">
-                      The challenge briefing is hidden until both players join
-                      the match.
+                      The challenge briefing is hidden until {lockReason}.
                     </p>
                   )}
                 </div>
@@ -1283,7 +2008,7 @@ function RouteComponent() {
                       <AlertTitle>Problem Locked</AlertTitle>
                       <AlertDescription>
                         The full challenge statement, examples, and editor
-                        unlock once both players are in the match.
+                        unlock once {lockReason}.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -1311,7 +2036,7 @@ function RouteComponent() {
                       </ul>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Constraints are hidden until the duel begins.
+                        Constraints are hidden until {lockReason}.
                       </p>
                     )}
                   </div>
@@ -1344,7 +2069,7 @@ function RouteComponent() {
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Victory conditions are hidden until the duel begins.
+                      Victory conditions are hidden until {lockReason}.
                     </p>
                   )}
                 </div>
@@ -1561,8 +2286,7 @@ function RouteComponent() {
                     Editor Locked
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    The code editor unlocks as soon as a second player joins
-                    this 1v1 match.
+                    The code editor unlocks once {lockReason}.
                   </p>
                 </div>
               </div>
@@ -1623,6 +2347,7 @@ function RouteComponent() {
                           testCases.length === 0 ||
                           !canViewChallenge ||
                           submitMatchMutation.isPending ||
+                          submitImposterMatchMutation.isPending ||
                           submitSoloMutation.isPending
                         }
                         onClick={handleSubmit}
@@ -1631,6 +2356,7 @@ function RouteComponent() {
                       >
                         <Send className="w-3 h-3" />{' '}
                         {submitMatchMutation.isPending ||
+                        submitImposterMatchMutation.isPending ||
                         submitSoloMutation.isPending
                           ? 'SUBMITTING...'
                           : 'SUBMIT'}
@@ -1693,7 +2419,7 @@ function RouteComponent() {
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground">
-                      Test inputs unlock when both players join the duel.
+                      Test inputs unlock once {lockReason}.
                     </div>
                   )}
                 </div>
@@ -1848,6 +2574,62 @@ function RouteComponent() {
               disabled={!joinMatchId.trim() || joinMatchMutation.isPending}
             >
               {joinMatchMutation.isPending ? 'Joining...' : 'Join match'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={joinImposterDialogOpen}
+        onOpenChange={setJoinImposterDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join Coders vs Imposter Match</DialogTitle>
+            <DialogDescription>
+              Paste a match ID for this challenge to join the hidden-role lobby.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="join-imposter-match-id">Match ID</Label>
+            <Input
+              id="join-imposter-match-id"
+              value={joinImposterMatchId}
+              onChange={(event) => setJoinImposterMatchId(event.target.value)}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            />
+          </div>
+          {joinImposterMatchMutation.isError ? (
+            <Alert variant="destructive" className="rounded-none">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Join failed</AlertTitle>
+              <AlertDescription>
+                {axios.isAxiosError(joinImposterMatchMutation.error)
+                  ? (joinImposterMatchMutation.error.response?.data?.message ??
+                    'Unable to join this match.')
+                  : 'Unable to join this match.'}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setJoinImposterDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() =>
+                joinImposterMatchMutation.mutate(joinImposterMatchId.trim())
+              }
+              disabled={
+                !joinImposterMatchId.trim() ||
+                joinImposterMatchMutation.isPending
+              }
+            >
+              {joinImposterMatchMutation.isPending ? 'Joining...' : 'Join match'}
             </Button>
           </DialogFooter>
         </DialogContent>

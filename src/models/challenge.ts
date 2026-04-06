@@ -21,7 +21,7 @@ export type Challenge = {
   conditions: string[]
   cases: ChallengeCase[]
   difficulty: 'easy' | 'medium' | 'hard'
-  type: 'solo' | 'pvp' | 'teams'
+  type: 'solo' | 'pvp' | 'teams' | 'imposter'
   topics: string[]
   acceptanceRate: number
 }

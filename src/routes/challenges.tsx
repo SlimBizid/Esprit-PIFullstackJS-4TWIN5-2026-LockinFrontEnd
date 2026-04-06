@@ -201,6 +201,8 @@ function formatType(type: Challenge['type']) {
   switch (type) {
     case 'pvp':
       return '1v1'
+    case 'imposter':
+      return 'Coders vs Imposter'
     case 'solo':
       return 'Solo'
     case 'teams':
@@ -533,6 +535,7 @@ function ChallengeFormDialog({
                   <SelectItem value="solo">Solo</SelectItem>
                   <SelectItem value="pvp">1v1</SelectItem>
                   <SelectItem value="teams">Teams</SelectItem>
+                  <SelectItem value="imposter">Coders vs Imposter</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1081,6 +1084,9 @@ function RouteComponent() {
                 <TabsTrigger value="Solo">Solo</TabsTrigger>
                 <TabsTrigger value="1v1">1v1</TabsTrigger>
                 <TabsTrigger value="Teams">Teams</TabsTrigger>
+                <TabsTrigger value="Coders vs Imposter">
+                  Coders vs Imposter
+                </TabsTrigger>
               </TabsList>
             </Tabs>
 
