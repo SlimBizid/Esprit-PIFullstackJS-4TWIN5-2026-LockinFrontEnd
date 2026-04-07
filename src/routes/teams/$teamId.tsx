@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
 import { TeamChat } from '@/components/TeamChat'
 
 import { useTeamStore } from '@/stores/teamStore'
@@ -43,41 +44,75 @@ export function TeamPage() {
   const fetchTeams = useTeamStore((s) => s.fetchTeams)
   const deleteTeam = useTeamStore((s) => s.deleteTeam)
   const inviteUser = useTeamStore((s) => s.inviteUser)
+  const removeUserFromTeam = useTeamStore((s) => s.removeUser) // store function
+  const updateTeamName = useTeamStore((s) => s.updateTeam) // store function
 
   const [team, setTeam] = useState<Team | null>(null)
   const [requestedUsers, setRequestedUsers] = useState<User[]>([])
+  const [availableUsers, setAvailableUsers] = useState<User[]>([])
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [updatedTeamName, setUpdatedTeamName] = useState('')
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Load team data
+  // Update your loadTeam function with debugging:
   useEffect(() => {
     const loadTeam = async () => {
       try {
-        await fetchTeams() // ensure store has latest
+        await fetchTeams()
         const allTeams = useTeamStore.getState().allTeams
-
         const t = allTeams.find((t) => String(t.id) === String(teamId)) || null
         if (!t) return
         setTeam(t)
+        setUpdatedTeamName(t.name)
 
         // Load full users for pending invitations
         if (t.pendingInvitations?.length) {
-          // pending invitations either rodha usernames msh id or user w baad lawej f .map (async (u)=> /profile/${u.username})
           const pendingUsers = await Promise.all(
             t.pendingInvitations.map(async (username) => {
-              const user = await api.get(`/profile/${username}`)
+              const user = await api.get(`users/profile/${username}`)
               return user.data
             }),
           )
           setRequestedUsers(pendingUsers.filter(Boolean) as User[])
         }
+
+        // Fetch all users and filter out existing members & pending invitations
+        const { data } = await api.get('/users/all-for-invite?role=player');
+        const allUsers = sanitizeUserArray(data)
+
+        // DEBUG: Log what we have
+        console.log('All users from API:', allUsers)
+        console.log('Team members:', t.users)
+        console.log('Pending invitations:', t.pendingInvitations)
+        console.log('Current user:', currentUser)
+
+        const filteredUsers = allUsers.filter((u: User) => {
+          const isTeamMember = t.users.find((member) => member.id === u.id)
+          const isPendingInvite = t.pendingInvitations?.includes(u.username)
+          const isCurrentUser = u.id === currentUser?.id
+
+          // DEBUG: Log each user's status
+          console.log(`User ${u.username}:`, {
+            isTeamMember: !!isTeamMember,
+            isPendingInvite,
+            isCurrentUser,
+            keep: !isTeamMember && !isPendingInvite && !isCurrentUser,
+          })
+
+          return !isTeamMember && !isPendingInvite && !isCurrentUser
+        })
+
+        console.log('Filtered users:', filteredUsers)
+        setAvailableUsers(filteredUsers)
       } catch (err) {
         console.error(err)
       }
     }
 
     loadTeam()
-  }, [teamId, fetchTeams])
+  }, [teamId, fetchTeams, currentUser])
 
   // Auto scroll requested users
   useEffect(() => {
@@ -100,17 +135,20 @@ export function TeamPage() {
 
     const anim = requestAnimationFrame(step)
     return () => cancelAnimationFrame(anim)
-  }, [requestedUsers])
+  }, [requestedUsers, availableUsers])
 
-  const handleSendInvitation = async (userId: string) => {
-    try {
-      if (!team) return
-      await inviteUser(team.id, userId)
-      setRequestedUsers((prev) => prev.filter((u) => u.id !== userId))
-    } catch (err) {
-      console.error(err)
-    }
+ const handleSendInvitation = async (userId: string) => {
+  if (!team) return
+  const user = availableUsers.find((u) => u.id === userId)
+  if (!user) return
+  try {
+    await inviteUser(team.id, userId) 
+    setRequestedUsers((prev) => [...prev, user])
+    setAvailableUsers((prev) => prev.filter((u) => u.id !== userId))
+  } catch (err) {
+    console.error(err)
   }
+}
 
   const handleDeleteTeam = async (id: number) => {
     try {
@@ -121,9 +159,28 @@ export function TeamPage() {
     }
   }
 
-  const handleUpdateTeam = (id: number) => {
-    console.log('Update team', id)
-    // Redirect or open modal for updating team
+  const handleRemoveUser = async (userId: string) => {
+    if (!team) return
+    try {
+      await removeUserFromTeam(team.id, userId)
+      setTeam({
+        ...team,
+        users: team.users.filter((u) => u.id !== userId),
+      })
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleUpdateTeamName = async () => {
+    if (!team) return
+    try {
+      await updateTeamName(team.id, updatedTeamName)
+      setTeam({ ...team, name: updatedTeamName })
+      setShowUpdateModal(false)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   if (!team)
@@ -131,7 +188,8 @@ export function TeamPage() {
       <div className="p-6 text-center text-muted-foreground">Loading...</div>
     )
 
-  const leader = team.users?.find((u) => String(u.id) === String(team.leaderId))
+  const leader =
+    team.users && team.users.length ? team.users[0].username : 'N/A'
 
   return (
     <div className="flex flex-col h-screen bg-background text-muted-foreground mt-16">
@@ -176,26 +234,6 @@ export function TeamPage() {
             <h1 className="text-3xl text-foreground uppercase tracking-tight">
               {team.name}
             </h1>
-
-            {/* Delete / Update buttons */}
-            {String(team.leaderId) === String(currentUser?.id) && (
-              <div className="flex gap-2 mt-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleUpdateTeam(team.id)}
-                >
-                  Update
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleDeleteTeam(team.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            )}
           </div>
 
           {/* Leader */}
@@ -204,9 +242,7 @@ export function TeamPage() {
               <p className="text-[10px] text-muted-foreground uppercase">
                 Leader
               </p>
-              <p className="text-lg font-semibold">
-                {leader?.username ?? 'N/A'}
-              </p>
+              <p className="text-lg font-semibold">{leader}</p>
             </CardContent>
           </Card>
 
@@ -227,7 +263,7 @@ export function TeamPage() {
                 Members
               </p>
               <div className="flex -space-x-2">
-                {(team.users ?? []).map((m) => (
+                {team.users?.map((m) => (
                   <Avatar key={m.id} className="border">
                     <AvatarFallback>{m.username.charAt(0)}</AvatarFallback>
                   </Avatar>
@@ -251,47 +287,149 @@ export function TeamPage() {
               />
             </CardContent>
           </Card>
+
+          {/* Delete / Update buttons */}
+          {team.users?.[0]?.id === currentUser?.id && (
+            <>
+              <div className="flex justify-center gap-4 mt-4">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => setShowUpdateModal(true)}
+                >
+                  Update
+                </Button>
+                <Button
+                  size="lg"
+                  variant="destructive"
+                  onClick={() => handleDeleteTeam(team.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+
+              {/* Update Modal */}
+              {showUpdateModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                  <Card className="p-6 w-96">
+                    <h2 className="text-lg font-bold mb-4">Update Team</h2>
+
+                    {/* Team Name */}
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Team Name
+                      </p>
+                      <Input
+                        value={updatedTeamName}
+                        onChange={(e) => setUpdatedTeamName(e.target.value)}
+                        placeholder="Enter new team name"
+                      />
+                    </div>
+
+                    {/* Members List (excluding leader) */}
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Members
+                      </p>
+                      <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
+                        {team.users.slice(1).map((member) => (
+                          <div
+                            key={member.id}
+                            className="flex justify-between items-center border p-2 rounded"
+                          >
+                            <span>{member.username}</span>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRemoveUser(member.id)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                        {team.users.length === 1 && (
+                          <p className="text-sm text-muted-foreground">
+                            No other members
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={handleUpdateTeamName}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={() => setShowUpdateModal(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              )}
+            </>
+          )}
         </aside>
 
         {/* MAIN CONTENT */}
         <main className="flex-1 flex flex-col bg-background overflow-hidden">
           <div className="flex-1 p-6 overflow-y-auto space-y-6">
-            {/* REQUESTED USERS / PENDING INVITATIONS */}
+            {/* INVITE USERS */}
             <div>
-              <h2 className="text-2xl font-bold mb-4">Requested Users</h2>
-
-              {requestedUsers.length === 0 ? (
-                <p className="text-muted-foreground">No requested users</p>
-              ) : (
-                <div
-                  ref={scrollRef}
-                  className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
-                >
-                  {requestedUsers.map((u) => (
-                    <Card
-                      key={u.id}
-                      className="flex-shrink-0 min-w-[200px] flex flex-col items-center p-4"
-                    >
-                      <Avatar className="mb-2">
-                        <AvatarFallback>{u.username.charAt(0)}</AvatarFallback>
-                      </Avatar>
-
-                      <p className="font-semibold">{u.username}</p>
-
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => handleSendInvitation(u.id)}
+              <h2 className="text-2xl font-bold mb-4">Invite Users</h2>
+              {team.users?.[0]?.id === currentUser?.id ? (
+                availableUsers.length === 0 ? (
+                  <p className="text-muted-foreground">No users to invite</p>
+                ) : (
+                  <div
+                    ref={scrollRef}
+                    className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
+                  >
+                    {availableUsers.map((u) => (
+                      <Card
+                        key={u.id}
+                        className="flex-shrink-0 min-w-[200px] flex flex-col items-center p-4"
                       >
-                        <Mail className="w-4 h-4 mr-1" />
-                        Invite
-                      </Button>
-                    </Card>
-                  ))}
-                </div>
+                        <Avatar className="mb-2">
+                          <AvatarFallback>
+                            {u.username.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <p className="font-semibold">{u.username}</p>
+
+                        <Button
+                          size="sm"
+                          className="mt-2"
+                         onClick={() => {
+  if (!u.id) {
+    console.error("User ID missing!", u)
+    return
+  }
+  handleSendInvitation(u.id)
+
+}}
+                        >
+                          <Mail className="w-4 h-4 mr-1" /> Invite
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Only team leader can invite users to the team
+                </p>
               )}
             </div>
-
             {/* Team chat placeholder */}
             <div>
               <h2 className="text-2xl font-bold mb-4">Team Chat</h2>
@@ -311,9 +449,21 @@ export function TeamPage() {
                 </div>
               </div>
             </div>
+             <div>
+              <h2 className="text-2xl font-bold mb-4">challenges</h2>
+              <div className="border border-border/10 rounded-lg p-4 h-64 overflow-y-auto bg-muted/5">
+                <p className="text-sm text-muted-foreground">
+                 //tarak hnee hot eli bech thot
+                </p>
+              </div>
+            </div>
           </div>
         </main>
       </div>
     </div>
   )
+}
+function sanitizeUserArray(data: any): User[] {
+  if (!Array.isArray(data)) return []
+  return data.filter(Boolean) as User[]
 }
