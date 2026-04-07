@@ -1,4 +1,9 @@
-import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  useParams,
+  useNavigate,
+  redirect,
+} from '@tanstack/react-router'
 import { useEffect, useState, useRef } from 'react'
 import {
   Users,
@@ -21,6 +26,12 @@ import type { User } from '@/models/user'
 
 export const Route = createFileRoute('/teams/$teamId')({
   component: TeamPage,
+  loader: async () => {
+    const user = useUserStore.getState().user
+    if (!user) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 export function TeamPage() {

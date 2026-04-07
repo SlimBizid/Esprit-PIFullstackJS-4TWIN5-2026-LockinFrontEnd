@@ -156,6 +156,12 @@ function formatMessageTime(value: string) {
 export const Route = createFileRoute('/challenge')({
   validateSearch: challengeSearchSchema,
   component: RouteComponent,
+  loader: async () => {
+    const user = useUserStore.getState().user
+    if (!user) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 function RouteComponent() {
@@ -881,7 +887,7 @@ function RouteComponent() {
           <Button
             type="button"
             variant="ghost"
-            className='rounded-none'
+            className="rounded-none"
             size="sm"
             onClick={() => setShortcutsOpen(true)}
           >
@@ -971,7 +977,7 @@ function RouteComponent() {
                               </span>
                             </p>
                             {currentMatch.status === 'waiting' ? (
-                              <Alert className='rounded-none'>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Waiting For Opponent</AlertTitle>
                                 <AlertDescription>
@@ -983,7 +989,7 @@ function RouteComponent() {
 
                             {currentMatch.status === 'active' &&
                             !currentMatch.winner ? (
-                              <Alert className='rounded-none'>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Match In Progress</AlertTitle>
                                 <AlertDescription>
@@ -993,7 +999,7 @@ function RouteComponent() {
                             ) : null}
 
                             {isCurrentUserWinner ? (
-                              <Alert className='rounded-none'>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>You Won</AlertTitle>
                                 <AlertDescription>
@@ -1005,7 +1011,10 @@ function RouteComponent() {
                             ) : null}
 
                             {isCurrentUserLoser ? (
-                              <Alert variant="destructive" className='rounded-none'>
+                              <Alert
+                                variant="destructive"
+                                className="rounded-none"
+                              >
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>You Lost</AlertTitle>
                                 <AlertDescription>
@@ -1082,13 +1091,13 @@ function RouteComponent() {
                             variant="outline"
                             size="sm"
                             onClick={() => void handleCopyMatchId()}
-                            className='rounded-none'
+                            className="rounded-none"
                           >
                             Copy match ID
                           </Button>
                           <Button
                             type="button"
-                            className='rounded-none'
+                            className="rounded-none"
                             variant="destructive"
                             size="sm"
                             onClick={() => setSurrenderConfirmOpen(true)}
@@ -1105,7 +1114,7 @@ function RouteComponent() {
                           <Button
                             type="button"
                             variant="ghost"
-                            className='rounded-none'
+                            className="rounded-none"
                             size="sm"
                             onClick={() =>
                               navigate({ to: '/challenge', search: { id } })
@@ -1120,7 +1129,7 @@ function RouteComponent() {
                         <div className="flex flex-wrap gap-3">
                           <Button
                             type="button"
-                            className='rounded-none'
+                            className="rounded-none"
                             onClick={() =>
                               createMatchMutation.mutate('private')
                             }
@@ -1134,7 +1143,7 @@ function RouteComponent() {
                           </Button>
                           <Button
                             type="button"
-                            className='rounded-none'
+                            className="rounded-none"
                             variant="outline"
                             onClick={() => createMatchMutation.mutate('public')}
                             disabled={
@@ -1147,7 +1156,7 @@ function RouteComponent() {
                           </Button>
                           <Button
                             type="button"
-                            className='rounded-none'
+                            className="rounded-none"
                             variant="outline"
                             onClick={() => setJoinDialogOpen(true)}
                             disabled={
@@ -1159,7 +1168,7 @@ function RouteComponent() {
                           <Button
                             type="button"
                             variant="outline"
-                            className='rounded-none'
+                            className="rounded-none"
                             onClick={() => joinRandomMatchMutation.mutate()}
                             disabled={
                               !isAuthenticated ||
@@ -1205,7 +1214,7 @@ function RouteComponent() {
                                   </div>
                                   <Button
                                     type="button"
-                                    className='rounded-none'
+                                    className="rounded-none"
                                     size="sm"
                                     onClick={() =>
                                       joinMatchMutation.mutate(match.id)
