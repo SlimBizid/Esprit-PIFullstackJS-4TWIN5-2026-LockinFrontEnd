@@ -17,7 +17,7 @@ import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 import { Menu, X } from 'lucide-react'
 
 const NAV_LINKS = [
-  { to: '/', label: 'Home' },
+  { to: '/teams', label: 'Teams' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/challenges', label: 'Challenges' },
 ] as const
@@ -232,9 +232,13 @@ export default function Navbar() {
     return 'bg-background border-border shadow-lg'
   }
 
-  const navLinks = user?.type === 'admin'
-    ? [...NAV_LINKS, { to: '/admin/review-reports' as const, label: 'Reports' }]
-    : NAV_LINKS
+  const navLinks =
+    user?.type === 'admin'
+      ? [
+          ...NAV_LINKS,
+          { to: '/admin/review-reports' as const, label: 'Reports' },
+        ]
+      : NAV_LINKS
 
   return (
     <>
@@ -257,21 +261,23 @@ export default function Navbar() {
         <nav
           id={navId}
           aria-label="Main navigation"
-          className="flex items-center justify-between px-4 h-16 max-w-7xl mx-auto"
+          className="grid grid-cols-3 items-center px-4 h-16 max-w-7xl mx-auto"
         >
-          <Link
-            to="/"
-            className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label="LockIN – go to homepage"
-          >
-            <Logo />
-            <span className="font-black text-lg" aria-hidden="true">
-              LockIN<span className="text-primary animate-peekaboo">_</span>
-            </span>
-          </Link>
+          <div className="flex justify-start">
+            <Link
+              to="/"
+              className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              aria-label="LockIN – go to homepage"
+            >
+              <Logo />
+              <span className="font-black text-lg" aria-hidden="true">
+                LockIN<span className="text-primary animate-peekaboo">_</span>
+              </span>
+            </Link>
+          </div>
 
           <ul
-            className="hidden md:flex items-center gap-6 font-semibold"
+            className="hidden md:flex justify-center items-center gap-6 font-semibold"
             role="list"
           >
             {navLinks.map(({ to, label }) => (
@@ -291,7 +297,7 @@ export default function Navbar() {
             ))}
           </ul>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex justify-end items-center gap-2">
             {!isAuthenticated ? (
               <div>
                 <Link to="/auth/register">
