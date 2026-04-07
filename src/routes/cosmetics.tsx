@@ -178,7 +178,12 @@ type CosmeticCardProps = {
   onDelete: (cosmetic: Cosmetic) => void
 }
 
-function CosmeticCard({ cosmetic, isAdmin, onEdit, onDelete }: CosmeticCardProps) {
+function CosmeticCard({
+  cosmetic,
+  isAdmin,
+  onEdit,
+  onDelete,
+}: CosmeticCardProps) {
   const rarity = RARITY_STYLES[cosmetic.cosmeticRarity]
   const [imgError, setImgError] = useState(false)
 
@@ -420,7 +425,9 @@ function CosmeticsPage() {
 
   // ── Filter / pagination state
   const [typeFilter, setTypeFilter] = useState<CosmeticType | 'all'>('all')
-  const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | 'all'>('all')
+  const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | 'all'>(
+    'all',
+  )
   const [page, setPage] = useState(1)
 
   // ── Dialog state
@@ -432,18 +439,18 @@ function CosmeticsPage() {
   const [message, setMessage] = useState<MessageDialogState | null>(null)
 
   // ── Fetch
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['cosmetics'],
     queryFn: async () => {
       const { data } = await api.get('/cosmetics', {
         params: { page: 1, limit: FETCH_LIMIT },
       })
-      return data as { data: Cosmetic[]; total: number; page: number; lastPage: number }
+      return data as {
+        data: Cosmetic[]
+        total: number
+        page: number
+        lastPage: number
+      }
     },
     enabled: isAuthenticated,
   })
@@ -576,11 +583,6 @@ function CosmeticsPage() {
       createMutation.mutate(payload)
     }
   }
-
-  const isMutating =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    deleteMutation.isPending
 
   // ── Not authenticated
   if (!isAuthenticated) {
@@ -758,7 +760,11 @@ function CosmeticsPage() {
         confirmLabel="Delete"
         confirmVariant="destructive"
         isPending={deleteMutation.isPending}
-        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteMutation.mutate(deleteTarget.id)
+          }
+        }}
       />
 
       <MessageDialog
