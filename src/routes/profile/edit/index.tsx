@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { api, useAuthLoading, useUser, useUserStore } from '@/stores/userStore'
+import { api, useUser, useUserStore } from '@/stores/userStore'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 
 const updateUserSchema = z.object({
   username: z
@@ -17,9 +17,19 @@ const updateUserSchema = z.object({
       /^[a-zA-Z0-9_-]+$/,
       'Only letters, numbers, hyphens, and underscores allowed',
     ),
-  email: z.string().email('Invalid email address'),
+  email: z.email('Invalid email address'),
   githubHandle: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+export const Route = createFileRoute('/profile/edit/')({
+  component: EditProfilePage,
+  loader: async () => {
+    const user = useUserStore.getState().user
+    if (!user) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 type UpdateUserFormValues = z.infer<typeof updateUserSchema>
@@ -37,9 +47,9 @@ export function EditProfilePage() {
   } = useForm<UpdateUserFormValues>({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
-      username: user.username,
-      email: user.email,
-      githubHandle: user.githubHandle || '',
+      username: user?.username,
+      email: user?.email,
+      githubHandle: user?.githubHandle || '',
       password: '',
     },
   })
@@ -56,9 +66,6 @@ export function EditProfilePage() {
         err.response?.data?.message || 'Failed to update profile. Try again.',
       )
     }
-  }
-  if (!user) {
-    return <p>Loading...</p>
   }
 
   return (
@@ -172,8 +179,3 @@ export function EditProfilePage() {
     </div>
   )
 }
-
-// Define the route **after** the component
-export const Route = createFileRoute('/profile/edit/')({
-  component: EditProfilePage,
-})
