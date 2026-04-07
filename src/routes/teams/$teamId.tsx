@@ -67,7 +67,7 @@ export function TeamPage() {
         }
 
         // Fetch all users and filter out existing members & pending invitations
-        const { data } = await api.get('/users/all-for-invite')
+        const { data } = await api.get('/users/all-for-invite?role=player');
         const allUsers = sanitizeUserArray(data)
 
         // DEBUG: Log what we have
@@ -125,18 +125,18 @@ export function TeamPage() {
     return () => cancelAnimationFrame(anim)
   }, [requestedUsers, availableUsers])
 
-  const handleSendInvitation = async (userId: string) => {
-    if (!team) return
-    const user = availableUsers.find((u) => u.id === userId)
-    if (!user) return
-    try {
-      await inviteUser(team.id, userId)
-      setRequestedUsers((prev) => [...prev, user])
-      setAvailableUsers((prev) => prev.filter((u) => u.id !== userId))
-    } catch (err) {
-      console.error(err)
-    }
+ const handleSendInvitation = async (userId: string) => {
+  if (!team) return
+  const user = availableUsers.find((u) => u.id === userId)
+  if (!user) return
+  try {
+    await inviteUser(team.id, userId) 
+    setRequestedUsers((prev) => [...prev, user])
+    setAvailableUsers((prev) => prev.filter((u) => u.id !== userId))
+  } catch (err) {
+    console.error(err)
   }
+}
 
   const handleDeleteTeam = async (id: number) => {
     try {
@@ -403,6 +403,7 @@ export function TeamPage() {
     return
   }
   handleSendInvitation(u.id)
+
 }}
                         >
                           <Mail className="w-4 h-4 mr-1" /> Invite

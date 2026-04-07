@@ -133,29 +133,30 @@ export const useTeamStore = create<TeamState>()(
 
       // All other actions can update only myTeams if needed
       inviteUser: async (teamId, userId) => {
-        set({ isLoading: true, error: null })
-        try {
-          const { data } = await api.post(`/teams/${teamId}/invite/${userId}`)
-          const updatedTeam = data && 'id' in data ? data : null
-          if (updatedTeam) {
-            const updateArray = (arr: Team[]) =>
-              arr.map((t) => (t.id === teamId ? updatedTeam : t))
-            set({
-              allTeams: updateArray(get().allTeams),
-              myTeams: updateArray(get().myTeams),
-              isLoading: false,
-            })
-          } else {
-            set({ error: 'Invalid team data', isLoading: false })
-          }
-        } catch (err) {
-          const message = axios.isAxiosError(err)
-            ? (err.response?.data?.message ?? 'Failed to invite user')
-            : 'Unknown error'
-          set({ error: message, isLoading: false })
-          throw err
-        }
-      },
+  set({ isLoading: true, error: null })
+  try {
+    const { data } = await api.post(`/teams/${teamId}/invite`, { userId })
+    const updatedTeam = data && 'id' in data ? data : null
+    if (updatedTeam) {
+      const updateArray = (arr: Team[]) =>
+        arr.map((t) => (t.id === teamId ? updatedTeam : t))
+      set({
+        allTeams: updateArray(get().allTeams),
+        myTeams: updateArray(get().myTeams),
+        isLoading: false,
+      })
+    } else {
+      set({ error: 'Invalid team data', isLoading: false })
+    }
+  } catch (err) {
+    const message = axios.isAxiosError(err)
+      ? err.response?.data?.message ?? 'Failed to invite user'
+      : 'Unknown error'
+    set({ error: message, isLoading: false })
+    throw err
+  }
+},
+
 
       acceptInvitation: async (teamId, userId) => {
         set({ isLoading: true, error: null })
