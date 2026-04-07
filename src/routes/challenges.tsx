@@ -12,6 +12,7 @@ import {
   Plus,
   Trash2,
   Swords,
+  Upload,
 } from 'lucide-react'
 import { api } from '@/stores/userStore'
 import { useIsAdmin, useIsAuthenticated } from '@/stores/userStore'
@@ -291,7 +292,10 @@ function parseChallengeCases(value: string): ChallengeCase[] {
         value?: unknown
       }
 
-      if (typeof challengeInput.type !== 'string' || !challengeInput.type.trim()) {
+      if (
+        typeof challengeInput.type !== 'string' ||
+        !challengeInput.type.trim()
+      ) {
         throw new Error(
           `Input ${inputIndex + 1} in test case ${index + 1} must include a string type.`,
         )
@@ -446,23 +450,26 @@ function ChallengeFormDialog({
                 <Label htmlFor="challenge-starter-language" className="text-xs">
                   Starter Code Language
                 </Label>
-              <Select
-                value={activeStarterLanguage}
-                onValueChange={(value) =>
-                  setActiveStarterLanguage(value as EditorLanguage)
-                }
-              >
-                <SelectTrigger id="challenge-starter-language" className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EDITOR_LANGUAGES.map((language) => (
-                    <SelectItem key={language} value={language}>
-                      {language}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={activeStarterLanguage}
+                  onValueChange={(value) =>
+                    setActiveStarterLanguage(value as EditorLanguage)
+                  }
+                >
+                  <SelectTrigger
+                    id="challenge-starter-language"
+                    className="w-44"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_LANGUAGES.map((language) => (
+                      <SelectItem key={language} value={language}>
+                        {language}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <textarea
@@ -692,6 +699,260 @@ function ChallengeFormDialog({
   )
 }
 
+function BulkImportDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  isPending,
+  trigger,
+  errorMessage,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit: (challenges: ChallengePayload[]) => Promise<void> | void
+  isPending: boolean
+  trigger?: React.ReactNode
+  errorMessage?: string | null
+}) {
+  const [preview, setPreview] = useState<ChallengePayload[]>([])
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      parseCSV(file)
+    }
+  }
+
+  const parseCSV = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const lines = text.split('\n').filter((line) => line.trim())
+      if (lines.length < 2) return
+
+      // Simple CSV parser that handles quoted fields
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = []
+        let current = ''
+        let inQuotes = false
+        let i = 0
+
+        while (i < line.length) {
+          const char = line[i]
+          if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              // Escaped quote
+              current += '"'
+              i += 2
+            } else {
+              // Toggle quote state
+              inQuotes = !inQuotes
+              i++
+            }
+          } else if (char === ',' && !inQuotes) {
+            // Field separator
+            result.push(current.trim())
+            current = ''
+            i++
+          } else {
+            current += char
+            i++
+          }
+        }
+
+        // Add the last field
+        result.push(current.trim())
+        return result
+      }
+
+      const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase())
+      const challenges: ChallengePayload[] = []
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i])
+        if (values.length !== headers.length) continue
+
+        const challenge: any = {}
+        headers.forEach((header, index) => {
+          const value = values[index]
+          switch (header) {
+            case 'title':
+              challenge.title = value
+              break
+            case 'content':
+              challenge.content = value
+              break
+            case 'difficulty':
+              challenge.difficulty = value.toLowerCase() as
+                | 'easy'
+                | 'medium'
+                | 'hard'
+              break
+            case 'type':
+              challenge.type = value.toLowerCase() as 'solo' | 'pvp' | 'teams'
+              break
+            case 'topics':
+              challenge.topics = value.split(';').map((t: string) => t.trim())
+              break
+            case 'startercode':
+              challenge.starterCode = value
+              challenge.starterCodes = {
+                javascript: value,
+                typescript: '',
+                python: '',
+                java: '',
+                cpp: '',
+              }
+              break
+            case 'acceptancerate':
+              challenge.acceptanceRate = parseFloat(value) || 100
+              break
+            case 'examples':
+              challenge.examples = value.split(';').map((e: string) => e.trim())
+              break
+            case 'constraints':
+              challenge.constraints = value
+                .split(';')
+                .map((c: string) => c.trim())
+              break
+            case 'conditions':
+              challenge.conditions = value
+                .split(';')
+                .map((c: string) => c.trim())
+              break
+            case 'testcases':
+              try {
+                challenge.cases = JSON.parse(value)
+              } catch {
+                challenge.cases = []
+              }
+              break
+          }
+        })
+
+        // Set defaults
+        challenge.difficulty = challenge.difficulty || 'easy'
+        challenge.type = challenge.type || 'solo'
+        challenge.topics = challenge.topics || []
+        challenge.acceptanceRate = challenge.acceptanceRate || 100
+        challenge.examples = challenge.examples || []
+        challenge.constraints = challenge.constraints || []
+        challenge.conditions = challenge.conditions || []
+        challenge.cases = challenge.cases || []
+        challenge.starterCode = challenge.starterCode || ''
+        challenge.starterCodes = challenge.starterCodes || {
+          javascript: '',
+          typescript: '',
+          python: '',
+          java: '',
+          cpp: '',
+        }
+
+        if (challenge.title && challenge.content) {
+          challenges.push(challenge as ChallengePayload)
+        }
+      }
+
+      setPreview(challenges)
+    }
+    reader.readAsText(file)
+  }
+
+  const handleSubmit = async () => {
+    if (preview.length > 0) {
+      await onSubmit(preview)
+      setPreview([])
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setPreview([])
+        }
+        onOpenChange(nextOpen)
+      }}
+    >
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
+      <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Bulk Import Challenges</DialogTitle>
+          <DialogDescription>
+            Upload a CSV file to import multiple challenges at once.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="csv-file">CSV File</Label>
+            <Input
+              id="csv-file"
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              disabled={isPending}
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              Expected columns: title, content, difficulty, type, topics,
+              starterCode, acceptanceRate, examples, constraints, conditions,
+              testCases
+            </p>
+          </div>
+
+          {preview.length > 0 && (
+            <div className="max-h-60 overflow-y-auto border rounded p-2">
+              <h4 className="font-semibold mb-2">
+                Preview ({preview.length} challenges)
+              </h4>
+              <div className="space-y-2">
+                {preview.slice(0, 5).map((challenge, index) => (
+                  <div key={index} className="text-sm border-b pb-1">
+                    <strong>{challenge.title}</strong> - {challenge.difficulty}{' '}
+                    - {challenge.type}
+                  </div>
+                ))}
+                {preview.length > 5 && (
+                  <div className="text-sm text-muted-foreground">
+                    ... and {preview.length - 5} more
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {errorMessage && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isPending || preview.length === 0}
+          >
+            {isPending ? 'Importing...' : `Import ${preview.length} Challenges`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export const Route = createFileRoute('/challenges')({
   component: RouteComponent,
 })
@@ -702,6 +963,7 @@ function RouteComponent() {
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(
     null,
   )
@@ -793,6 +1055,28 @@ function RouteComponent() {
     },
   })
 
+  const bulkImportMutation = useMutation({
+    mutationFn: async (challenges: ChallengePayload[]) => {
+      const { data } = await api.post<Challenge[]>(
+        '/challenges/bulk-import',
+        challenges,
+      )
+      return data
+    },
+    onSuccess: async (importedChallenges) => {
+      setAdminActionError(null)
+      updateCachedChallenges(queryClient, (current) => [
+        ...importedChallenges,
+        ...current,
+      ])
+      setIsBulkImportOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ['challenges'] })
+    },
+    onError: (error) => {
+      setAdminActionError(getErrorMessage(error))
+    },
+  })
+
   const joinPvpMatchMutation = useMutation({
     mutationFn: async (value: string) => {
       const { data } = await api.post<Match>(`/matches/${value}/join`)
@@ -874,8 +1158,7 @@ function RouteComponent() {
           event.key === '?' &&
           !isTextEntryTarget(event.target))
       const isSearchShortcut =
-        ((event.metaKey || event.ctrlKey) &&
-          event.key.toLowerCase() === 'k') ||
+        ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') ||
         (!event.metaKey &&
           !event.ctrlKey &&
           !event.altKey &&
@@ -958,7 +1241,11 @@ function RouteComponent() {
 
         {isAdmin ? (
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setShortcutsOpen(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShortcutsOpen(true)}
+            >
               Shortcuts
             </Button>
             <ChallengeFormDialog
@@ -978,6 +1265,26 @@ function RouteComponent() {
                 <Button className="gap-2">
                   <Plus className="h-4 w-4" />
                   Create challenge
+                </Button>
+              }
+            />
+            <BulkImportDialog
+              open={isBulkImportOpen}
+              onOpenChange={(open) => {
+                setIsBulkImportOpen(open)
+                if (!open) {
+                  setAdminActionError(null)
+                }
+              }}
+              onSubmit={async (challenges) => {
+                await bulkImportMutation.mutateAsync(challenges)
+              }}
+              isPending={bulkImportMutation.isPending}
+              errorMessage={adminActionError}
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Bulk Import
                 </Button>
               }
             />
@@ -1020,7 +1327,8 @@ function RouteComponent() {
                       1v1 Challenge
                     </p>
                     <h3 className="font-bold text-foreground">
-                      #{challenge.id.toString().padStart(3, '0')} {challenge.title}
+                      #{challenge.id.toString().padStart(3, '0')}{' '}
+                      {challenge.title}
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {formatDifficulty(challenge.difficulty)} •{' '}
@@ -1120,7 +1428,11 @@ function RouteComponent() {
               />
             </div>
             {!isAdmin ? (
-              <Button type="button" variant="ghost" onClick={() => setShortcutsOpen(true)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShortcutsOpen(true)}
+              >
                 Shortcuts
               </Button>
             ) : null}
@@ -1255,7 +1567,9 @@ function RouteComponent() {
                                     Edit
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>Update this challenge</TooltipContent>
+                                <TooltipContent>
+                                  Update this challenge
+                                </TooltipContent>
                               </Tooltip>
                             </Button>
                             <Button
@@ -1276,7 +1590,9 @@ function RouteComponent() {
                                     Delete
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>Delete this challenge</TooltipContent>
+                                <TooltipContent>
+                                  Delete this challenge
+                                </TooltipContent>
                               </Tooltip>
                             </Button>
                           </div>
@@ -1404,7 +1720,9 @@ function RouteComponent() {
               </Button>
               <Button
                 type="button"
-                disabled={!joinPvpMatchId.trim() || joinPvpMatchMutation.isPending}
+                disabled={
+                  !joinPvpMatchId.trim() || joinPvpMatchMutation.isPending
+                }
                 onClick={() =>
                   joinPvpMatchMutation.mutate(joinPvpMatchId.trim())
                 }
