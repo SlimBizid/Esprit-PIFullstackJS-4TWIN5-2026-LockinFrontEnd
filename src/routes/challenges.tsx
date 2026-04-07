@@ -149,6 +149,22 @@ type ChallengePayload = {
   quizQuestions: ChallengeQuizQuestion[]
 }
 
+type GeneratedChallengeDraft = {
+  title: string
+  content: string
+  starterCode: string
+  starterCodes: Partial<Record<EditorLanguage, string>>
+  difficulty: Challenge['difficulty']
+  type: Challenge['type']
+  topics: string[]
+  acceptanceRate: number
+  examples: string[]
+  constraints: string[]
+  conditions: string[]
+  cases: ChallengeCase[]
+  quizQuestions: ChallengeQuizQuestion[]
+}
+
 function updateCachedChallenges(
   queryClient: ReturnType<typeof useQueryClient>,
   updater: (current: Challenge[]) => Challenge[],
@@ -471,12 +487,44 @@ function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
   }
 }
 
+function mapDraftToFormValues(draft: GeneratedChallengeDraft): ChallengeFormValues {
+  const starterCodes: Record<EditorLanguage, string> = {
+    javascript: draft.starterCodes.javascript ?? draft.starterCode ?? '',
+    typescript: draft.starterCodes.typescript ?? '',
+    python: draft.starterCodes.python ?? '',
+    java: draft.starterCodes.java ?? '',
+    cpp: draft.starterCodes.cpp ?? '',
+  }
+
+  return {
+    title: draft.title,
+    content: draft.content,
+    starterCode: starterCodes.javascript,
+    starterCodes,
+    difficulty: draft.difficulty,
+    type: draft.type,
+    topics: draft.topics,
+    acceptanceRate: String(draft.acceptanceRate),
+    examples: draft.examples.join('\n'),
+    constraints: draft.constraints.join('\n'),
+    conditions: draft.conditions.join('\n'),
+    testCases:
+      draft.cases.length > 0 ? JSON.stringify(draft.cases, null, 2) : '[]',
+    quizQuestions:
+      draft.quizQuestions.length > 0
+        ? JSON.stringify(draft.quizQuestions, null, 2)
+        : '[]',
+  }
+}
+
 function ChallengeFormDialog({
   challenge,
   open,
   onOpenChange,
   onSubmit,
+  onGenerateDraft,
   isPending,
+  isGeneratingDraft = false,
   trigger,
   errorMessage,
 }: {
@@ -484,7 +532,11 @@ function ChallengeFormDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: ChallengeFormValues) => Promise<void> | void
+  onGenerateDraft?: (
+    values: ChallengeFormValues,
+  ) => Promise<ChallengeFormValues> | ChallengeFormValues
   isPending: boolean
+  isGeneratingDraft?: boolean
   trigger?: React.ReactNode
   errorMessage?: string | null
 }) {
@@ -493,6 +545,7 @@ function ChallengeFormDialog({
   )
   const [activeStarterLanguage, setActiveStarterLanguage] =
     useState<EditorLanguage>('javascript')
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   const dialogTitle = challenge ? 'Edit challenge' : 'Create challenge'
   const dialogDescription = challenge
@@ -508,6 +561,7 @@ function ChallengeFormDialog({
         if (nextOpen) {
           setValues(getDefaultFormValues(challenge))
           setActiveStarterLanguage('javascript')
+          setGenerationError(null)
         }
         onOpenChange(nextOpen)
       }}
@@ -535,8 +589,39 @@ function ChallengeFormDialog({
             </Alert>
           ) : null}
 
+          {generationError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Generation failed</AlertTitle>
+              <AlertDescription>{generationError}</AlertDescription>
+            </Alert>
+          ) : null}
+
           <div className="grid gap-2">
-            <Label htmlFor="challenge-title">Title</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="challenge-title">Title</Label>
+              {onGenerateDraft ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!values.title.trim() || isGeneratingDraft}
+                  onClick={async () => {
+                    setGenerationError(null)
+
+                    try {
+                      const generatedValues = await onGenerateDraft(values)
+                      setValues(generatedValues)
+                      setActiveStarterLanguage('javascript')
+                    } catch (error) {
+                      setGenerationError(getErrorMessage(error))
+                    }
+                  }}
+                >
+                  {isGeneratingDraft ? 'Generating...' : 'Generate with AI'}
+                </Button>
+              ) : null}
+            </div>
             <Input
               id="challenge-title"
               value={values.title}
@@ -549,6 +634,12 @@ function ChallengeFormDialog({
               placeholder="Two Sum"
               required
             />
+            {onGenerateDraft ? (
+              <p className="text-xs text-muted-foreground">
+                Uses the current title and selected challenge type to draft the
+                form with Google AI Studio.
+              </p>
+            ) : null}
           </div>
 
           <div className="grid gap-2">
@@ -923,6 +1014,20 @@ function RouteComponent() {
     },
   })
 
+  const generateChallengeDraftMutation = useMutation({
+    mutationFn: async (values: ChallengeFormValues) => {
+      const { data } = await api.post<GeneratedChallengeDraft>(
+        '/challenges/generate-draft',
+        {
+          title: values.title.trim(),
+          type: values.type,
+        },
+      )
+
+      return mapDraftToFormValues(data)
+    },
+  })
+
   const updateChallengeMutation = useMutation({
     mutationFn: async (values: ChallengeFormValues & { id: number }) => {
       const payload = buildChallengePayload(values)
@@ -1150,7 +1255,12 @@ function RouteComponent() {
               onSubmit={async (values) => {
                 await createChallengeMutation.mutateAsync(values)
               }}
+              onGenerateDraft={async (values) => {
+                setAdminActionError(null)
+                return generateChallengeDraftMutation.mutateAsync(values)
+              }}
               isPending={createChallengeMutation.isPending}
+              isGeneratingDraft={generateChallengeDraftMutation.isPending}
               errorMessage={adminActionError}
               trigger={
                 <Button className="gap-2">
@@ -1546,7 +1656,12 @@ function RouteComponent() {
                 id: editingChallenge.id,
               })
             }}
+            onGenerateDraft={async (values) => {
+              setAdminActionError(null)
+              return generateChallengeDraftMutation.mutateAsync(values)
+            }}
             isPending={updateChallengeMutation.isPending}
+            isGeneratingDraft={generateChallengeDraftMutation.isPending}
             errorMessage={adminActionError}
           />
         ) : null}
