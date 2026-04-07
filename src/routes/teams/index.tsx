@@ -34,25 +34,29 @@ export const Route = createFileRoute('/teams/')({
 export function TeamsRoute() {
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { acceptInvitation, declineInvitation } = useTeamStore()
 
   // Zustand state
   const { fetchTeams, fetchMyTeams, createTeam } = useTeamStore()
-  const myTeams = useTeams()       // Only user’s teams
-  const allTeams = useAllTeams()   // All teams (for Explore + Invites)
+  const myTeams = useTeams() // Only user’s teams
+  const allTeams = useAllTeams() // All teams (for Explore + Invites)
   const loading = useTeamLoading()
   const user = useUser()
+  const userId = user?.id ?? ''
 
   // UI state
   const [tab, setTab] = useState<'myTeams' | 'invites'>('myTeams')
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<
+    'ALL' | 'ACTIVE' | 'PENDING'
+  >('ALL')
   const [showAddTeamForm, setShowAddTeamForm] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
 
   // Fetch data on mount
   useEffect(() => {
-    fetchTeams()     // fetch all teams
-    fetchMyTeams()   // fetch teams where user is a member
+    fetchTeams() // fetch all teams
+    fetchMyTeams() // fetch teams where user is a member
   }, [])
 
   // Auto scroll for Explore Teams
@@ -86,12 +90,12 @@ export function TeamsRoute() {
       let filtered = myTeams
       // Apply status filter
       if (statusFilter !== 'ALL') {
-        filtered = filtered.filter(t => t.status === statusFilter)
+        filtered = filtered.filter((t) => t.status === statusFilter)
       }
       // Apply search filter
       if (search) {
-        filtered = filtered.filter(t =>
-          t.name?.toLowerCase().includes(search.toLowerCase())
+        filtered = filtered.filter((t) =>
+          t.name?.toLowerCase().includes(search.toLowerCase()),
         )
       }
       return filtered
@@ -99,11 +103,13 @@ export function TeamsRoute() {
 
     if (tab === 'invites') {
       if (!allTeams) return []
-      let invites = allTeams.filter(t => t.pendingInvitations?.includes(user.id))
+      let invites = allTeams.filter((t) =>
+        t.pendingInvitations?.includes(user.id),
+      )
       // Apply search filter
       if (search) {
-        invites = invites.filter(t =>
-          t.name?.toLowerCase().includes(search.toLowerCase())
+        invites = invites.filter((t) =>
+          t.name?.toLowerCase().includes(search.toLowerCase()),
         )
       }
       return invites
@@ -137,14 +143,17 @@ export function TeamsRoute() {
             ref={scrollRef}
             className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
           >
-            {allTeams.map(team => {
-              const leader = team.users?.[0]?.username 
+            {allTeams.map((team) => {
+              const leader = team.users?.[0]?.username
 
               return (
                 <div
                   key={team.id}
                   onClick={() =>
-                    navigate({ to: '/teams/$teamId', params: { teamId: String(team.id) } })
+                    navigate({
+                      to: '/teams/$teamId',
+                      params: { teamId: String(team.id) },
+                    })
                   }
                   className="group border hover:shadow-xl cursor-pointer flex-shrink-0 min-w-[300px]"
                 >
@@ -152,7 +161,9 @@ export function TeamsRoute() {
                     <div className="flex gap-4 items-center">
                       <div className="h-16 w-16 flex items-center justify-center border relative">
                         <Flame className="opacity-20 absolute w-full h-full" />
-                        <span className="text-xl z-10">{team.users?.length || 0}</span>
+                        <span className="text-xl z-10">
+                          {team.users?.length || 0}
+                        </span>
                       </div>
 
                       <div>
@@ -177,6 +188,7 @@ export function TeamsRoute() {
           <h1 className="text-3xl font-bold">Teams Dashboard</h1>
 
           <div className="flex gap-2 items-center">
+            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
               <Input
@@ -187,12 +199,15 @@ export function TeamsRoute() {
               />
             </div>
 
+            {/* Status Filter (only My Teams) */}
             {tab === 'myTeams' && (
               <select
                 className="border rounded px-2 py-1 text-sm"
                 value={statusFilter}
                 onChange={(e) =>
-                  setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'PENDING')
+                  setStatusFilter(
+                    e.target.value as 'ALL' | 'ACTIVE' | 'PENDING',
+                  )
                 }
               >
                 <option value="ALL">All Status</option>
@@ -201,6 +216,7 @@ export function TeamsRoute() {
               </select>
             )}
 
+            {/* Add Team */}
             <Button onClick={() => setShowAddTeamForm(true)}>Add Team</Button>
           </div>
         </div>
@@ -260,22 +276,32 @@ export function TeamsRoute() {
                     <TableHead>Leader</TableHead>
                     <TableHead>Members</TableHead>
                     <TableHead>Status</TableHead>
+                    {tab === 'invites' && <TableHead>Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
                   {filteredTeams.map((t) => {
-                    const leader = t.users?.[0]?.username || 'N/A'
+                    const leader = t.users?.[0]?.username
+
                     return (
                       <TableRow
                         key={t.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() =>
-                          navigate({ to: '/teams/$teamId', params: { teamId: String(t.id) } })
+                          navigate({
+                            to: '/teams/$teamId',
+                            params: { teamId: String(t.id) },
+                          })
                         }
                       >
+                        {/* Name */}
                         <TableCell>{t.name}</TableCell>
+
+                        {/* Leader */}
                         <TableCell>{leader}</TableCell>
+
+                        {/* Members */}
                         <TableCell>
                           <div className="flex -space-x-2">
                             {t.users?.slice(0, 3).map((m: any) => (
@@ -287,9 +313,44 @@ export function TeamsRoute() {
                             ))}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge>{t.status}</Badge>
-                        </TableCell>
+
+                        {/* Status OR Actions */}
+                        {tab === 'myTeams' ? (
+                          <TableCell>
+                            <Badge>{t.status}</Badge>
+                          </TableCell>
+                        ) : (
+                          <>
+                            <TableCell>
+                              <Badge>{t.status}</Badge>
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    acceptInvitation(t.id, userId)
+                                  }}
+                                >
+                                  Accept
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    declineInvitation(t.id, userId)
+                                  }}
+                                >
+                                  Decline
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </>
+                        )}
                       </TableRow>
                     )
                   })}

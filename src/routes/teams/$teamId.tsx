@@ -59,7 +59,7 @@ export function TeamPage() {
         if (t.pendingInvitations?.length) {
           const pendingUsers = await Promise.all(
             t.pendingInvitations.map(async (username) => {
-              const user = await api.get(`/profile/${username}`)
+              const user = await api.get(`users/profile/${username}`)
               return user.data
             }),
           )
@@ -67,7 +67,7 @@ export function TeamPage() {
         }
 
         // Fetch all users and filter out existing members & pending invitations
-        const { data } = await api.get('/users')
+        const { data } = await api.get('/users/all-for-invite')
         const allUsers = sanitizeUserArray(data)
 
         // DEBUG: Log what we have
@@ -373,44 +373,64 @@ export function TeamPage() {
             {/* INVITE USERS */}
             <div>
               <h2 className="text-2xl font-bold mb-4">Invite Users</h2>
-
-              {availableUsers.length === 0 ? (
-                <p className="text-muted-foreground">No users to invite</p>
-              ) : (
-                <div
-                  ref={scrollRef}
-                  className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
-                >
-                  {availableUsers.map((u) => (
-                    <Card
-                      key={u.id}
-                      className="flex-shrink-0 min-w-[200px] flex flex-col items-center p-4"
-                    >
-                      <Avatar className="mb-2">
-                        <AvatarFallback>{u.username.charAt(0)}</AvatarFallback>
-                      </Avatar>
-
-                      <p className="font-semibold">{u.username}</p>
-
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => handleSendInvitation(u.id)}
+              {team.users?.[0]?.id === currentUser?.id ? (
+                availableUsers.length === 0 ? (
+                  <p className="text-muted-foreground">No users to invite</p>
+                ) : (
+                  <div
+                    ref={scrollRef}
+                    className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
+                  >
+                    {availableUsers.map((u) => (
+                      <Card
+                        key={u.id}
+                        className="flex-shrink-0 min-w-[200px] flex flex-col items-center p-4"
                       >
-                        <Mail className="w-4 h-4 mr-1" /> Invite
-                      </Button>
-                    </Card>
-                  ))}
-                </div>
+                        <Avatar className="mb-2">
+                          <AvatarFallback>
+                            {u.username.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <p className="font-semibold">{u.username}</p>
+
+                        <Button
+                          size="sm"
+                          className="mt-2"
+                         onClick={() => {
+  if (!u.id) {
+    console.error("User ID missing!", u)
+    return
+  }
+  handleSendInvitation(u.id)
+}}
+                        >
+                          <Mail className="w-4 h-4 mr-1" /> Invite
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Only team leader can invite users to the team
+                </p>
               )}
             </div>
-
             {/* Team chat placeholder */}
             <div>
               <h2 className="text-2xl font-bold mb-4">Team Chat</h2>
               <div className="border border-border/10 rounded-lg p-4 h-64 overflow-y-auto bg-muted/5">
                 <p className="text-sm text-muted-foreground">
                   Chat coming soon...
+                </p>
+              </div>
+            </div>
+             <div>
+              <h2 className="text-2xl font-bold mb-4">challenges</h2>
+              <div className="border border-border/10 rounded-lg p-4 h-64 overflow-y-auto bg-muted/5">
+                <p className="text-sm text-muted-foreground">
+                 //tarak hnee hot eli bech thot
                 </p>
               </div>
             </div>
