@@ -11,16 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as CosmeticsRouteImport } from './routes/cosmetics'
 import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TeamsIndexRouteImport } from './routes/teams/index'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
+import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
+import { Route as ProfileEditIndexRouteImport } from './routes/profile/edit/index'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -30,6 +33,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CosmeticsRoute = CosmeticsRouteImport.update({
+  id: '/cosmetics',
+  path: '/cosmetics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChallengesRoute = ChallengesRouteImport.update({
@@ -57,6 +65,11 @@ const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
   path: '/teams/$teamId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
+  id: '/profile/$userId',
+  path: '/profile/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   id: '/demo/tanstack-query',
   path: '/demo/tanstack-query',
@@ -82,11 +95,17 @@ const AdminReviewReportsRoute = AdminReviewReportsRouteImport.update({
   path: '/admin/review-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileEditIndexRoute = ProfileEditIndexRouteImport.update({
+  id: '/profile/edit/',
+  path: '/profile/edit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
@@ -94,13 +113,16 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams/': typeof TeamsIndexRoute
+  '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
@@ -108,14 +130,17 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams': typeof TeamsIndexRoute
+  '/profile/edit': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
@@ -123,8 +148,10 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams/': typeof TeamsIndexRoute
+  '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
     | '/admin/review-reports'
@@ -139,13 +167,16 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
+    | '/profile/$userId'
     | '/teams/$teamId'
     | '/teams/'
+    | '/profile/edit/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
     | '/admin/review-reports'
@@ -153,13 +184,16 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
+    | '/profile/$userId'
     | '/teams/$teamId'
     | '/teams'
+    | '/profile/edit'
   id:
     | '__root__'
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
     | '/admin/review-reports'
@@ -167,14 +201,17 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
+    | '/profile/$userId'
     | '/teams/$teamId'
     | '/teams/'
+    | '/profile/edit/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChallengeRoute: typeof ChallengeRoute
   ChallengesRoute: typeof ChallengesRoute
+  CosmeticsRoute: typeof CosmeticsRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
   AdminReviewReportsRoute: typeof AdminReviewReportsRoute
@@ -182,8 +219,10 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
+  ProfileUserIdRoute: typeof ProfileUserIdRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
+  ProfileEditIndexRoute: typeof ProfileEditIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -200,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cosmetics': {
+      id: '/cosmetics'
+      path: '/cosmetics'
+      fullPath: '/cosmetics'
+      preLoaderRoute: typeof CosmeticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/challenges': {
@@ -237,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamsTeamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/$userId': {
+      id: '/profile/$userId'
+      path: '/profile/$userId'
+      fullPath: '/profile/$userId'
+      preLoaderRoute: typeof ProfileUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/tanstack-query': {
       id: '/demo/tanstack-query'
       path: '/demo/tanstack-query'
@@ -272,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/edit/': {
+      id: '/profile/edit/'
+      path: '/profile/edit'
+      fullPath: '/profile/edit/'
+      preLoaderRoute: typeof ProfileEditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -279,6 +339,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChallengeRoute: ChallengeRoute,
   ChallengesRoute: ChallengesRoute,
+  CosmeticsRoute: CosmeticsRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,
   AdminReviewReportsRoute: AdminReviewReportsRoute,
@@ -286,8 +347,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
+  ProfileUserIdRoute: ProfileUserIdRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
   TeamsIndexRoute: TeamsIndexRoute,
+  ProfileEditIndexRoute: ProfileEditIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
