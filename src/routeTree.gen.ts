@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as CosmeticsRouteImport } from './routes/cosmetics'
 import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +31,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CosmeticsRoute = CosmeticsRouteImport.update({
+  id: '/cosmetics',
+  path: '/cosmetics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChallengesRoute = ChallengesRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
     | '/admin/review-reports'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
     | '/admin/review-reports'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
     | '/admin/review-reports'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChallengeRoute: typeof ChallengeRoute
   ChallengesRoute: typeof ChallengesRoute
+  CosmeticsRoute: typeof CosmeticsRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
   AdminReviewReportsRoute: typeof AdminReviewReportsRoute
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cosmetics': {
+      id: '/cosmetics'
+      path: '/cosmetics'
+      fullPath: '/cosmetics'
+      preLoaderRoute: typeof CosmeticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/challenges': {
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChallengeRoute: ChallengeRoute,
   ChallengesRoute: ChallengesRoute,
+  CosmeticsRoute: CosmeticsRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,
   AdminReviewReportsRoute: AdminReviewReportsRoute,
