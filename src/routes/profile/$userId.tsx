@@ -106,12 +106,12 @@ function RouteComponent() {
                 )}
 
                 {isOwnProfile && (
-                  //<Link to="/profile/edit">
-                  <button className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-primary uppercase bg-primary/10 border border-primary/20 px-2 py-1 rounded hover:bg-primary/20 transition-colors">
-                    <Pencil className="w-3 h-3" aria-hidden="true" />
-                    Edit Profile
-                  </button>
-                  //</Link>
+                  <Link to="/profile/edit">
+                    <button className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-primary uppercase bg-primary/10 border border-primary/20 px-2 py-1 rounded hover:bg-primary/20 transition-colors">
+                      <Pencil className="w-3 h-3" aria-hidden="true" />
+                      Edit Profile
+                    </button>
+                  </Link>
                 )}
               </div>
 
