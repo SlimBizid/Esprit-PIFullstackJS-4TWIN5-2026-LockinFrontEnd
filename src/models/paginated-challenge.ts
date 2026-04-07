@@ -1,8 +1,12 @@
 import type { Challenge } from './challenge'
 
 export type PaginatedChallenges = {
-  challenges: Challenge[]
-  total: number
-  page: number
-  lastPage: number
+  data: Challenge[]
+  meta: {
+    totalItems: number
+    itemCount: number
+    itemsPerPage: number
+    totalPages: number
+    currentPage: number
+  }
 }

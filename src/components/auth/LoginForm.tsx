@@ -62,7 +62,7 @@ export function LoginForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor={`${uid}-username`} className="text-sm font-medium">
-          Username or email
+          Username
         </Label>
         <Input
           id={`${uid}-username`}
@@ -73,10 +73,10 @@ export function LoginForm() {
           aria-invalid={!!errors.username}
           aria-describedby={errors.username ? `${uid}-username-err` : undefined}
           {...register('username', {
-            required: 'Please enter your username or email.',
+            required: 'Please enter your username.',
           })}
           className="h-11"
-          placeholder="you@example.com"
+          placeholder="your_handle"
         />
         {errors.username && (
           <p

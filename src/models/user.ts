@@ -9,6 +9,8 @@ export type User = {
 
   type: UserType
 
+  xp: number
+
   createdAt: Date
 
   updatedAt: Date

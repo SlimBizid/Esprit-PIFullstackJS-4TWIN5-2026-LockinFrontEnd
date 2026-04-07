@@ -11,14 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as CosmeticsRouteImport } from './routes/cosmetics'
 import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
+<<<<<<< HEAD
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
+=======
+import { Route as TeamsIndexRouteImport } from './routes/teams/index'
+import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
+>>>>>>> origin/main
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -28,6 +35,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CosmeticsRoute = CosmeticsRouteImport.update({
+  id: '/cosmetics',
+  path: '/cosmetics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChallengesRoute = ChallengesRouteImport.update({
@@ -45,9 +57,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+<<<<<<< HEAD
 const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
   id: '/profile/$userId',
   path: '/profile/$userId',
+=======
+const TeamsIndexRoute = TeamsIndexRouteImport.update({
+  id: '/teams/',
+  path: '/teams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
+  id: '/teams/$teamId',
+  path: '/teams/$teamId',
+>>>>>>> origin/main
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
@@ -70,43 +93,69 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/auth/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminReviewReportsRoute = AdminReviewReportsRouteImport.update({
+  id: '/admin/review-reports',
+  path: '/admin/review-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+<<<<<<< HEAD
   '/profile/$userId': typeof ProfileUserIdRoute
+=======
+  '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/teams/': typeof TeamsIndexRoute
+>>>>>>> origin/main
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+<<<<<<< HEAD
   '/profile/$userId': typeof ProfileUserIdRoute
+=======
+  '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/teams': typeof TeamsIndexRoute
+>>>>>>> origin/main
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/challenge': typeof ChallengeRoute
   '/challenges': typeof ChallengesRoute
+  '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+<<<<<<< HEAD
   '/profile/$userId': typeof ProfileUserIdRoute
+=======
+  '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/teams/': typeof TeamsIndexRoute
+>>>>>>> origin/main
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -114,50 +163,78 @@ export interface FileRouteTypes {
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
+<<<<<<< HEAD
     | '/profile/$userId'
+=======
+    | '/teams/$teamId'
+    | '/teams/'
+>>>>>>> origin/main
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
+<<<<<<< HEAD
     | '/profile/$userId'
+=======
+    | '/teams/$teamId'
+    | '/teams'
+>>>>>>> origin/main
   id:
     | '__root__'
     | '/'
     | '/challenge'
     | '/challenges'
+    | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
+<<<<<<< HEAD
     | '/profile/$userId'
+=======
+    | '/teams/$teamId'
+    | '/teams/'
+>>>>>>> origin/main
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChallengeRoute: typeof ChallengeRoute
   ChallengesRoute: typeof ChallengesRoute
+  CosmeticsRoute: typeof CosmeticsRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  AdminReviewReportsRoute: typeof AdminReviewReportsRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
+<<<<<<< HEAD
   ProfileUserIdRoute: typeof ProfileUserIdRoute
+=======
+  TeamsTeamIdRoute: typeof TeamsTeamIdRoute
+  TeamsIndexRoute: typeof TeamsIndexRoute
+>>>>>>> origin/main
 }
 
 declare module '@tanstack/react-router' {
@@ -174,6 +251,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cosmetics': {
+      id: '/cosmetics'
+      path: '/cosmetics'
+      fullPath: '/cosmetics'
+      preLoaderRoute: typeof CosmeticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/challenges': {
@@ -197,11 +281,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+<<<<<<< HEAD
     '/profile/$userId': {
       id: '/profile/$userId'
       path: '/profile/$userId'
       fullPath: '/profile/$userId'
       preLoaderRoute: typeof ProfileUserIdRouteImport
+=======
+    '/teams/': {
+      id: '/teams/'
+      path: '/teams'
+      fullPath: '/teams/'
+      preLoaderRoute: typeof TeamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams/$teamId': {
+      id: '/teams/$teamId'
+      path: '/teams/$teamId'
+      fullPath: '/teams/$teamId'
+      preLoaderRoute: typeof TeamsTeamIdRouteImport
+>>>>>>> origin/main
       parentRoute: typeof rootRouteImport
     }
     '/demo/tanstack-query': {
@@ -232,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/review-reports': {
+      id: '/admin/review-reports'
+      path: '/admin/review-reports'
+      fullPath: '/admin/review-reports'
+      preLoaderRoute: typeof AdminReviewReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -239,13 +345,20 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChallengeRoute: ChallengeRoute,
   ChallengesRoute: ChallengesRoute,
+  CosmeticsRoute: CosmeticsRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,
+  AdminReviewReportsRoute: AdminReviewReportsRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
+<<<<<<< HEAD
   ProfileUserIdRoute: ProfileUserIdRoute,
+=======
+  TeamsTeamIdRoute: TeamsTeamIdRoute,
+  TeamsIndexRoute: TeamsIndexRoute,
+>>>>>>> origin/main
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
