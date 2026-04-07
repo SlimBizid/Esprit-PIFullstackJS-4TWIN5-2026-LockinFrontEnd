@@ -1,14 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Keania+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quantico:ital,wght@0,400;0,700;1,400;1,700&family=Rubik+Mono+One&display=swap');
 @import 'tailwindcss';
-
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
 body {
   @apply m-0;
+  /* Mintlify uses clean, modern sans-serif fonts for readability */
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -19,63 +26,77 @@ code {
 }
 
 :root {
-  --background: oklch(0.98 0.01 240);
-  --foreground: oklch(0.25 0.04 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.04 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.04 260);
-  --primary: oklch(0.7 0.18 290);
-  --primary-foreground: oklch(0.98 0.01 240);
-  --secondary: oklch(0.9 0.02 260);
-  --secondary-foreground: oklch(0.25 0.04 260);
-  --muted: oklch(0.9 0.02 260);
-  --muted-foreground: oklch(0.5 0.05 260);
-  --accent: oklch(0.7 0.18 290);
-  --accent-foreground: oklch(0.25 0.04 260);
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.85 0.02 260);
-  --input: oklch(0.85 0.02 260);
-  --ring: oklch(0.7 0.18 290);
-  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #02060d;
+  --card: #ffffff;
+  --card-foreground: #02060d;
+  --popover: #ffffff;
+  --popover-foreground: #02060d;
+
+  --primary: #00cfba;
+  --primary-foreground: #f3faff;
+
+  --secondary: #edf2f8;
+  --secondary-foreground: #02060d;
+  --muted: #edf2f8;
+  --muted-foreground: #4d5660;
+  --accent: #f4f4f4;
+  --accent-foreground: #02060d;
+  --destructive: #d74745;
+  --destructive-foreground: #f8f8f8;
+  --border: #e0e5eb;
+  --input: #e0e5eb;
+  --ring: #00cfba;
+  --radius: 0.5rem;
+
+  --common: #94a3b8;
+  --rare: #3b82f6;
+  --epic: #a855f7;
+  --legendary: #e9bf42;
 }
 
 .dark {
-  --background: oklch(0.27 0.02 259); /* #282a36 - Background */
-  --foreground: oklch(0.97 0.01 80); /* #f8f8f2 - Foreground */
-  --card: oklch(0.27 0.02 259);
-  --card-foreground: oklch(0.97 0.01 80);
-  --popover: oklch(0.27 0.02 259);
-  --popover-foreground: oklch(0.97 0.01 80);
+  --background: #06090f;
+  --foreground: #f8fafc;
+  --card: #111827;
+  --card-foreground: #f8fafc;
+  --popover: #111827;
+  --popover-foreground: #f8fafc;
 
-  --primary: oklch(0.72 0.16 295); /* #bd93f9 - Purple */
-  --primary-foreground: oklch(0.27 0.02 259);
+  /* Vibrant Mint Primary */
+  --primary: #00cf80;
+  --primary-foreground: #0b0f1a;
 
-  --secondary: oklch(0.36 0.03 261); /* #44475a - Current Line/Selection */
-  --secondary-foreground: oklch(0.97 0.01 80);
+  --secondary: #1f2937;
+  --secondary-foreground: #f8fafc;
 
-  --muted: oklch(0.36 0.03 261);
-  --muted-foreground: oklch(0.55 0.08 262); /* #6272a4 - Comment (Blueish) */
+  --muted: #1f2937;
+  --muted-foreground: #94a3b8;
 
-  --accent: oklch(0.72 0.16 295);
-  --accent-foreground: oklch(0.97 0.01 80);
+  --accent: #111a29;
+  --accent-foreground: #f8fafc;
 
-  --destructive: oklch(0.66 0.2 25); /* #ff5555 - Red */
-  --destructive-foreground: oklch(0.97 0.01 80);
+  --destructive: #d40924;
+  --destructive-foreground: #f8fafc;
 
-  --border: oklch(0.36 0.03 261);
-  --input: oklch(0.36 0.03 261);
-  --ring: oklch(0.72 0.16 295);
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #00cfba;
 
-  /* Sidebar specifically for ByteBattle Layout */
-  --sidebar: oklch(0.23 0.02 259); /* Slightly darker than bg */
-  --sidebar-foreground: oklch(0.97 0.01 80);
-  --sidebar-primary: oklch(0.72 0.16 295);
-  --sidebar-border: oklch(0.36 0.03 261);
+  --sidebar: #020617;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #00cfba;
+  --sidebar-border: #1e293b;
+
+  /* ByteBattle Rarity Colors based on your documentation */
+  --common: #94a3b8;
+  --rare: #3b82f6;
+  --epic: #a855f7;
+  --legendary: #e9bf42;
 }
 
 @theme inline {
+  /* Core Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -95,23 +116,41 @@ code {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+
+  /* ByteBattle Game Mechanics Colors */
+  --color-rarity-common: var(--common);
+  --color-rarity-rare: var(--rare);
+  --color-rarity-epic: var(--epic);
+  --color-rarity-legendary: var(--legendary);
+
+  /* Border Radii */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Sidebar Colors */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Typography */
+  --font-keania-one: 'Keania One', sans-serif;
+  --font-mono-one: 'Rubik Mono One', monospace;
+  --font-quantico: 'Quantico', sans-serif;
+
+  @keyframes peekaboo {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  --animate-peekaboo: peekaboo steps(1) 1s infinite;
 }
 
 @layer base {
@@ -121,4 +160,24 @@ code {
   body {
     @apply bg-background text-foreground;
   }
+  /* Use Keania One for Headings to match your brand style */
+  h1,
+  h2,
+  .logo {
+    @apply font-quantico tracking-wider uppercase;
+    font-weight: 900;
+  }
+}
+
+::selection {
+  background-color: var(--primary);
+  color: var(--foreground);
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
 }
