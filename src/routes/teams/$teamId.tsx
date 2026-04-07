@@ -1,4 +1,9 @@
-import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  useParams,
+  useNavigate,
+  redirect,
+} from '@tanstack/react-router'
 import { useEffect, useState, useRef } from 'react'
 import {
   Users,
@@ -14,6 +19,7 @@ import { Progress } from '@/components/ui/progress'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
+import { TeamChat } from '@/components/TeamChat'
 
 import { useTeamStore } from '@/stores/teamStore'
 import { api, useUserStore } from '@/stores/userStore'
@@ -22,6 +28,12 @@ import type { User } from '@/models/user'
 
 export const Route = createFileRoute('/teams/$teamId')({
   component: TeamPage,
+  loader: async () => {
+    const user = useUserStore.getState().user
+    if (!user) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 export function TeamPage() {
@@ -422,9 +434,19 @@ export function TeamPage() {
             <div>
               <h2 className="text-2xl font-bold mb-4">Team Chat</h2>
               <div className="border border-border/10 rounded-lg p-4 h-64 overflow-y-auto bg-muted/5">
-                <p className="text-sm text-muted-foreground">
-                  Chat coming soon...
-                </p>
+                <div>
+                  {team.users.some((u) => u.id === currentUser?.id) ? (
+                    <TeamChat
+                      teamId={String(team.id)}
+                      currentUserId={currentUser?.id || ''}
+                      currentUserName={currentUser?.username || 'Unknown'}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center p-4">
+                      You must be a team member to access this chat.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
              <div>

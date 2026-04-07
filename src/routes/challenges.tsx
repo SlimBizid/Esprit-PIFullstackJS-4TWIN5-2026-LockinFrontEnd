@@ -291,7 +291,10 @@ function parseChallengeCases(value: string): ChallengeCase[] {
         value?: unknown
       }
 
-      if (typeof challengeInput.type !== 'string' || !challengeInput.type.trim()) {
+      if (
+        typeof challengeInput.type !== 'string' ||
+        !challengeInput.type.trim()
+      ) {
         throw new Error(
           `Input ${inputIndex + 1} in test case ${index + 1} must include a string type.`,
         )
@@ -446,23 +449,26 @@ function ChallengeFormDialog({
                 <Label htmlFor="challenge-starter-language" className="text-xs">
                   Starter Code Language
                 </Label>
-              <Select
-                value={activeStarterLanguage}
-                onValueChange={(value) =>
-                  setActiveStarterLanguage(value as EditorLanguage)
-                }
-              >
-                <SelectTrigger id="challenge-starter-language" className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EDITOR_LANGUAGES.map((language) => (
-                    <SelectItem key={language} value={language}>
-                      {language}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={activeStarterLanguage}
+                  onValueChange={(value) =>
+                    setActiveStarterLanguage(value as EditorLanguage)
+                  }
+                >
+                  <SelectTrigger
+                    id="challenge-starter-language"
+                    className="w-44"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_LANGUAGES.map((language) => (
+                      <SelectItem key={language} value={language}>
+                        {language}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <textarea
@@ -874,8 +880,7 @@ function RouteComponent() {
           event.key === '?' &&
           !isTextEntryTarget(event.target))
       const isSearchShortcut =
-        ((event.metaKey || event.ctrlKey) &&
-          event.key.toLowerCase() === 'k') ||
+        ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') ||
         (!event.metaKey &&
           !event.ctrlKey &&
           !event.altKey &&
@@ -958,7 +963,11 @@ function RouteComponent() {
 
         {isAdmin ? (
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setShortcutsOpen(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShortcutsOpen(true)}
+            >
               Shortcuts
             </Button>
             <ChallengeFormDialog
@@ -1020,7 +1029,8 @@ function RouteComponent() {
                       1v1 Challenge
                     </p>
                     <h3 className="font-bold text-foreground">
-                      #{challenge.id.toString().padStart(3, '0')} {challenge.title}
+                      #{challenge.id.toString().padStart(3, '0')}{' '}
+                      {challenge.title}
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {formatDifficulty(challenge.difficulty)} •{' '}
@@ -1120,7 +1130,11 @@ function RouteComponent() {
               />
             </div>
             {!isAdmin ? (
-              <Button type="button" variant="ghost" onClick={() => setShortcutsOpen(true)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShortcutsOpen(true)}
+              >
                 Shortcuts
               </Button>
             ) : null}
@@ -1255,7 +1269,9 @@ function RouteComponent() {
                                     Edit
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>Update this challenge</TooltipContent>
+                                <TooltipContent>
+                                  Update this challenge
+                                </TooltipContent>
                               </Tooltip>
                             </Button>
                             <Button
@@ -1276,7 +1292,9 @@ function RouteComponent() {
                                     Delete
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>Delete this challenge</TooltipContent>
+                                <TooltipContent>
+                                  Delete this challenge
+                                </TooltipContent>
                               </Tooltip>
                             </Button>
                           </div>
@@ -1399,12 +1417,16 @@ function RouteComponent() {
                   setJoinPvpMatchId('')
                   setSelectedPvpChallengeId(null)
                 }}
+                className="rounded-none"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                disabled={!joinPvpMatchId.trim() || joinPvpMatchMutation.isPending}
+                disabled={
+                  !joinPvpMatchId.trim() || joinPvpMatchMutation.isPending
+                }
+                className="rounded-none"
                 onClick={() =>
                   joinPvpMatchMutation.mutate(joinPvpMatchId.trim())
                 }
