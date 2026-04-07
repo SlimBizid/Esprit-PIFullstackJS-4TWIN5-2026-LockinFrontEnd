@@ -8,6 +8,19 @@ export type ChallengeCase = {
   expectedOutput: string
 }
 
+export type ChallengeQuizOption = {
+  id: string
+  text: string
+}
+
+export type ChallengeQuizQuestion = {
+  id: string
+  prompt: string
+  options: ChallengeQuizOption[]
+  correctOptionIds: string[]
+  explanation?: string
+}
+
 export type Challenge = {
   id: number
   title: string
@@ -20,8 +33,9 @@ export type Challenge = {
   constraints: string[]
   conditions: string[]
   cases: ChallengeCase[]
+  quizQuestions: ChallengeQuizQuestion[]
   difficulty: 'easy' | 'medium' | 'hard'
-  type: 'solo' | 'pvp' | 'teams'
+  type: 'solo' | 'quiz' | 'pvp' | 'quiz_pvp' | 'teams' | 'imposter'
   topics: string[]
   acceptanceRate: number
 }
