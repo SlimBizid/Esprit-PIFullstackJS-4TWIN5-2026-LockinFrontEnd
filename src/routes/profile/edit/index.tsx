@@ -90,7 +90,8 @@ export function EditProfilePage() {
             <p className="mb-1">Profile updated successfully!</p>
             <p className="mb-0">
               <Link
-                to={`/profile/${user?.username}`}
+                to="/profile/$userId"
+                params={{ userId: user?.username ?? '' }}
                 className="font-semibold text-emerald-700 hover:text-emerald-900"
               >
                 Go back to your profile
