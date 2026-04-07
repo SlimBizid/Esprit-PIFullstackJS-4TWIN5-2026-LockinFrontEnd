@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Github, Mail, Shield, Star, Palette } from 'lucide-react'
-import { api } from '@/stores/userStore'
+import { Github, Mail, Shield, Star, Palette, Pencil } from 'lucide-react'
+import { api, useUser } from '@/stores/userStore'
 
 interface UserProfile {
   id: string
@@ -11,7 +11,7 @@ interface UserProfile {
   type: 'admin' | 'player'
   createdAt: string
   updatedAt: string
-  totalXp?: number
+  xp: number
   cosmetics?: string[]
 }
 
@@ -24,6 +24,7 @@ function RouteComponent() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const currentUser = useUser()
 
   useEffect(() => {
     api
@@ -60,7 +61,8 @@ function RouteComponent() {
   })
 
   const cosmetics = user.cosmetics ?? []
-  const totalXp = user.totalXp ?? null
+  const totalXp = user.xp ?? null
+  const isOwnProfile = currentUser?.username === user.username
 
   return (
     <main
@@ -102,6 +104,15 @@ function RouteComponent() {
                     Admin
                   </span>
                 )}
+
+                {isOwnProfile && (
+                  //<Link to="/profile/edit">
+                  <button className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-primary uppercase bg-primary/10 border border-primary/20 px-2 py-1 rounded hover:bg-primary/20 transition-colors">
+                    <Pencil className="w-3 h-3" aria-hidden="true" />
+                    Edit Profile
+                  </button>
+                  //</Link>
+                )}
               </div>
 
               <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
@@ -115,10 +126,6 @@ function RouteComponent() {
                 aria-label={`Total XP: ${totalXp}`}
                 className="flex flex-col items-center justify-center px-6 py-4 bg-background border border-primary/30 rounded-xl shadow-[0_0_20px_rgba(0,207,186,0.08)]"
               >
-                <Star
-                  className="w-4 h-4 text-primary mb-1"
-                  aria-hidden="true"
-                />
                 <span className="text-2xl font-mono-one text-primary font-bold">
                   {totalXp.toLocaleString()}
                 </span>
@@ -214,10 +221,17 @@ function RouteComponent() {
           </div>
 
           {/* Cosmetics */}
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <h2 className="text-xs font-bold tracking-[0.2em] text-primary uppercase mb-6">
-              Cosmetics
-            </h2>
+          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
+                Cosmetics
+              </h2>
+              <Link to="/cosmetics">
+                <button className="text-[10px] font-bold tracking-widest text-primary uppercase hover:underline hover:cursor-pointer underline-offset-2 hover:opacity-80 transition-opacity">
+                  See All
+                </button>
+              </Link>
+            </div>
 
             {cosmetics.length > 0 ? (
               <ul className="grid grid-cols-2 gap-3" role="list">
@@ -237,7 +251,7 @@ function RouteComponent() {
             ) : (
               <div
                 role="status"
-                className="h-full min-h-[140px] flex flex-col items-center justify-center gap-3 border border-dashed border-border rounded-xl text-center p-6"
+                className="flex-1 flex flex-col items-center justify-center gap-3 border border-dashed border-border rounded-xl text-center p-6"
               >
                 <Palette
                   className="w-6 h-6 text-muted-foreground/40"

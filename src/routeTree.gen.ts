@@ -15,12 +15,9 @@ import { Route as CosmeticsRouteImport } from './routes/cosmetics'
 import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
-<<<<<<< HEAD
-import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
-=======
 import { Route as TeamsIndexRouteImport } from './routes/teams/index'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
->>>>>>> origin/main
+import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -57,11 +54,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-<<<<<<< HEAD
-const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
-  id: '/profile/$userId',
-  path: '/profile/$userId',
-=======
 const TeamsIndexRoute = TeamsIndexRouteImport.update({
   id: '/teams/',
   path: '/teams/',
@@ -70,7 +62,11 @@ const TeamsIndexRoute = TeamsIndexRouteImport.update({
 const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
   id: '/teams/$teamId',
   path: '/teams/$teamId',
->>>>>>> origin/main
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
+  id: '/profile/$userId',
+  path: '/profile/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
@@ -111,12 +107,9 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-<<<<<<< HEAD
   '/profile/$userId': typeof ProfileUserIdRoute
-=======
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams/': typeof TeamsIndexRoute
->>>>>>> origin/main
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -130,12 +123,9 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-<<<<<<< HEAD
   '/profile/$userId': typeof ProfileUserIdRoute
-=======
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams': typeof TeamsIndexRoute
->>>>>>> origin/main
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -150,12 +140,9 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-<<<<<<< HEAD
   '/profile/$userId': typeof ProfileUserIdRoute
-=======
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams/': typeof TeamsIndexRoute
->>>>>>> origin/main
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,12 +158,9 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
-<<<<<<< HEAD
     | '/profile/$userId'
-=======
     | '/teams/$teamId'
     | '/teams/'
->>>>>>> origin/main
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -190,12 +174,9 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
-<<<<<<< HEAD
     | '/profile/$userId'
-=======
     | '/teams/$teamId'
     | '/teams'
->>>>>>> origin/main
   id:
     | '__root__'
     | '/'
@@ -209,12 +190,9 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/demo/tanstack-query'
-<<<<<<< HEAD
     | '/profile/$userId'
-=======
     | '/teams/$teamId'
     | '/teams/'
->>>>>>> origin/main
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -229,12 +207,9 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
-<<<<<<< HEAD
   ProfileUserIdRoute: typeof ProfileUserIdRoute
-=======
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
->>>>>>> origin/main
 }
 
 declare module '@tanstack/react-router' {
@@ -281,13 +256,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-<<<<<<< HEAD
-    '/profile/$userId': {
-      id: '/profile/$userId'
-      path: '/profile/$userId'
-      fullPath: '/profile/$userId'
-      preLoaderRoute: typeof ProfileUserIdRouteImport
-=======
     '/teams/': {
       id: '/teams/'
       path: '/teams'
@@ -300,7 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/teams/$teamId'
       fullPath: '/teams/$teamId'
       preLoaderRoute: typeof TeamsTeamIdRouteImport
->>>>>>> origin/main
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$userId': {
+      id: '/profile/$userId'
+      path: '/profile/$userId'
+      fullPath: '/profile/$userId'
+      preLoaderRoute: typeof ProfileUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/tanstack-query': {
@@ -353,12 +327,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
-<<<<<<< HEAD
   ProfileUserIdRoute: ProfileUserIdRoute,
-=======
   TeamsTeamIdRoute: TeamsTeamIdRoute,
   TeamsIndexRoute: TeamsIndexRoute,
->>>>>>> origin/main
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
