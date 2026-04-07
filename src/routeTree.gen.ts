@@ -22,6 +22,7 @@ import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
+import { Route as ProfileEditIndexRouteImport } from './routes/profile/edit/index'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -88,6 +89,11 @@ const AdminReviewReportsRoute = AdminReviewReportsRouteImport.update({
   path: '/admin/review-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileEditIndexRoute = ProfileEditIndexRouteImport.update({
+  id: '/profile/edit/',
+  path: '/profile/edit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams/': typeof TeamsIndexRoute
+  '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams': typeof TeamsIndexRoute
+  '/profile/edit': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/teams/': typeof TeamsIndexRoute
+  '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/teams/$teamId'
     | '/teams/'
+    | '/profile/edit/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/teams/$teamId'
     | '/teams'
+    | '/profile/edit'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/teams/$teamId'
     | '/teams/'
+    | '/profile/edit/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
+  ProfileEditIndexRoute: typeof ProfileEditIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/edit/': {
+      id: '/profile/edit/'
+      path: '/profile/edit'
+      fullPath: '/profile/edit/'
+      preLoaderRoute: typeof ProfileEditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
   TeamsIndexRoute: TeamsIndexRoute,
+  ProfileEditIndexRoute: ProfileEditIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
