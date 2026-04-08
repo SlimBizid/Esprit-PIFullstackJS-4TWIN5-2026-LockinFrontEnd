@@ -260,11 +260,11 @@ function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
     testCases:
       challenge?.cases && challenge.cases.length > 0
         ? JSON.stringify(challenge.cases, null, 2)
-        : '[]',
+        : '',
     quizQuestions:
       challenge?.quizQuestions && challenge.quizQuestions.length > 0
         ? JSON.stringify(challenge.quizQuestions, null, 2)
-        : '[]',
+        : '',
   }
 }
 
