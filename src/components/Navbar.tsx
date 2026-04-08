@@ -261,7 +261,7 @@ export default function Navbar() {
         <nav
           id={navId}
           aria-label="Main navigation"
-          className="grid grid-cols-3 items-center px-4 h-16 max-w-7xl mx-auto"
+          className="flex justify-between items-center px-4 h-16 max-w-7xl mx-auto relative"
         >
           <div className="flex justify-start">
             <Link
@@ -277,7 +277,7 @@ export default function Navbar() {
           </div>
 
           <ul
-            className="hidden md:flex justify-center items-center gap-6 font-semibold"
+            className="hidden md:flex justify-center items-center gap-6 font-semibold absolute inset-x-0"
             role="list"
           >
             {navLinks.map(({ to, label }) => (

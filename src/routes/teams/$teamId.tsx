@@ -79,7 +79,7 @@ export function TeamPage() {
         }
 
         // Fetch all users and filter out existing members & pending invitations
-        const { data } = await api.get('/users/all-for-invite?role=player');
+        const { data } = await api.get('/users/all-for-invite?role=player')
         const allUsers = sanitizeUserArray(data)
 
         // DEBUG: Log what we have
@@ -137,18 +137,18 @@ export function TeamPage() {
     return () => cancelAnimationFrame(anim)
   }, [requestedUsers, availableUsers])
 
- const handleSendInvitation = async (userId: string) => {
-  if (!team) return
-  const user = availableUsers.find((u) => u.id === userId)
-  if (!user) return
-  try {
-    await inviteUser(team.id, userId) 
-    setRequestedUsers((prev) => [...prev, user])
-    setAvailableUsers((prev) => prev.filter((u) => u.id !== userId))
-  } catch (err) {
-    console.error(err)
+  const handleSendInvitation = async (userId: string) => {
+    if (!team) return
+    const user = availableUsers.find((u) => u.id === userId)
+    if (!user) return
+    try {
+      await inviteUser(team.id, userId)
+      setRequestedUsers((prev) => [...prev, user])
+      setAvailableUsers((prev) => prev.filter((u) => u.id !== userId))
+    } catch (err) {
+      console.error(err)
+    }
   }
-}
 
   const handleDeleteTeam = async (id: number) => {
     try {
@@ -192,10 +192,10 @@ export function TeamPage() {
     team.users && team.users.length ? team.users[0].username : 'N/A'
 
   return (
-    <div className="flex flex-col h-screen bg-background text-muted-foreground mt-16">
+    <div className="flex flex-col min-h-screen bg-background text-muted-foreground mt-16">
       {/* NAVIGATION */}
       <nav className="h-12 border-b border-border flex items-center justify-between px-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ">
           <Button
             variant="ghost"
             size="icon"
@@ -222,9 +222,9 @@ export function TeamPage() {
         </Button>
       </nav>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-12 ">
         {/* SIDEBAR */}
-        <aside className="w-96 border-r border-foreground/5 flex flex-col bg-background overflow-y-auto p-6 space-y-6">
+        <aside className=" md:col-span-3 border-r border-border flex flex-col bg-background p-6 space-y-6">
           {/* TEAM INFO */}
           <div className="space-y-2">
             <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
@@ -380,8 +380,8 @@ export function TeamPage() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 flex flex-col bg-background overflow-hidden">
-          <div className="flex-1 p-6 overflow-y-auto space-y-6">
+        <main className="md:col-span-9 bg-background ">
+          <div className="flex-1 p-6  space-y-6">
             {/* INVITE USERS */}
             <div>
               <h2 className="text-2xl font-bold mb-4">Invite Users</h2>
@@ -409,14 +409,13 @@ export function TeamPage() {
                         <Button
                           size="sm"
                           className="mt-2"
-                         onClick={() => {
-  if (!u.id) {
-    console.error("User ID missing!", u)
-    return
-  }
-  handleSendInvitation(u.id)
-
-}}
+                          onClick={() => {
+                            if (!u.id) {
+                              console.error('User ID missing!', u)
+                              return
+                            }
+                            handleSendInvitation(u.id)
+                          }}
                         >
                           <Mail className="w-4 h-4 mr-1" /> Invite
                         </Button>
@@ -449,11 +448,11 @@ export function TeamPage() {
                 </div>
               </div>
             </div>
-             <div>
+            <div>
               <h2 className="text-2xl font-bold mb-4">challenges</h2>
               <div className="border border-border/10 rounded-lg p-4 h-64 overflow-y-auto bg-muted/5">
                 <p className="text-sm text-muted-foreground">
-                 //tarak hnee hot eli bech thot
+                  //tarak hnee hot eli bech thot
                 </p>
               </div>
             </div>

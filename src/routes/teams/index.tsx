@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Search, Flame } from 'lucide-react'
+import { Search, Flame, User } from 'lucide-react'
 
 // Zustand
 import {
@@ -160,7 +160,7 @@ export function TeamsRoute() {
                   <div className="p-4 flex justify-between items-center">
                     <div className="flex gap-4 items-center">
                       <div className="h-16 w-16 flex items-center justify-center border relative">
-                        <Flame className="opacity-20 absolute w-full h-full" />
+                        <User className="opacity-20 absolute w-full h-full" />
                         <span className="text-xl z-10">
                           {team.users?.length || 0}
                         </span>
