@@ -12,6 +12,8 @@ import {
   Plus,
   Trash2,
   Swords,
+  Star,
+  TrendingUp,
 } from 'lucide-react'
 import { api } from '@/stores/userStore'
 import { useIsAdmin, useIsAuthenticated } from '@/stores/userStore'
@@ -58,11 +60,19 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import type { Challenge } from '@/models/challenge'
 import type { ChallengeCase } from '@/models/challenge'
 import type { ChallengeQuizQuestion } from '@/models/challenge'
 import type { Match } from '@/models/match'
 import type { PaginatedChallenges } from '@/models/paginated-challenge'
+import type { RecommendationResponse } from '@/models/recommendation'
 
 const ITEMS_PER_PAGE = 10
 const FETCH_LIMIT = 100
@@ -993,6 +1003,22 @@ function RouteComponent() {
       return data
     },
   })
+  const recommendationsQuery = useQuery({
+    queryKey: ['recommendations', 'me'],
+    enabled: isAuthenticated,
+    retry: false,
+    queryFn: async () => {
+      const { data } = await api.get<RecommendationResponse>(
+        '/recommendations/me',
+        {
+          params: {
+            limit: 5,
+          },
+        },
+      )
+      return data
+    },
+  })
 
   const createChallengeMutation = useMutation({
     mutationFn: async (values: ChallengeFormValues) => {
@@ -1086,6 +1112,7 @@ function RouteComponent() {
   })
 
   const challenges = challengesQuery.data?.data ?? []
+  const recommendedChallenges = recommendationsQuery.data?.data ?? []
   const pvpChallenges = useMemo(
     () =>
       challenges.filter(
@@ -1178,6 +1205,17 @@ function RouteComponent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
   const featuredChallenge = filteredData[0] ?? challenges[0] ?? null
+  const recommendedChallengeCards = useMemo(
+    () =>
+      recommendedChallenges.filter(
+        (recommendation) =>
+          recommendation.challenge &&
+          challenges.some(
+            (challenge) => challenge.id === recommendation.challenge.id,
+          ),
+      ),
+    [challenges, recommendedChallenges],
+  )
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-6">
@@ -1234,6 +1272,120 @@ function RouteComponent() {
             </div>
           </div>
         )}
+
+        {isAuthenticated ? (
+          <Card className="border-primary/20 bg-linear-to-br from-primary/8 via-background to-background">
+            <CardHeader className="gap-3 border-b border-primary/10">
+              <div className="flex items-center gap-2 text-primary">
+                <Star className="h-4 w-4" />
+                <span className="text-xs font-bold uppercase tracking-[0.3em]">
+                  Recommended For You
+                </span>
+              </div>
+              <CardTitle className="flex items-center gap-2 text-2xl uppercase">
+                Next best challenges
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </CardTitle>
+              <CardDescription>
+                Personalized picks based on your ByteBattle submission history.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {recommendationsQuery.isLoading ? (
+                <div className="text-sm text-muted-foreground">
+                  Building recommendations...
+                </div>
+              ) : recommendationsQuery.isError ? (
+                <div className="text-sm text-muted-foreground">
+                  Recommendations are unavailable right now.
+                </div>
+              ) : recommendedChallengeCards.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  Solve a few solo or quiz challenges to unlock personalized
+                  recommendations.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {recommendedChallengeCards.map((recommendation) => {
+                    const score = Math.round(recommendation.score * 100)
+
+                    return (
+                      <div
+                        key={`${recommendation.challengeId}-${recommendation.rank}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
+                          navigate({
+                            to: '/challenge',
+                            search: { id: recommendation.challenge.id },
+                          })
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            navigate({
+                              to: '/challenge',
+                              search: { id: recommendation.challenge.id },
+                            })
+                          }
+                        }}
+                        className="group cursor-pointer border border-border bg-background/70 p-5 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <Badge className="bg-primary/10 text-primary border-primary/20 uppercase tracking-widest text-[10px]">
+                              Rank #{recommendation.rank}
+                            </Badge>
+                            <h3 className="text-lg font-bold uppercase group-hover:text-primary">
+                              {recommendation.challenge.title}
+                            </h3>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">
+                              {score}%
+                            </div>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                              solve score
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Badge variant="secondary" className="uppercase">
+                            {formatDifficulty(
+                              recommendation.challenge.difficulty,
+                            )}
+                          </Badge>
+                          <Badge variant="secondary" className="uppercase">
+                            {formatType(recommendation.challenge.type)}
+                          </Badge>
+                          <Badge variant="secondary" className="uppercase">
+                            {recommendation.challenge.topics[0] ?? 'General'}
+                          </Badge>
+                        </div>
+
+                        <p className="mt-4 text-sm text-muted-foreground">
+                          {recommendation.reason}
+                        </p>
+
+                        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            Acceptance{' '}
+                            {Number(
+                              recommendation.challenge.acceptanceRate,
+                            ).toFixed(1)}
+                            %
+                          </span>
+                          <span>Model-driven suggestion</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {isAdmin ? (
           <div className="flex justify-end gap-2">
