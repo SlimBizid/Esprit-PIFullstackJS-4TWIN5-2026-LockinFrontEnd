@@ -277,7 +277,7 @@ export default function Navbar() {
           </div>
 
           <ul
-            className="hidden md:flex justify-center items-center gap-6 font-semibold absolute inset-x-0"
+            className="hidden md:flex md:w-fit mx-auto justify-center items-center gap-6 font-semibold absolute inset-x-0"
             role="list"
           >
             {navLinks.map(({ to, label }) => (
