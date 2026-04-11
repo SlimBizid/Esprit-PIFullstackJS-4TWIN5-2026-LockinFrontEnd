@@ -141,9 +141,14 @@ function RouteComponent() {
               dismiss false positives.
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link to="/challenges">Back to challenges</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link to="/admin/plagiarism-flags">Plagiarism flags</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/challenges">Back to challenges</Link>
+            </Button>
+          </div>
         </div>
 
         {reportsQuery.isLoading ? (

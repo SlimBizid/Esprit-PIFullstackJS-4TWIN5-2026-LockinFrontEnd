@@ -23,6 +23,7 @@ import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
+import { Route as AdminPlagiarismFlagsRouteImport } from './routes/admin/plagiarism-flags'
 import { Route as ProfileEditIndexRouteImport } from './routes/profile/edit/index'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -95,6 +96,11 @@ const AdminReviewReportsRoute = AdminReviewReportsRouteImport.update({
   path: '/admin/review-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPlagiarismFlagsRoute = AdminPlagiarismFlagsRouteImport.update({
+  id: '/admin/plagiarism-flags',
+  path: '/admin/plagiarism-flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileEditIndexRoute = ProfileEditIndexRouteImport.update({
   id: '/profile/edit/',
   path: '/profile/edit/',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/plagiarism-flags': typeof AdminPlagiarismFlagsRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/plagiarism-flags': typeof AdminPlagiarismFlagsRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/plagiarism-flags': typeof AdminPlagiarismFlagsRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/admin/plagiarism-flags'
     | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/admin/plagiarism-flags'
     | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/admin/plagiarism-flags'
     | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   CosmeticsRoute: typeof CosmeticsRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  AdminPlagiarismFlagsRoute: typeof AdminPlagiarismFlagsRoute
   AdminReviewReportsRoute: typeof AdminReviewReportsRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -325,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/plagiarism-flags': {
+      id: '/admin/plagiarism-flags'
+      path: '/admin/plagiarism-flags'
+      fullPath: '/admin/plagiarism-flags'
+      preLoaderRoute: typeof AdminPlagiarismFlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile/edit/': {
       id: '/profile/edit/'
       path: '/profile/edit'
@@ -342,6 +362,7 @@ const rootRouteChildren: RootRouteChildren = {
   CosmeticsRoute: CosmeticsRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,
+  AdminPlagiarismFlagsRoute: AdminPlagiarismFlagsRoute,
   AdminReviewReportsRoute: AdminReviewReportsRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
