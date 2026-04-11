@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Search, Flame, User } from 'lucide-react'
+import { Search, User } from 'lucide-react'
 
 // Zustand
 import {
