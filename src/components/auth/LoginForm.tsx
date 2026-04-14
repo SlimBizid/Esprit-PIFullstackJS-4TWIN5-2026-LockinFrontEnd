@@ -143,7 +143,7 @@ export function LoginForm() {
         <div className="grow border-t border-border" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3">
         <Button
           type="button"
           variant="outline"
@@ -155,13 +155,6 @@ export function LoginForm() {
         >
           <Github className="w-4 h-4" aria-hidden="true" />
           GitHub
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        >
-          Continue as guest
         </Button>
       </div>
 
