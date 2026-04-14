@@ -39,6 +39,8 @@ export function LoginForm() {
     },
   })
 
+  const backendUrl = import.meta.env.VITE_BACKEND_URL
+
   const onSubmit = (values: LoginFormValues) => loginMutation.mutate(values)
 
   const isPending = loginMutation.isPending || isSubmitting
@@ -147,6 +149,9 @@ export function LoginForm() {
           variant="outline"
           className="h-11 gap-2 font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           aria-label="Sign in with GitHub"
+          onClick={() => {
+            window.location.href = `${backendUrl}/auth/github`
+          }}
         >
           <Github className="w-4 h-4" aria-hidden="true" />
           GitHub
