@@ -1,3 +1,14 @@
+export type PendingInvitation =
+  | string
+  | {
+      userId?: string
+      teamId?: number
+      user?: {
+        id?: string
+        username?: string
+      }
+    }
+
 export type Team = {
   pendingRequests: never[]
   id: number
@@ -5,8 +16,13 @@ export type Team = {
   teamCreationDate: string
   teamDeletionDate: string | null
   users: User[]
-  leaderId: string
-  pendingInvitations: string[]
+  leaderId:
+    | string
+    | {
+        id?: string
+        username?: string
+      }
+  pendingInvitations: PendingInvitation[]
   status: 'PENDING' | 'ACTIVE'
 }
 

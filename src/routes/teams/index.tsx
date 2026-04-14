@@ -1,22 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState, useRef } from 'react'
 
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table'
-
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Search, Flame } from 'lucide-react'
+import {
+  Users,
+  ArrowRight,
+  Search,
+  Crown,
+  Binoculars,
+  Trophy,
+} from 'lucide-react'
 
 // Zustand
 import {
@@ -24,6 +22,7 @@ import {
   useTeams,
   useAllTeams,
   useTeamLoading,
+  useTeamMessage,
 } from '@/stores/teamStore'
 import { useUser } from '@/stores/userStore'
 
@@ -31,27 +30,33 @@ export const Route = createFileRoute('/teams/')({
   component: TeamsRoute,
 })
 
+const getPendingInvitationUserId = (invitation: any): string | undefined => {
+  if (typeof invitation === 'string') return invitation
+  return invitation?.userId ?? invitation?.user?.id
+}
+
 export function TeamsRoute() {
   const navigate = useNavigate()
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const activeTeamsRef = useRef<HTMLDivElement>(null)
   const { acceptInvitation, declineInvitation } = useTeamStore()
 
   // Zustand state
   const { fetchTeams, fetchMyTeams, createTeam } = useTeamStore()
+  const clearTeamMessage = useTeamStore((s) => s.setMessage)
   const myTeams = useTeams() // Only user’s teams
   const allTeams = useAllTeams() // All teams (for Explore + Invites)
   const loading = useTeamLoading()
+  const teamMessage = useTeamMessage()
   const user = useUser()
   const userId = user?.id ?? ''
 
   // UI state
-  const [tab, setTab] = useState<'myTeams' | 'invites'>('myTeams')
+  const [tab, setTab] = useState<'allTeams' | 'myTeams' | 'invites'>('allTeams')
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<
-    'ALL' | 'ACTIVE' | 'PENDING'
-  >('ALL')
   const [showAddTeamForm, setShowAddTeamForm] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
+
+  const featuredTeams = useMemo(() => allTeams.slice(0, 3), [allTeams])
 
   // Fetch data on mount
   useEffect(() => {
@@ -59,64 +64,35 @@ export function TeamsRoute() {
     fetchMyTeams() // fetch teams where user is a member
   }, [])
 
-  // Auto scroll for Explore Teams
-  useEffect(() => {
-    const container = scrollRef.current
-    if (!container) return
-
-    let direction = 1
-    const speed = 0.5
-
-    const step = () => {
-      if (!container) return
-      container.scrollLeft += speed * direction
-
-      if (container.scrollLeft + container.clientWidth >= container.scrollWidth)
-        direction = -1
-      if (container.scrollLeft <= 0) direction = 1
-
-      requestAnimationFrame(step)
-    }
-
-    const anim = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(anim)
-  }, [allTeams])
-
-  // Filtered teams for My Teams / Invites
+  // Filtered teams for All Teams / My Teams / Invites
   const filteredTeams = useMemo(() => {
     if (!user) return []
 
-    if (tab === 'myTeams') {
-      let filtered = myTeams
-      // Apply status filter
-      if (statusFilter !== 'ALL') {
-        filtered = filtered.filter((t) => t.status === statusFilter)
-      }
-      // Apply search filter
+    if (tab === 'allTeams') {
+      let teams = allTeams
       if (search) {
-        filtered = filtered.filter((t) =>
+        teams = teams.filter((t) =>
           t.name?.toLowerCase().includes(search.toLowerCase()),
         )
       }
-      return filtered
+      return teams
+    }
+
+    if (tab === 'myTeams') {
+      return myTeams
     }
 
     if (tab === 'invites') {
       if (!allTeams) return []
-      let invites = allTeams.filter((t) =>
-        t.pendingInvitations?.includes(user.id),
+      return allTeams.filter((t) =>
+        (t.pendingInvitations ?? []).some(
+          (invitation) => getPendingInvitationUserId(invitation) === user.id,
+        ),
       )
-      // Apply search filter
-      if (search) {
-        invites = invites.filter((t) =>
-          t.name?.toLowerCase().includes(search.toLowerCase()),
-        )
-      }
-      return invites
     }
 
     return []
-  }, [myTeams, allTeams, tab, search, statusFilter, user])
+  }, [myTeams, allTeams, tab, user, search])
 
   // Create new team
   const handleAddTeam = async () => {
@@ -131,95 +107,145 @@ export function TeamsRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-6">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Explore Teams */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-muted-foreground">
-            Explore Teams
-          </h2>
+    <div className="min-h-screen bg-background pt-20 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(0,207,128,0.10),transparent_34%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_28%),linear-gradient(to_bottom,rgba(255,255,255,0.02),transparent_18%)]" />
 
-          <div
-            ref={scrollRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth hide-scrollbar"
-          >
-            {allTeams.map((team) => {
-              const leader = team.users?.[0]?.username
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Hero */}
+        <section className="space-y-6">
+          <div className="flex flex-col gap-4">
+            <p className="text-sm font-bold tracking-[0.28em] text-primary uppercase">
+              Team Hub
+            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-mono-one text-foreground uppercase tracking-tight leading-tight">
+              Your <span className="text-primary text-glow">Team</span> Hub.
+            </h1>
+            <p className="max-w-3xl text-muted-foreground text-base sm:text-lg leading-relaxed">
+              A platform that understands the grind. Level up faster, build
+              discipline, and conquer challenges together.
+            </p>
+          </div>
 
-              return (
-                <div
-                  key={team.id}
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="border-border/80 bg-card/90 shadow-lg shadow-primary/5 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-6 h-full flex flex-col justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Crown className="h-6 w-6 text-primary" />
+                    <Badge className="bg-secondary text-secondary-foreground">
+                      Squad
+                    </Badge>
+                  </div>
+                  <h2 className="text-2xl font-mono-one text-primary mb-3 uppercase tracking-tight">
+                    Create Your Legion.
+                  </h2>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Initiate your squad, invite trusted allies, and define your
+                    legacy. Your journey to the top starts here.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowAddTeamForm(true)}
+                  className="w-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-primary/35"
+                >
+                  + Create Team
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/80 bg-card/90 shadow-lg shadow-rare/5 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-6 h-full flex flex-col justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Binoculars className="h-6 w-6 text-rare" />
+                    <Badge className="bg-secondary text-secondary-foreground">
+                      Scout
+                    </Badge>
+                  </div>
+                  <h2 className="text-2xl font-mono-one text-rare mb-3 uppercase tracking-tight">
+                    Find Your Allies.
+                  </h2>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Explore active teams, meet your next squad, and find a group
+                    that matches your playstyle and ambition.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-rare/50 text-rare hover:bg-rare hover:text-primary-foreground"
                   onClick={() =>
-                    navigate({
-                      to: '/teams/$teamId',
-                      params: { teamId: String(team.id) },
+                    activeTeamsRef.current?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
                     })
                   }
-                  className="group border hover:shadow-xl cursor-pointer flex-shrink-0 min-w-[300px]"
                 >
-                  <div className="p-4 flex justify-between items-center">
-                    <div className="flex gap-4 items-center">
-                      <div className="h-16 w-16 flex items-center justify-center border relative">
-                        <Flame className="opacity-20 absolute w-full h-full" />
-                        <span className="text-xl z-10">
-                          {team.users?.length || 0}
-                        </span>
-                      </div>
+                  Find Team
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
 
-                      <div>
-                        <Badge className="mb-1 text-xs">Public</Badge>
-                        <h2 className="text-lg font-semibold">{team.name}</h2>
-                        <p className="text-sm text-muted-foreground">
-                          {team.users?.length || 0} Members • Leader: {leader}
-                        </p>
-                      </div>
-                    </div>
+            <Card className="border-border/80 bg-card/90 shadow-lg shadow-epic/5 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-6 h-full flex flex-col justify-between gap-5">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Trophy className="h-6 w-6 text-epic" />
+                    <Badge className="bg-secondary text-secondary-foreground">
+                      Ranked
+                    </Badge>
+                  </div>
+                  <h2 className="text-2xl font-mono-one text-epic mb-3 uppercase tracking-tight">
+                    Explore Active Legions.
+                  </h2>
+                  <p className="text-muted-foreground leading-relaxed mb-4">
+                    A quick look at the competition and the teams already
+                    pushing forward.
+                  </p>
 
-                    <Button size="sm">View</Button>
+                  <div className="space-y-2">
+                    {featuredTeams.map((team) => (
+                      <div
+                        key={team.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-background/40 px-3 py-2"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-md border border-border flex items-center justify-center bg-secondary/50 text-muted-foreground">
+                            <Users className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-sm text-foreground">
+                              {team.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {team.users?.length || 0} members
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">
+                          {team.status}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )
-            })}
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        </section>
 
-        {/* Header: Search + Status Filter + Add Team */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Teams Dashboard</h1>
-
-          <div className="flex gap-2 items-center">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
-              <Input
-                placeholder="Search teams..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Status Filter (only My Teams) */}
-            {tab === 'myTeams' && (
-              <select
-                className="border rounded px-2 py-1 text-sm"
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(
-                    e.target.value as 'ALL' | 'ACTIVE' | 'PENDING',
-                  )
-                }
-              >
-                <option value="ALL">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="PENDING">Pending</option>
-              </select>
-            )}
-
-            {/* Add Team */}
-            <Button onClick={() => setShowAddTeamForm(true)}>Add Team</Button>
+        {teamMessage && (
+          <div className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground flex items-center justify-between">
+            <span>{teamMessage}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => clearTeamMessage(null)}
+            >
+              Dismiss
+            </Button>
           </div>
-        </div>
+        )}
 
         {/* Add Team Modal */}
         {showAddTeamForm && (
@@ -249,83 +275,133 @@ export function TeamsRoute() {
           </div>
         )}
 
-        {/* Tabs */}
-        <Tabs defaultValue={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="myTeams">My Teams</TabsTrigger>
-            <TabsTrigger value="invites">Invites</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Explore Teams Section */}
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-bold tracking-[0.28em] text-primary uppercase">
+              Discover
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-mono-one text-foreground uppercase tracking-tight">
+              Explore Teams
+            </h2>
+            <p className="max-w-3xl text-muted-foreground text-base leading-relaxed">
+              Browse active teams, manage your squad, and check your
+              invitations.
+            </p>
+          </div>
 
-        {/* Teams Table */}
-        <Card>
-          <CardContent>
+          {/* Tabs with Search */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <Tabs
+                defaultValue={tab}
+                onValueChange={(v) => {
+                  setTab(v as any)
+                  setSearch('')
+                }}
+              >
+                <TabsList>
+                  <TabsTrigger value="allTeams">All Teams</TabsTrigger>
+                  <TabsTrigger value="myTeams">My Team</TabsTrigger>
+                  <TabsTrigger value="invites">Invites</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {tab === 'allTeams' && (
+                <div className="relative w-full lg:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search teams..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10 bg-card/80"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Teams Cards */}
+        <div ref={activeTeamsRef} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {loading ? (
-              <div className="text-center p-6">Loading...</div>
+              <div className="col-span-full text-center p-6 rounded-xl border border-border bg-card/60">
+                Loading...
+              </div>
             ) : filteredTeams.length === 0 ? (
-              <div className="text-center p-6 text-muted-foreground">
-                {tab === 'myTeams'
-                  ? 'You have no teams yet'
-                  : 'You have no invitations yet'}
+              <div className="col-span-full text-center p-8 text-muted-foreground rounded-xl border border-border bg-card/60">
+                {tab === 'allTeams'
+                  ? 'No teams available yet'
+                  : tab === 'myTeams'
+                    ? 'You have no teams yet'
+                    : 'You have no invitations yet'}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Leader</TableHead>
-                    <TableHead>Members</TableHead>
-                    <TableHead>Status</TableHead>
-                    {tab === 'invites' && <TableHead>Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
+              filteredTeams.map((t) => {
+                const leader = t.users?.[0]?.username
+                const leaderInitial = leader?.charAt(0)?.toUpperCase() ?? 'T'
 
-                <TableBody>
-                  {filteredTeams.map((t) => {
-                    const leader = t.users?.[0]?.username
+                return (
+                  <Card
+                    key={t.id}
+                    className="group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer"
+                    onClick={() =>
+                      navigate({
+                        to: '/teams/$teamId',
+                        params: { teamId: String(t.id) },
+                      })
+                    }
+                  >
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="h-16 w-16 flex items-center justify-center rounded-xl border border-border bg-secondary/60 relative shrink-0 overflow-hidden">
+                          <Users className="opacity-20 absolute w-full h-full" />
+                          <span className="text-xl z-10 font-mono-one">
+                            {leaderInitial}
+                          </span>
+                        </div>
 
-                    return (
-                      <TableRow
-                        key={t.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() =>
-                          navigate({
-                            to: '/teams/$teamId',
-                            params: { teamId: String(t.id) },
-                          })
-                        }
-                      >
-                        {/* Name */}
-                        <TableCell>{t.name}</TableCell>
-
-                        {/* Leader */}
-                        <TableCell>{leader}</TableCell>
-
-                        {/* Members */}
-                        <TableCell>
-                          <div className="flex -space-x-2">
-                            {t.users?.slice(0, 3).map((m: any) => (
-                              <Avatar key={m.id}>
-                                <AvatarFallback>
-                                  {m.username?.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <Badge className="text-[10px] uppercase">
+                              {tab === 'invites'
+                                ? 'Invite'
+                                : tab === 'myTeams'
+                                  ? 'My Team'
+                                  : 'Public'}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] uppercase"
+                            >
+                              {t.status}
+                            </Badge>
                           </div>
-                        </TableCell>
 
-                        {/* Status OR Actions */}
-                        {tab === 'myTeams' ? (
-                          <TableCell>
-                            <Badge>{t.status}</Badge>
-                          </TableCell>
-                        ) : (
-                          <>
-                            <TableCell>
-                              <Badge>{t.status}</Badge>
-                            </TableCell>
+                          <h3 className="mt-3 text-xl font-bold uppercase tracking-tight truncate">
+                            {t.name}
+                          </h3>
 
-                            <TableCell>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {t.users?.length || 0} Members • Leader: {leader}
+                          </p>
+
+                          <div className="mt-4 flex items-center justify-between gap-3">
+                            <div className="flex -space-x-2">
+                              {t.users?.slice(0, 3).map((m: any) => (
+                                <Avatar
+                                  key={m.id}
+                                  className="border border-background"
+                                >
+                                  <AvatarFallback>
+                                    {m.username?.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                            </div>
+
+                            {tab === 'invites' ? (
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
@@ -336,7 +412,6 @@ export function TeamsRoute() {
                                 >
                                   Accept
                                 </Button>
-
                                 <Button
                                   size="sm"
                                   variant="destructive"
@@ -348,17 +423,33 @@ export function TeamsRoute() {
                                   Decline
                                 </Button>
                               </div>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate({
+                                    to: '/teams/$teamId',
+                                    params: { teamId: String(t.id) },
+                                  })
+                                }}
+                              >
+                                View
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )
