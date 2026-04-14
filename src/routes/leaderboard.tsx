@@ -14,6 +14,13 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { LeaderboardEntry } from '@/models/leaderboard'
 import type { User } from '@/models/user'
 
@@ -43,15 +50,18 @@ function getDifficultyColor(completions: number) {
 
 function ScoreLeaderboard({
   currentUserId,
+  scope,
 }: {
   currentUserId: string | undefined
+  scope: string
 }) {
   const scoreQuery = useQuery<LeaderboardEntry[]>({
-    queryKey: ['leaderboard', 'score'],
+    queryKey: ['leaderboard', 'score', scope],
     queryFn: async () => {
+      const params = scope === 'season' ? {} : { scope }
       const { data } = await api.get<
         LeaderboardEntry[] | { entries: LeaderboardEntry[] }
-      >('/leaderboard/score')
+      >('/leaderboard/score', { params })
       return Array.isArray(data) ? data : (data?.entries ?? [])
     },
   })
@@ -101,7 +111,9 @@ function ScoreLeaderboard({
               Challenges
             </TableHead>
             <TableHead className="text-right text-xs uppercase text-muted-foreground px-6">
-              Score
+              {scope === 'season'
+                ? 'Season Score'
+                : `${scope.toUpperCase()} Score`}
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -229,7 +241,7 @@ function XpLeaderboard({
               Role
             </TableHead>
             <TableHead className="text-right text-xs uppercase text-muted-foreground px-6">
-              XP
+              XP (All-time)
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -299,6 +311,7 @@ function XpLeaderboard({
 
 function RouteComponent() {
   const [activeTab, setActiveTab] = useState<'score' | 'xp'>('score')
+  const [scoreScope, setScoreScope] = useState<string>('season')
   const user = useUser()
 
   return (
@@ -318,7 +331,6 @@ function RouteComponent() {
           </p>
         </div>
 
-        {}
         <Tabs
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as 'score' | 'xp')}
@@ -326,35 +338,61 @@ function RouteComponent() {
           <TabsList className="bg-background border border-border">
             <TabsTrigger value="score" className="gap-2">
               <Trophy className="h-3.5 w-3.5" />
-              Score
+              Score (Seasonal)
             </TabsTrigger>
             <TabsTrigger value="xp" className="gap-2">
               <Zap className="h-3.5 w-3.5" />
-              XP
+              XP (All-time)
             </TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {activeTab === 'score' && (
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-muted-foreground">
+              Time Period:
+            </label>
+            <Select value={scoreScope} onValueChange={setScoreScope}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="season">Season</SelectItem>
+                <SelectItem value="24h">24 Hours</SelectItem>
+                <SelectItem value="7d">7 Days</SelectItem>
+                <SelectItem value="30d">30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {}
         <div className="rounded border border-border bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
           {activeTab === 'score' ? (
             <span>
               <span className="font-bold text-foreground">Score</span> is earned
-              by solving challenges. Harder difficulties and PVP/Team wins award
-              more points.
+              by solving challenges in the current{' '}
+              {scoreScope === 'season'
+                ? 'season'
+                : scoreScope === '24h'
+                  ? '24 hours'
+                  : scoreScope === '7d'
+                    ? '7 days'
+                    : '30 days'}
+              . Harder difficulties and PVP/Team wins award more points.
             </span>
           ) : (
             <span>
               <span className="font-bold text-foreground">XP</span> is earned by
               logging in daily and completing challenges. It reflects overall
-              activity.
+              activity and all-time progression.
             </span>
           )}
         </div>
 
         {}
         {activeTab === 'score' ? (
-          <ScoreLeaderboard currentUserId={user?.id} />
+          <ScoreLeaderboard currentUserId={user?.id} scope={scoreScope} />
         ) : (
           <XpLeaderboard currentUserId={user?.id} />
         )}
