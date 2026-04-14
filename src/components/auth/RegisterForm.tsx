@@ -16,6 +16,7 @@ type RegisterFormValues = {
   password: string
   confirmPassword: string
 }
+const backendUrl = import.meta.env.VITE_BACKEND_URL
 
 function getErrorMessage(error: unknown) {
   if (!axios.isAxiosError(error)) {
