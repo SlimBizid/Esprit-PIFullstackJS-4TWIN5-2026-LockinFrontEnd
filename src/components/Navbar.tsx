@@ -237,6 +237,7 @@ export default function Navbar() {
       ? [
           ...NAV_LINKS,
           { to: '/admin/review-reports' as const, label: 'Reports' },
+          { to: '/admin/plagiarism-flags' as const, label: 'Plagiarism' },
         ]
       : NAV_LINKS
 
