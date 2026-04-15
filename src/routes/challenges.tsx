@@ -37,6 +37,7 @@ import {
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
 } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -75,7 +76,8 @@ import type { PaginatedChallenges } from '@/models/paginated-challenge'
 import type { RecommendationResponse } from '@/models/recommendation'
 
 const ITEMS_PER_PAGE = 10
-const FETCH_LIMIT = 100
+const FETCH_LIMIT = 5000
+const PAGINATION_WINDOW = 2
 const CHALLENGE_TOPICS = [
   'Array',
   'String',
@@ -243,6 +245,43 @@ function formatType(type: Challenge['type']) {
     default:
       return type
   }
+}
+
+function buildVisiblePageItems(
+  currentPage: number,
+  totalPages: number,
+  windowSize: number,
+) {
+  if (totalPages <= 1) {
+    return [1]
+  }
+
+  const pages = new Set<number>()
+  pages.add(1)
+  pages.add(totalPages)
+
+  for (
+    let page = Math.max(1, currentPage - windowSize);
+    page <= Math.min(totalPages, currentPage + windowSize);
+    page++
+  ) {
+    pages.add(page)
+  }
+
+  const sortedPages = Array.from(pages).sort((left, right) => left - right)
+  const visibleItems: Array<number | 'ellipsis'> = []
+
+  sortedPages.forEach((page, index) => {
+    const previousPage = sortedPages[index - 1]
+
+    if (index > 0 && previousPage && page - previousPage > 1) {
+      visibleItems.push('ellipsis')
+    }
+
+    visibleItems.push(page)
+  })
+
+  return visibleItems
 }
 
 function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
@@ -1151,6 +1190,10 @@ function RouteComponent() {
     1,
     Math.ceil(filteredData.length / ITEMS_PER_PAGE),
   )
+  const visiblePageItems = useMemo(
+    () => buildVisiblePageItems(currentPage, totalPages, PAGINATION_WINDOW),
+    [currentPage, totalPages],
+  )
   const paginatedData = filteredData.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
@@ -1759,22 +1802,32 @@ function RouteComponent() {
                     </Button>
                   </PaginationItem>
 
-                  <div className="flex gap-1 px-2">
-                    {Array.from({ length: totalPages }, (_, index) => (
-                      <PaginationItem key={index}>
-                        <Button
-                          variant="secondary"
-                          onClick={() => setCurrentPage(index + 1)}
-                          className={`w-8 h-8 text-xs font-bold transition-all ${
-                            currentPage === index + 1
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-muted'
-                          }`}
-                        >
-                          {index + 1}
-                        </Button>
-                      </PaginationItem>
-                    ))}
+                  <div className="flex gap-1 px-2 flex-wrap justify-center">
+                    {visiblePageItems.map((item, index) => {
+                      if (item === 'ellipsis') {
+                        return (
+                          <PaginationItem key={`ellipsis-${index}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )
+                      }
+
+                      return (
+                        <PaginationItem key={item}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setCurrentPage(item)}
+                            className={`w-8 h-8 text-xs font-bold transition-all ${
+                              currentPage === item
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            {item}
+                          </Button>
+                        </PaginationItem>
+                      )
+                    })}
                   </div>
 
                   <PaginationItem>
