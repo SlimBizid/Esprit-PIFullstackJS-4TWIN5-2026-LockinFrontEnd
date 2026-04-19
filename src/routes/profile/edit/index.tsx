@@ -40,6 +40,10 @@ export function EditProfilePage() {
   const user = useUser()
   const userStore = useUserStore()
 
+  if (!user) {
+    throw redirect({ to: '/auth/login' })
+  }
+
   const {
     register,
     handleSubmit,
