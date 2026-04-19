@@ -131,26 +131,11 @@ export function EditProfilePage() {
             {...register('email')}
             aria-invalid={!!errors.email}
             placeholder="you@example.com"
+            disabled={user.githubHandle ? true : false}
           />
           {errors.email && (
             <p className="text-xs text-destructive mt-1">
               {errors.email.message}
-            </p>
-          )}
-        </div>
-
-        {/* GitHub Handle */}
-        <div className="space-y-1.5">
-          <Label htmlFor="githubHandle">GitHub Handle</Label>
-          <Input
-            id="githubHandle"
-            {...register('githubHandle')}
-            aria-invalid={!!errors.githubHandle}
-            placeholder="your_github"
-          />
-          {errors.githubHandle && (
-            <p className="text-xs text-destructive mt-1">
-              {errors.githubHandle.message}
             </p>
           )}
         </div>
