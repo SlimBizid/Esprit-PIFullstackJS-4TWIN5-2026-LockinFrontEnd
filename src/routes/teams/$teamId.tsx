@@ -85,7 +85,7 @@ export function TeamPage() {
         setTeam(t)
         setUpdatedTeamName(t.name)
 
-        // Fetch all users for potential invitations
+        // Fetch all users for invitations
         const { data } = await api.get('/users/all-for-invite?role=player')
         const allUsers = sanitizeUserArray(data)
 
@@ -128,6 +128,10 @@ export function TeamPage() {
       navigate({ to: '/teams' })
     } catch (err) {
       console.error(err)
+      const message =
+        (err as { response?: { data?: { message?: string | string[] } } })
+          ?.response?.data?.message ?? 'Failed to delete team.'
+      setTeamMessage(Array.isArray(message) ? message.join(', ') : message)
     }
   }
 
@@ -146,8 +150,19 @@ export function TeamPage() {
 
   const handleQuitTeam = async () => {
     if (!team || !currentUser) return
+    const hasTransferableMember = team.users?.some(
+      (u) => u.id !== currentUser.id,
+    )
+
     try {
       if (isLeader) {
+        if (!hasTransferableMember) {
+          setTeamMessage(
+            'You are the only member in this team. Delete the team instead of quitting.',
+          )
+          return
+        }
+
         if (!newLeaderIdForQuit) {
           setTeamMessage('Please choose a new leader before quitting the team.')
           return
@@ -192,6 +207,11 @@ export function TeamPage() {
     'N/A'
 
   const isLeader = String(currentUser?.id) === String(leaderIdValue)
+  const isCurrentUserInTeam = team.users?.some((u) => u.id === currentUser?.id)
+  const hasTransferableMember = team.users?.some(
+    (u) => u.id !== currentUser?.id,
+  )
+  const isSoloLeader = isLeader && isCurrentUserInTeam && !hasTransferableMember
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -227,9 +247,7 @@ export function TeamPage() {
                 </div>
               </div>
             </div>
-            <Badge className="bg-primary/10 text-primary border-primary uppercase">
-              {team.status}
-            </Badge>
+            
           </div>
         </div>
 
@@ -426,15 +444,24 @@ export function TeamPage() {
                   </Button>
                 )}
 
-                {team.users?.some((u) => u.id === currentUser?.id) && (
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleQuitTeam}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" /> Quit Team
-                  </Button>
-                )}
+                {isCurrentUserInTeam &&
+                  (isSoloLeader ? (
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => handleDeleteTeam(team.id)}
+                    >
+                      Delete Team
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={handleQuitTeam}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" /> Quit Team
+                    </Button>
+                  ))}
               </CardContent>
             </Card>
 
@@ -545,7 +572,7 @@ export function TeamPage() {
         )}
 
         {/* Leader Transfer Before Quit */}
-        {isLeader && team.users?.some((u) => u.id === currentUser?.id) && (
+        {isLeader && isCurrentUserInTeam && hasTransferableMember && (
           <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 space-y-3">
             <p className="text-sm font-semibold">
               Before quitting, please choose a new leader:

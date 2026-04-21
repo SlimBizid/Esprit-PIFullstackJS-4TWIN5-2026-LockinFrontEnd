@@ -38,6 +38,7 @@ const getPendingInvitationUserId = (invitation: any): string | undefined => {
 export function TeamsRoute() {
   const navigate = useNavigate()
   const activeTeamsRef = useRef<HTMLDivElement>(null)
+  const allTeamsScrollRef = useRef<HTMLDivElement>(null)
   const { acceptInvitation, declineInvitation } = useTeamStore()
 
   // Zustand state
@@ -63,6 +64,40 @@ export function TeamsRoute() {
     fetchTeams() // fetch all teams
     fetchMyTeams() // fetch teams where user is a member
   }, [])
+
+  // Auto-scroll only the All Teams list horizontally
+  useEffect(() => {
+    if (tab !== 'allTeams') return
+
+    const container = allTeamsScrollRef.current
+    if (!container) return
+
+    let frameId = 0
+    let direction = 1
+    const speed = 0.6
+
+    const step = () => {
+      if (!container) return
+
+      container.scrollLeft += speed * direction
+
+      if (
+        container.scrollLeft + container.clientWidth >=
+        container.scrollWidth
+      ) {
+        direction = -1
+      }
+
+      if (container.scrollLeft <= 0) {
+        direction = 1
+      }
+
+      frameId = requestAnimationFrame(step)
+    }
+
+    frameId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frameId)
+  }, [tab, allTeams.length, search])
 
   // Filtered teams for All Teams / My Teams / Invites
   const filteredTeams = useMemo(() => {
@@ -324,13 +359,32 @@ export function TeamsRoute() {
 
         {/* Teams Cards */}
         <div ref={activeTeamsRef} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            ref={tab === 'allTeams' ? allTeamsScrollRef : undefined}
+            className={
+              tab === 'allTeams'
+                ? 'flex gap-4 overflow-x-auto scroll-smooth pb-2 hide-scrollbar'
+                : 'grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+            }
+          >
             {loading ? (
-              <div className="col-span-full text-center p-6 rounded-xl border border-border bg-card/60">
+              <div
+                className={
+                  tab === 'allTeams'
+                    ? 'text-center p-6 rounded-xl border border-border bg-card/60 w-full'
+                    : 'col-span-full text-center p-6 rounded-xl border border-border bg-card/60 w-full'
+                }
+              >
                 Loading...
               </div>
             ) : filteredTeams.length === 0 ? (
-              <div className="col-span-full text-center p-8 text-muted-foreground rounded-xl border border-border bg-card/60">
+              <div
+                className={
+                  tab === 'allTeams'
+                    ? 'text-center p-8 text-muted-foreground rounded-xl border border-border bg-card/60 w-full'
+                    : 'col-span-full text-center p-8 text-muted-foreground rounded-xl border border-border bg-card/60 w-full'
+                }
+              >
                 {tab === 'allTeams'
                   ? 'No teams available yet'
                   : tab === 'myTeams'
@@ -345,7 +399,11 @@ export function TeamsRoute() {
                 return (
                   <Card
                     key={t.id}
-                    className="group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer"
+                    className={
+                      tab === 'allTeams'
+                        ? 'group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer min-w-[320px] sm:min-w-[360px] md:min-w-[400px]'
+                        : 'group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer'
+                    }
                     onClick={() =>
                       navigate({
                         to: '/teams/$teamId',
