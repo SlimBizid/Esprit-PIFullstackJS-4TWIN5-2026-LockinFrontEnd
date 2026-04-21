@@ -38,7 +38,7 @@ export function useTabBlinker() {
     document.title = isTick ? 'LockIN' : 'LockIN_'
   }, [isTick])
 }
-
+//:)
 function App() {
   useTabBlinker()
 

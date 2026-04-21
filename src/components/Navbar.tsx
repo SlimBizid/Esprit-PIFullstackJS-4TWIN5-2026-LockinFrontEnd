@@ -14,10 +14,11 @@ import {
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect, useId } from 'react'
 import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
-import { Menu, X } from 'lucide-react'
+import { LogOut, Menu, Underline, X } from 'lucide-react'
+import AccessibilitySettingsMenu from '@/components/accessibility/AccessibilitySettingsMenu'
 
 const NAV_LINKS = [
-  { to: '/', label: 'Home' },
+  { to: '/teams', label: 'Teams' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/challenges', label: 'Challenges' },
 ] as const
@@ -232,9 +233,13 @@ export default function Navbar() {
     return 'bg-background border-border shadow-lg'
   }
 
-  const navLinks = user?.type === 'admin'
-    ? [...NAV_LINKS, { to: '/admin/review-reports' as const, label: 'Reports' }]
-    : NAV_LINKS
+  const navLinks =
+    user?.type === 'admin'
+      ? [
+          ...NAV_LINKS,
+          { to: '/admin/review-reports' as const, label: 'Reports' },
+        ]
+      : NAV_LINKS
 
   return (
     <>
@@ -257,21 +262,23 @@ export default function Navbar() {
         <nav
           id={navId}
           aria-label="Main navigation"
-          className="flex items-center justify-between px-4 h-16 max-w-7xl mx-auto"
+          className="flex justify-between items-center px-4 h-16 max-w-7xl mx-auto relative"
         >
-          <Link
-            to="/"
-            className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label="LockIN – go to homepage"
-          >
-            <Logo />
-            <span className="font-black text-lg" aria-hidden="true">
-              LockIN<span className="text-primary animate-peekaboo">_</span>
-            </span>
-          </Link>
+          <div className="flex justify-start">
+            <Link
+              to="/"
+              className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              aria-label="LockIN – go to homepage"
+            >
+              <Logo />
+              <span className="font-black text-lg" aria-hidden="true">
+                LockIN<span className="text-primary animate-peekaboo">_</span>
+              </span>
+            </Link>
+          </div>
 
           <ul
-            className="hidden md:flex items-center gap-6 font-semibold"
+            className="hidden md:flex md:w-fit mx-auto justify-center items-center gap-6 font-semibold absolute inset-x-0"
             role="list"
           >
             {navLinks.map(({ to, label }) => (
@@ -293,21 +300,25 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center gap-2">
             {!isAuthenticated ? (
-              <div>
-                <Link to="/auth/register">
-                  <Button
-                    variant="secondary"
-                    className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  >
-                    Sign Up
-                  </Button>
-                </Link>
-                <Link to="/auth/login">
-                  <Button className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                    Log In
-                  </Button>
-                </Link>
-              </div>
+              <>
+                <div>
+                  <Link to="/auth/register">
+                    <Button
+                      variant="secondary"
+                      className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+                <div>
+                  <Link to="/auth/login">
+                    <Button className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                      Log In
+                    </Button>
+                  </Link>
+                </div>
+              </>
             ) : (
               <>
                 <span
@@ -330,13 +341,15 @@ export default function Navbar() {
                   onClick={handleLogout}
                   disabled={isLoading}
                   aria-busy={isLoading}
-                  variant={'link'}
-                  className="text-destructive"
+                  variant={'outline'}
+                  className="font-semibold"
                 >
-                  {isLoading ? 'Logging out…' : 'Logout'}
+                  <LogOut />
                 </Button>
               </>
             )}
+
+            <AccessibilitySettingsMenu />
           </div>
 
           <div className="md:hidden">
@@ -414,6 +427,8 @@ export default function Navbar() {
                 </nav>
 
                 <div className="mt-auto border-t pt-6 pb-8 flex flex-col gap-3 px-4">
+                  <AccessibilitySettingsMenu mobile />
+
                   {!isAuthenticated ? (
                     <>
                       <SheetClose asChild>

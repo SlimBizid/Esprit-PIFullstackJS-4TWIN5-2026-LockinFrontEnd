@@ -81,23 +81,12 @@ export const useUserStore = create<UserState>()(
       },
 
       fetchMe: async () => {
-        //dont use this yet, i didnt implement /me yet
         set({ isLoading: true, error: null })
         try {
           const { data } = await api.get<User>('/users/me')
           set({ user: data, isAuthenticated: true, isLoading: false })
         } catch (err) {
-          if (axios.isAxiosError(err) && err.response?.status === 401) {
-            // i will also implement interceptors later but this will suffice?
-            set({ user: null, isAuthenticated: false, isLoading: false })
-            return
-          }
-          set({
-            isLoading: false,
-            error: axios.isAxiosError(err)
-              ? (err.response?.data?.message ?? 'Failed to fetch user')
-              : 'Unknown error',
-          })
+          set({ user: null, isAuthenticated: false, isLoading: false })
         }
       },
     }),
@@ -105,15 +94,15 @@ export const useUserStore = create<UserState>()(
       name: 'user-store',
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
       }),
     },
   ),
-  
-
 )
 export const useUser = () => useUserStore((s) => s.user)
 export const useIsAuthenticated = () => useUserStore((s) => s.isAuthenticated)
 export const useIsAdmin = () => useUserStore((s) => s.user?.type === 'admin')
 export const useAuthLoading = () => useUserStore((s) => s.isLoading)
 export const useAuthError = () => useUserStore((s) => s.error)
+export const initializeAuth = async () => {
+  await useUserStore.getState().fetchMe()
+}

@@ -16,6 +16,7 @@ type RegisterFormValues = {
   password: string
   confirmPassword: string
 }
+const backendUrl = import.meta.env.VITE_BACKEND_URL
 
 function getErrorMessage(error: unknown) {
   if (!axios.isAxiosError(error)) {
@@ -281,6 +282,9 @@ export function RegisterForm() {
         variant="outline"
         className="w-full h-11 gap-2 font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         aria-label="Sign up with GitHub"
+        onClick={() => {
+          window.location.href = `${backendUrl}/auth/github`
+        }}
       >
         <Github className="w-4 h-4" aria-hidden="true" />
         Continue with GitHub

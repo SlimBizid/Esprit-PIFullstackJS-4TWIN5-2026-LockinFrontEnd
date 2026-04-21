@@ -12,6 +12,8 @@ import {
   Plus,
   Trash2,
   Swords,
+  Star,
+  TrendingUp,
 } from 'lucide-react'
 import { api } from '@/stores/userStore'
 import { useIsAdmin, useIsAuthenticated } from '@/stores/userStore'
@@ -58,10 +60,19 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import type { Challenge } from '@/models/challenge'
 import type { ChallengeCase } from '@/models/challenge'
+import type { ChallengeQuizQuestion } from '@/models/challenge'
 import type { Match } from '@/models/match'
 import type { PaginatedChallenges } from '@/models/paginated-challenge'
+import type { RecommendationResponse } from '@/models/recommendation'
 
 const ITEMS_PER_PAGE = 10
 const FETCH_LIMIT = 100
@@ -129,6 +140,7 @@ type ChallengeFormValues = {
   constraints: string
   conditions: string
   testCases: string
+  quizQuestions: string
 }
 
 type ChallengePayload = {
@@ -144,6 +156,69 @@ type ChallengePayload = {
   constraints: string[]
   conditions: string[]
   cases: ChallengeCase[]
+  quizQuestions: ChallengeQuizQuestion[]
+}
+
+type GeneratedChallengeDraft = {
+  title: string
+  content: string
+  starterCode: string
+  starterCodes: Partial<Record<EditorLanguage, string>>
+  difficulty: Challenge['difficulty']
+  type: Challenge['type']
+  topics: string[]
+  acceptanceRate: number
+  examples: string[]
+  constraints: string[]
+  conditions: string[]
+  cases: ChallengeCase[]
+  quizQuestions: ChallengeQuizQuestion[]
+}
+
+type CssBattleCaseForm = {
+  note: string
+  viewportWidth: string
+  viewportHeight: string
+  colors: string[]
+  starterHtml: string
+  starterCss: string
+  targetHtml: string
+  targetCss: string
+  expectedOutput: string
+}
+
+type ThatsNotMyCoderCaseForm = {
+  title: string
+  author: string
+  language: string
+  note: string
+  rationale: string
+  timeLimit: string
+  code: string
+  expectedOutput: 'accept' | 'deny'
+}
+
+const DEFAULT_CSS_BATTLE_CASE: CssBattleCaseForm = {
+  note: '',
+  viewportWidth: '400',
+  viewportHeight: '300',
+  colors: ['#ffffff'],
+  starterHtml: '',
+  starterCss: '',
+  targetHtml: '',
+  targetCss: '',
+  expectedOutput: '100',
+}
+
+const DEFAULT_TNMC_CASE: ThatsNotMyCoderCaseForm = {
+  title: '',
+  author: '',
+  language: 'typescript',
+  note: '',
+  rationale: '',
+  timeLimit: '15',
+  code: '',
+  expectedOutput: 'deny',
 }
 
 function updateCachedChallenges(
@@ -201,6 +276,16 @@ function formatType(type: Challenge['type']) {
   switch (type) {
     case 'pvp':
       return '1v1'
+    case 'quiz':
+      return 'Quiz'
+    case 'quiz_pvp':
+      return 'Quiz 1v1'
+    case 'imposter':
+      return 'Coders vs Imposter'
+    case 'thats_not_my_coder':
+      return "That's Not My Coder"
+    case 'css_battle':
+      return 'CSS Battle'
     case 'solo':
       return 'Solo'
     case 'teams':
@@ -235,7 +320,11 @@ function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
     testCases:
       challenge?.cases && challenge.cases.length > 0
         ? JSON.stringify(challenge.cases, null, 2)
-        : '[]',
+        : '',
+    quizQuestions:
+      challenge?.quizQuestions && challenge.quizQuestions.length > 0
+        ? JSON.stringify(challenge.quizQuestions, null, 2)
+        : '',
   }
 }
 
@@ -325,24 +414,418 @@ function parseChallengeCases(value: string): ChallengeCase[] {
   })
 }
 
+function safeParseChallengeCases(value: string) {
+  try {
+    return parseChallengeCases(value)
+  } catch {
+    return [] as ChallengeCase[]
+  }
+}
+
+function parseCaseColorArray(rawValue: string) {
+  const trimmed = rawValue.trim()
+
+  if (!trimmed) {
+    return [] as string[]
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry) => String(entry ?? '').trim())
+        .filter((entry) => entry.length > 0)
+    }
+  } catch {
+    // Fallback parsing below.
+  }
+
+  return trimmed
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
+
+function mapCasesToCssBattleForms(cases: ChallengeCase[]): CssBattleCaseForm[] {
+  const mapped = cases.map((testCase) => {
+    const getInput = (type: string) =>
+      testCase.inputs.find((input) => input.type === type)?.value ?? ''
+
+    const rawColors = getInput('colors')
+    const parsedColors = parseCaseColorArray(rawColors)
+    const fallbackBackground = getInput('background')
+    const colors =
+      parsedColors.length > 0
+        ? parsedColors
+        : fallbackBackground.trim().length > 0
+          ? [fallbackBackground.trim()]
+          : ['#ffffff']
+
+    return {
+      note: getInput('note'),
+      viewportWidth: getInput('viewportWidth'),
+      viewportHeight: getInput('viewportHeight'),
+      colors,
+      starterHtml: getInput('starterHtml'),
+      starterCss: getInput('starterCss'),
+      targetHtml: getInput('targetHtml'),
+      targetCss: getInput('targetCss'),
+      expectedOutput: testCase.expectedOutput ?? '100',
+    }
+  })
+
+  return mapped.length > 0 ? [mapped[0]] : [DEFAULT_CSS_BATTLE_CASE]
+}
+
+function mapCssBattleFormsToCases(forms: CssBattleCaseForm[]): ChallengeCase[] {
+  return forms.map((form) => {
+    const colors = form.colors
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+
+    const inputs = [
+      { type: 'note', value: form.note.trim() },
+      { type: 'viewportWidth', value: form.viewportWidth.trim() },
+      { type: 'viewportHeight', value: form.viewportHeight.trim() },
+      {
+        type: 'colors',
+        value: colors.length > 0 ? JSON.stringify(colors) : '',
+      },
+      { type: 'starterHtml', value: form.starterHtml },
+      { type: 'starterCss', value: form.starterCss },
+      { type: 'targetHtml', value: form.targetHtml },
+      { type: 'targetCss', value: form.targetCss },
+    ].filter((input) => input.value.length > 0)
+
+    return {
+      inputs,
+      expectedOutput: form.expectedOutput.trim() || '100',
+    }
+  })
+}
+
+function mapCasesToThatsNotMyCoderForms(
+  cases: ChallengeCase[],
+): ThatsNotMyCoderCaseForm[] {
+  const mapped = cases.map((testCase) => {
+    const getInput = (type: string) =>
+      testCase.inputs.find((input) => input.type === type)?.value ?? ''
+
+    const normalizedExpected = testCase.expectedOutput.trim().toLowerCase()
+    const expectedOutput: 'accept' | 'deny' =
+      normalizedExpected === 'accept' ? 'accept' : 'deny'
+
+    return {
+      title: getInput('title'),
+      author: getInput('author'),
+      language: getInput('language') || 'typescript',
+      note: getInput('note'),
+      rationale: getInput('rationale'),
+      timeLimit: getInput('timeLimit') || '15',
+      code: getInput('code'),
+      expectedOutput,
+    }
+  })
+
+  return mapped.length > 0 ? mapped : [DEFAULT_TNMC_CASE]
+}
+
+function mapThatsNotMyCoderFormsToCases(
+  forms: ThatsNotMyCoderCaseForm[],
+): ChallengeCase[] {
+  return forms.map((form) => {
+    const inputs = [
+      { type: 'title', value: form.title.trim() },
+      { type: 'author', value: form.author.trim() },
+      { type: 'language', value: form.language.trim() },
+      { type: 'note', value: form.note.trim() },
+      { type: 'rationale', value: form.rationale.trim() },
+      { type: 'timeLimit', value: form.timeLimit.trim() },
+      { type: 'code', value: form.code },
+    ].filter((input) => input.value.length > 0)
+
+    return {
+      inputs,
+      expectedOutput: form.expectedOutput,
+    }
+  })
+}
+
+function parseQuizQuestions(value: string): ChallengeQuizQuestion[] {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return []
+  }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    throw new Error('Quiz questions must be valid JSON.')
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('Quiz questions must be a JSON array.')
+  }
+
+  return parsed.map((item, index) => {
+    if (typeof item !== 'object' || item === null) {
+      throw new Error(`Quiz question ${index + 1} must be an object.`)
+    }
+
+    const question = item as {
+      id?: unknown
+      prompt?: unknown
+      options?: unknown
+      correctOptionIds?: unknown
+      explanation?: unknown
+    }
+
+    if (typeof question.id !== 'string' || !question.id.trim()) {
+      throw new Error(`Quiz question ${index + 1} must include a string id.`)
+    }
+
+    if (typeof question.prompt !== 'string' || !question.prompt.trim()) {
+      throw new Error(
+        `Quiz question ${index + 1} must include a string prompt.`,
+      )
+    }
+
+    if (!Array.isArray(question.options) || question.options.length < 2) {
+      throw new Error(
+        `Quiz question ${index + 1} must include at least two options.`,
+      )
+    }
+
+    const options = question.options.map((option, optionIndex) => {
+      if (typeof option !== 'object' || option === null) {
+        throw new Error(
+          `Option ${optionIndex + 1} in quiz question ${index + 1} must be an object.`,
+        )
+      }
+
+      const quizOption = option as {
+        id?: unknown
+        text?: unknown
+      }
+
+      if (typeof quizOption.id !== 'string' || !quizOption.id.trim()) {
+        throw new Error(
+          `Option ${optionIndex + 1} in quiz question ${index + 1} must include a string id.`,
+        )
+      }
+
+      if (typeof quizOption.text !== 'string' || !quizOption.text.trim()) {
+        throw new Error(
+          `Option ${optionIndex + 1} in quiz question ${index + 1} must include display text.`,
+        )
+      }
+
+      return {
+        id: quizOption.id.trim(),
+        text: quizOption.text.trim(),
+      }
+    })
+
+    if (
+      !Array.isArray(question.correctOptionIds) ||
+      question.correctOptionIds.length === 0 ||
+      question.correctOptionIds.some((value) => typeof value !== 'string')
+    ) {
+      throw new Error(
+        `Quiz question ${index + 1} must include one or more correctOptionIds.`,
+      )
+    }
+
+    return {
+      id: question.id.trim(),
+      prompt: question.prompt.trim(),
+      options,
+      correctOptionIds: question.correctOptionIds as string[],
+      explanation:
+        typeof question.explanation === 'string' &&
+        question.explanation.trim().length > 0
+          ? question.explanation.trim()
+          : undefined,
+    }
+  })
+}
+
 function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
   const parsedAcceptanceRate = Number(values.acceptanceRate)
+  const isQuizType = values.type === 'quiz' || values.type === 'quiz_pvp'
+  const isThatsNotMyCoderType = values.type === 'thats_not_my_coder'
+  const isCssBattleType = values.type === 'css_battle'
+  const shouldIncludeStarterCode =
+    !isQuizType && !isThatsNotMyCoderType && !isCssBattleType
+  const isCustomNoMetaType = isThatsNotMyCoderType || isCssBattleType
+  const fallbackContent = 'Match the target layout using HTML/CSS only.'
+  const fallbackTopic = CHALLENGE_TOPICS.includes(
+    'Math' as (typeof CHALLENGE_TOPICS)[number],
+  )
+    ? 'Math'
+    : CHALLENGE_TOPICS[0]
 
   return {
     title: values.title.trim(),
-    content: values.content.trim(),
-    starterCode: values.starterCodes.javascript,
-    starterCodes: values.starterCodes,
+    content: isCssBattleType
+      ? values.content.trim() || fallbackContent
+      : values.content.trim(),
+    starterCode: shouldIncludeStarterCode ? values.starterCodes.javascript : '',
+    starterCodes: shouldIncludeStarterCode
+      ? values.starterCodes
+      : {
+          javascript: '',
+          typescript: '',
+          python: '',
+          java: '',
+          cpp: '',
+        },
     difficulty: values.difficulty,
     type: values.type,
-    topics: values.topics,
+    topics: isCustomNoMetaType
+      ? values.topics.length > 0
+        ? values.topics
+        : [fallbackTopic]
+      : values.topics,
     acceptanceRate: Number.isFinite(parsedAcceptanceRate)
       ? parsedAcceptanceRate
       : 100,
-    examples: splitMultiline(values.examples),
-    constraints: splitMultiline(values.constraints),
-    conditions: splitMultiline(values.conditions),
-    cases: parseChallengeCases(values.testCases),
+    examples: isThatsNotMyCoderType ? [] : splitMultiline(values.examples),
+    constraints: isThatsNotMyCoderType
+      ? []
+      : splitMultiline(values.constraints),
+    conditions: isThatsNotMyCoderType ? [] : splitMultiline(values.conditions),
+    cases: isQuizType ? [] : parseChallengeCases(values.testCases),
+    quizQuestions: isQuizType ? parseQuizQuestions(values.quizQuestions) : [],
+  }
+}
+
+function getTestCasesLabel(type: Challenge['type']) {
+  if (type === 'thats_not_my_coder') {
+    return 'Review Cases'
+  }
+
+  if (type === 'css_battle') {
+    return 'Battle Cases'
+  }
+
+  return 'Test Cases'
+}
+
+function getTestCasesPlaceholder(type: Challenge['type']) {
+  if (type === 'thats_not_my_coder') {
+    return `[
+  {
+    "inputs": [
+      { "type": "title", "value": "Rate limiter patch" },
+      { "type": "author", "value": "suspicious_commit_bot" },
+      { "type": "language", "value": "typescript" },
+      { "type": "note", "value": "The patch looks fast, but does it belong in production?" },
+      { "type": "rationale", "value": "Uses an always-true condition and silently bypasses auth checks." },
+      { "type": "timeLimit", "value": "12" },
+      { "type": "code", "value": "export function isAdmin(user) {\\n  return true\\n}" }
+    ],
+    "expectedOutput": "deny"
+  }
+]`
+  }
+
+  if (type === 'css_battle') {
+    return `[
+  {
+    "inputs": [
+      { "type": "note", "value": "Match the target using HTML/CSS only." },
+      { "type": "viewportWidth", "value": "400" },
+      { "type": "viewportHeight", "value": "300" },
+      { "type": "colors", "value": "[\"#0b0f1a\",\"#ff6b00\",\"#101215\"]" },
+      { "type": "starterHtml", "value": "<div class=planet></div>" },
+      { "type": "starterCss", "value": ".planet{width:80px;height:80px;background:#ff6b00;border-radius:50%;}" },
+      { "type": "targetHtml", "value": "<div class=planet><span></span></div>" },
+      { "type": "targetCss", "value": ".planet{width:140px;height:140px;background:#ff6b00;border-radius:50%;display:grid;place-items:center}.planet span{width:40px;height:40px;background:#101215;border-radius:50%}" }
+    ],
+    "expectedOutput": "100"
+  }
+]`
+  }
+
+  return `[
+  {
+    "inputs": [
+      { "type": "a", "value": "2" },
+      { "type": "b", "value": "3" }
+    ],
+    "expectedOutput": "5"
+  }
+]`
+}
+
+function getTestCasesHelpText(type: Challenge['type']) {
+  if (type === 'thats_not_my_coder') {
+    return (
+      <>
+        Enter a JSON array of review cases. Use an input with type{' '}
+        <code>code</code> for the snippet, optional inputs like{' '}
+        <code>title</code>, <code>author</code>, <code>language</code>,{' '}
+        <code>note</code>, <code>rationale</code>, <code>timeLimit</code>, and
+        set <code>expectedOutput</code> to <code>accept</code> or{' '}
+        <code>deny</code>.
+      </>
+    )
+  }
+
+  if (type === 'css_battle') {
+    return (
+      <>
+        Enter a JSON array of visual battle cases. Use an input with type{' '}
+        <code>targetHtml</code> and <code>targetCss</code> for the target,{' '}
+        optional inputs like <code>starterHtml</code>, <code>starterCss</code>,{' '}
+        <code>viewportWidth</code>, <code>viewportHeight</code>,{' '}
+        <code>colors</code> (JSON array string), and <code>note</code>, and set{' '}
+        <code>expectedOutput</code> to the minimum score (0-100) as a string.
+      </>
+    )
+  }
+
+  return (
+    <>
+      Enter a JSON array. Each input value and expected output should be a
+      string, for example <code>"2"</code> or <code>"[1,2,3]"</code>.
+    </>
+  )
+}
+
+function mapDraftToFormValues(
+  draft: GeneratedChallengeDraft,
+): ChallengeFormValues {
+  const starterCodes: Record<EditorLanguage, string> = {
+    javascript: draft.starterCodes.javascript ?? draft.starterCode ?? '',
+    typescript: draft.starterCodes.typescript ?? '',
+    python: draft.starterCodes.python ?? '',
+    java: draft.starterCodes.java ?? '',
+    cpp: draft.starterCodes.cpp ?? '',
+  }
+
+  return {
+    title: draft.title,
+    content: draft.content,
+    starterCode: starterCodes.javascript,
+    starterCodes,
+    difficulty: draft.difficulty,
+    type: draft.type,
+    topics: draft.topics,
+    acceptanceRate: String(draft.acceptanceRate),
+    examples: draft.examples.join('\n'),
+    constraints: draft.constraints.join('\n'),
+    conditions: draft.conditions.join('\n'),
+    testCases:
+      draft.cases.length > 0 ? JSON.stringify(draft.cases, null, 2) : '[]',
+    quizQuestions:
+      draft.quizQuestions.length > 0
+        ? JSON.stringify(draft.quizQuestions, null, 2)
+        : '[]',
   }
 }
 
@@ -351,7 +834,9 @@ function ChallengeFormDialog({
   open,
   onOpenChange,
   onSubmit,
+  onGenerateDraft,
   isPending,
+  isGeneratingDraft = false,
   trigger,
   errorMessage,
 }: {
@@ -359,7 +844,11 @@ function ChallengeFormDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: ChallengeFormValues) => Promise<void> | void
+  onGenerateDraft?: (
+    values: ChallengeFormValues,
+  ) => Promise<ChallengeFormValues> | ChallengeFormValues
   isPending: boolean
+  isGeneratingDraft?: boolean
   trigger?: React.ReactNode
   errorMessage?: string | null
 }) {
@@ -368,20 +857,85 @@ function ChallengeFormDialog({
   )
   const [activeStarterLanguage, setActiveStarterLanguage] =
     useState<EditorLanguage>('javascript')
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [cssBattleCases, setCssBattleCases] = useState<CssBattleCaseForm[]>(
+    () => mapCasesToCssBattleForms(safeParseChallengeCases(values.testCases)),
+  )
+  const [thatsNotMyCoderCases, setThatsNotMyCoderCases] = useState<
+    ThatsNotMyCoderCaseForm[]
+  >(() =>
+    mapCasesToThatsNotMyCoderForms(safeParseChallengeCases(values.testCases)),
+  )
 
   const dialogTitle = challenge ? 'Edit challenge' : 'Create challenge'
   const dialogDescription = challenge
     ? 'Update the challenge details and save the changes.'
     : 'Create a new challenge that will appear in the admin list.'
   const hasTopics = values.topics.length > 0
+  const isQuizType = values.type === 'quiz' || values.type === 'quiz_pvp'
+  const isThatsNotMyCoderType = values.type === 'thats_not_my_coder'
+  const isCssBattleType = values.type === 'css_battle'
+  const isCustomVisualType = isThatsNotMyCoderType || isCssBattleType
+  const requiresTopics = !isCssBattleType && !isThatsNotMyCoderType
+
+  const updateCssBattleCases = (nextCases: CssBattleCaseForm[]) => {
+    const normalized =
+      nextCases.length > 0 ? [nextCases[0]] : [DEFAULT_CSS_BATTLE_CASE]
+    setCssBattleCases(normalized)
+    const mappedCases = mapCssBattleFormsToCases(normalized)
+    setValues((current) => ({
+      ...current,
+      testCases: JSON.stringify(mappedCases, null, 2),
+    }))
+  }
+
+  const updateCssBattleCase = (
+    updater: (current: CssBattleCaseForm) => CssBattleCaseForm,
+  ) => {
+    const currentCase = cssBattleCases[0] ?? DEFAULT_CSS_BATTLE_CASE
+    updateCssBattleCases([updater(currentCase)])
+  }
+
+  const updateThatsNotMyCoderCases = (nextCases: ThatsNotMyCoderCaseForm[]) => {
+    const normalized = nextCases.length > 0 ? nextCases : [DEFAULT_TNMC_CASE]
+    setThatsNotMyCoderCases(normalized)
+    const mappedCases = mapThatsNotMyCoderFormsToCases(normalized)
+    setValues((current) => ({
+      ...current,
+      testCases: JSON.stringify(mappedCases, null, 2),
+    }))
+  }
+
+  const updateThatsNotMyCoderCase = (
+    index: number,
+    updater: (current: ThatsNotMyCoderCaseForm) => ThatsNotMyCoderCaseForm,
+  ) => {
+    updateThatsNotMyCoderCases(
+      thatsNotMyCoderCases.map((current, currentIndex) =>
+        currentIndex === index ? updater(current) : current,
+      ),
+    )
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
-          setValues(getDefaultFormValues(challenge))
+          const defaults = getDefaultFormValues(challenge)
+          setValues(defaults)
           setActiveStarterLanguage('javascript')
+          setGenerationError(null)
+          setCssBattleCases(
+            mapCasesToCssBattleForms(
+              safeParseChallengeCases(defaults.testCases),
+            ),
+          )
+          setThatsNotMyCoderCases(
+            mapCasesToThatsNotMyCoderForms(
+              safeParseChallengeCases(defaults.testCases),
+            ),
+          )
         }
         onOpenChange(nextOpen)
       }}
@@ -397,7 +951,7 @@ function ChallengeFormDialog({
           className="grid max-h-[calc(90vh-7rem)] gap-4 overflow-y-auto pr-1"
           onSubmit={async (event) => {
             event.preventDefault()
-            if (!hasTopics) return
+            if (requiresTopics && !hasTopics) return
             await onSubmit(values)
           }}
         >
@@ -409,8 +963,48 @@ function ChallengeFormDialog({
             </Alert>
           ) : null}
 
+          {generationError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Generation failed</AlertTitle>
+              <AlertDescription>{generationError}</AlertDescription>
+            </Alert>
+          ) : null}
+
           <div className="grid gap-2">
-            <Label htmlFor="challenge-title">Title</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="challenge-title">Title</Label>
+              {onGenerateDraft ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!values.title.trim() || isGeneratingDraft}
+                  onClick={async () => {
+                    setGenerationError(null)
+
+                    try {
+                      const generatedValues = await onGenerateDraft(values)
+                      setValues(generatedValues)
+                      setActiveStarterLanguage('javascript')
+                      const generatedCases = safeParseChallengeCases(
+                        generatedValues.testCases,
+                      )
+                      setCssBattleCases(
+                        mapCasesToCssBattleForms(generatedCases),
+                      )
+                      setThatsNotMyCoderCases(
+                        mapCasesToThatsNotMyCoderForms(generatedCases),
+                      )
+                    } catch (error) {
+                      setGenerationError(getErrorMessage(error))
+                    }
+                  }}
+                >
+                  {isGeneratingDraft ? 'Generating...' : 'Generate with AI'}
+                </Button>
+              ) : null}
+            </div>
             <Input
               id="challenge-title"
               value={values.title}
@@ -423,74 +1017,87 @@ function ChallengeFormDialog({
               placeholder="Two Sum"
               required
             />
+            {onGenerateDraft ? (
+              <p className="text-xs text-muted-foreground">
+                Uses the current title and selected challenge type to draft the
+                form with Google AI Studio.
+              </p>
+            ) : null}
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="challenge-content">Content</Label>
-            <textarea
-              id="challenge-content"
-              value={values.content}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  content: event.target.value,
-                }))
-              }
-              className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              placeholder="Describe the problem statement."
-              required
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="challenge-starter-code">Starter Code</Label>
-              <div className="grid gap-1 justify-items-end">
-                <Label htmlFor="challenge-starter-language" className="text-xs">
-                  Starter Code Language
-                </Label>
-                <Select
-                  value={activeStarterLanguage}
-                  onValueChange={(value) =>
-                    setActiveStarterLanguage(value as EditorLanguage)
-                  }
-                >
-                  <SelectTrigger
-                    id="challenge-starter-language"
-                    className="w-44"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EDITOR_LANGUAGES.map((language) => (
-                      <SelectItem key={language} value={language}>
-                        {language}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {!isCssBattleType ? (
+            <div className="grid gap-2">
+              <Label htmlFor="challenge-content">Content</Label>
+              <textarea
+                id="challenge-content"
+                value={values.content}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    content: event.target.value,
+                  }))
+                }
+                className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                placeholder="Describe the problem statement."
+                required
+              />
             </div>
-            <textarea
-              id="challenge-starter-code"
-              value={values.starterCodes[activeStarterLanguage]}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  starterCode:
-                    activeStarterLanguage === 'javascript'
-                      ? event.target.value
-                      : current.starterCode,
-                  starterCodes: {
-                    ...current.starterCodes,
-                    [activeStarterLanguage]: event.target.value,
-                  },
-                }))
-              }
-              className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 font-mono"
-              placeholder="Starter code for the selected language"
-            />
-          </div>
+          ) : null}
+
+          {!isQuizType && !isCustomVisualType ? (
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="challenge-starter-code">Starter Code</Label>
+                <div className="grid gap-1 justify-items-end">
+                  <Label
+                    htmlFor="challenge-starter-language"
+                    className="text-xs"
+                  >
+                    Starter Code Language
+                  </Label>
+                  <Select
+                    value={activeStarterLanguage}
+                    onValueChange={(value) =>
+                      setActiveStarterLanguage(value as EditorLanguage)
+                    }
+                  >
+                    <SelectTrigger
+                      id="challenge-starter-language"
+                      className="w-44"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EDITOR_LANGUAGES.map((language) => (
+                        <SelectItem key={language} value={language}>
+                          {language}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <textarea
+                id="challenge-starter-code"
+                value={values.starterCodes[activeStarterLanguage]}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    starterCode:
+                      activeStarterLanguage === 'javascript'
+                        ? event.target.value
+                        : current.starterCode,
+                    starterCodes: {
+                      ...current.starterCodes,
+                      [activeStarterLanguage]: event.target.value,
+                    },
+                  }))
+                }
+                className="min-h-32 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 font-mono"
+                placeholder="Starter code for the selected language"
+              />
+            </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
@@ -519,20 +1126,40 @@ function ChallengeFormDialog({
               <Label htmlFor="challenge-type">Type</Label>
               <Select
                 value={values.type}
-                onValueChange={(value) =>
+                onValueChange={(value) => {
+                  const nextType = value as Challenge['type']
                   setValues((current) => ({
                     ...current,
-                    type: value as Challenge['type'],
+                    type: nextType,
                   }))
-                }
+
+                  const parsedCases = safeParseChallengeCases(values.testCases)
+
+                  if (nextType === 'css_battle') {
+                    setCssBattleCases(mapCasesToCssBattleForms(parsedCases))
+                  }
+
+                  if (nextType === 'thats_not_my_coder') {
+                    setThatsNotMyCoderCases(
+                      mapCasesToThatsNotMyCoderForms(parsedCases),
+                    )
+                  }
+                }}
               >
                 <SelectTrigger id="challenge-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="solo">Solo</SelectItem>
+                  <SelectItem value="quiz">Quiz</SelectItem>
                   <SelectItem value="pvp">1v1</SelectItem>
+                  <SelectItem value="quiz_pvp">Quiz 1v1</SelectItem>
                   <SelectItem value="teams">Teams</SelectItem>
+                  <SelectItem value="imposter">Coders vs Imposter</SelectItem>
+                  <SelectItem value="thats_not_my_coder">
+                    That&apos;s Not My Coder
+                  </SelectItem>
+                  <SelectItem value="css_battle">CSS Battle</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -556,130 +1183,527 @@ function ChallengeFormDialog({
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="challenge-topics">Topics</Label>
-            <div
-              id="challenge-topics"
-              className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-input p-3 sm:grid-cols-3"
-            >
-              {CHALLENGE_TOPICS.map((topic) => {
-                const isSelected = values.topics.includes(topic)
+          {!isCssBattleType && !isThatsNotMyCoderType ? (
+            <div className="grid gap-2">
+              <Label htmlFor="challenge-topics">Topics</Label>
+              <div
+                id="challenge-topics"
+                className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-input p-3 sm:grid-cols-3"
+              >
+                {CHALLENGE_TOPICS.map((topic) => {
+                  const isSelected = values.topics.includes(topic)
 
-                return (
-                  <Button
-                    key={topic}
-                    type="button"
-                    variant={isSelected ? 'default' : 'outline'}
-                    size="sm"
-                    className="justify-start"
-                    onClick={() =>
-                      setValues((current) => ({
-                        ...current,
-                        topics: isSelected
-                          ? current.topics.filter((item) => item !== topic)
-                          : [...current.topics, topic],
-                      }))
-                    }
-                  >
+                  return (
+                    <Button
+                      key={topic}
+                      type="button"
+                      variant={isSelected ? 'default' : 'outline'}
+                      size="sm"
+                      className="justify-start"
+                      onClick={() =>
+                        setValues((current) => ({
+                          ...current,
+                          topics: isSelected
+                            ? current.topics.filter((item) => item !== topic)
+                            : [...current.topics, topic],
+                        }))
+                      }
+                    >
+                      {topic}
+                    </Button>
+                  )
+                })}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {values.topics.map((topic) => (
+                  <Badge key={topic} variant="secondary">
                     {topic}
-                  </Button>
-                )
-              })}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {values.topics.map((topic) => (
-                <Badge key={topic} variant="secondary">
-                  {topic}
-                </Badge>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Select one or more topics.
-            </p>
-            {!hasTopics ? (
-              <p className="text-xs text-destructive">
-                Select at least one topic.
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select one or more topics.
               </p>
-            ) : null}
-          </div>
+              {!hasTopics ? (
+                <p className="text-xs text-destructive">
+                  Select at least one topic.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
-          <div className="grid gap-2">
-            <Label htmlFor="challenge-test-cases">Test Cases</Label>
-            <textarea
-              id="challenge-test-cases"
-              value={values.testCases}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  testCases: event.target.value,
-                }))
-              }
-              className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              placeholder={`[
+          {isQuizType ? (
+            <div className="grid gap-2">
+              <Label htmlFor="challenge-quiz-questions">Quiz Questions</Label>
+              <textarea
+                id="challenge-quiz-questions"
+                value={values.quizQuestions}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    quizQuestions: event.target.value,
+                  }))
+                }
+                className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                placeholder={`[
   {
-    "inputs": [
-      { "type": "a", "value": "2" },
-      { "type": "b", "value": "3" }
+    "id": "q1",
+    "prompt": "Which of these are sorting algorithms?",
+    "options": [
+      { "id": "merge", "text": "Merge Sort" },
+      { "id": "stack", "text": "Stack" },
+      { "id": "heap", "text": "Heap Sort" }
     ],
-    "expectedOutput": "5"
+    "correctOptionIds": ["merge", "heap"],
+    "explanation": "Merge Sort and Heap Sort are sorting algorithms."
   }
 ]`}
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter a JSON array. Each input value and expected output should be
-              a string, for example <code>"2"</code> or <code>"[1,2,3]"</code>.
-            </p>
-          </div>
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter a JSON array with question ids, prompts, options, and one
+                or more <code>correctOptionIds</code>.
+              </p>
+            </div>
+          ) : isCssBattleType ? (
+            <div className="grid gap-4">
+              <Label>Battle Setup</Label>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+              {(() => {
+                const battleCase = cssBattleCases[0] ?? DEFAULT_CSS_BATTLE_CASE
+
+                return (
+                  <div className="rounded-md border border-border/60 bg-background/70 p-4 space-y-4">
+                    <div className="grid gap-2">
+                      <Label>Note</Label>
+                      <Input
+                        value={battleCase.note}
+                        onChange={(event) =>
+                          updateCssBattleCase((current) => ({
+                            ...current,
+                            note: event.target.value,
+                          }))
+                        }
+                        placeholder="Describe the target briefly"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="grid gap-2">
+                        <Label>Viewport Width</Label>
+                        <Input
+                          value={battleCase.viewportWidth}
+                          onChange={(event) =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              viewportWidth: event.target.value,
+                            }))
+                          }
+                          placeholder="400"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Viewport Height</Label>
+                        <Input
+                          value={battleCase.viewportHeight}
+                          onChange={(event) =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              viewportHeight: event.target.value,
+                            }))
+                          }
+                          placeholder="300"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label>Colors Palette</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              colors: [...current.colors, ''],
+                            }))
+                          }
+                        >
+                          Add Color
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {battleCase.colors.map((color, colorIndex) => (
+                          <div
+                            key={`css-color-${colorIndex}`}
+                            className="flex items-center gap-2"
+                          >
+                            <Input
+                              value={color}
+                              onChange={(event) =>
+                                updateCssBattleCase((current) => ({
+                                  ...current,
+                                  colors: current.colors.map(
+                                    (entry, entryIndex) =>
+                                      entryIndex === colorIndex
+                                        ? event.target.value
+                                        : entry,
+                                  ),
+                                }))
+                              }
+                              placeholder="#ff6b00"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={battleCase.colors.length === 1}
+                              onClick={() =>
+                                updateCssBattleCase((current) => ({
+                                  ...current,
+                                  colors: current.colors.filter(
+                                    (_, entryIndex) =>
+                                      entryIndex !== colorIndex,
+                                  ),
+                                }))
+                              }
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        These colors are saved in the case and can be shown to
+                        players as the target palette.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Starter HTML</Label>
+                        <textarea
+                          value={battleCase.starterHtml}
+                          onChange={(event) =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              starterHtml: event.target.value,
+                            }))
+                          }
+                          className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          placeholder="<div class=planet></div>"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Starter CSS</Label>
+                        <textarea
+                          value={battleCase.starterCss}
+                          onChange={(event) =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              starterCss: event.target.value,
+                            }))
+                          }
+                          className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          placeholder=".planet{width:80px;height:80px;background:#ff6b00;border-radius:50%;}"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Target HTML</Label>
+                        <textarea
+                          value={battleCase.targetHtml}
+                          onChange={(event) =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              targetHtml: event.target.value,
+                            }))
+                          }
+                          className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          placeholder="<div class=planet><span></span></div>"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Target CSS</Label>
+                        <textarea
+                          value={battleCase.targetCss}
+                          onChange={(event) =>
+                            updateCssBattleCase((current) => ({
+                              ...current,
+                              targetCss: event.target.value,
+                            }))
+                          }
+                          className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          placeholder=".planet{width:140px;height:140px;background:#ff6b00;border-radius:50%;}"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2 sm:max-w-xs">
+                      <Label>Minimum Score (0-100)</Label>
+                      <Input
+                        value={battleCase.expectedOutput}
+                        onChange={(event) =>
+                          updateCssBattleCase((current) => ({
+                            ...current,
+                            expectedOutput: event.target.value,
+                          }))
+                        }
+                        placeholder="100"
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          ) : isThatsNotMyCoderType ? (
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <Label>Review Cases</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    updateThatsNotMyCoderCases([
+                      ...thatsNotMyCoderCases,
+                      DEFAULT_TNMC_CASE,
+                    ])
+                  }
+                >
+                  Add Case
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {thatsNotMyCoderCases.map((reviewCase, caseIndex) => (
+                  <div
+                    key={`tnmc-case-${caseIndex}`}
+                    className="rounded-md border border-border/60 bg-background/70 p-4 space-y-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="text-sm font-semibold">
+                        Case {caseIndex + 1}
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={thatsNotMyCoderCases.length === 1}
+                        onClick={() =>
+                          updateThatsNotMyCoderCases(
+                            thatsNotMyCoderCases.filter(
+                              (_, index) => index !== caseIndex,
+                            ),
+                          )
+                        }
+                      >
+                        Remove Case
+                      </Button>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="grid gap-2">
+                        <Label>Title</Label>
+                        <Input
+                          value={reviewCase.title}
+                          onChange={(event) =>
+                            updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                              ...current,
+                              title: event.target.value,
+                            }))
+                          }
+                          placeholder="Rate limiter patch"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Author</Label>
+                        <Input
+                          value={reviewCase.author}
+                          onChange={(event) =>
+                            updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                              ...current,
+                              author: event.target.value,
+                            }))
+                          }
+                          placeholder="suspicious_commit_bot"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Language</Label>
+                        <Input
+                          value={reviewCase.language}
+                          onChange={(event) =>
+                            updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                              ...current,
+                              language: event.target.value,
+                            }))
+                          }
+                          placeholder="typescript"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Note</Label>
+                        <Input
+                          value={reviewCase.note}
+                          onChange={(event) =>
+                            updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                              ...current,
+                              note: event.target.value,
+                            }))
+                          }
+                          placeholder="Patch review summary"
+                        />
+                      </div>
+                      <div className="grid gap-2 sm:max-w-xs">
+                        <Label>Time Limit (seconds)</Label>
+                        <Input
+                          value={reviewCase.timeLimit}
+                          onChange={(event) =>
+                            updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                              ...current,
+                              timeLimit: event.target.value,
+                            }))
+                          }
+                          placeholder="15"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Rationale</Label>
+                      <textarea
+                        value={reviewCase.rationale}
+                        onChange={(event) =>
+                          updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                            ...current,
+                            rationale: event.target.value,
+                          }))
+                        }
+                        className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        placeholder="Why this case should be accepted or denied"
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Code</Label>
+                      <textarea
+                        value={reviewCase.code}
+                        onChange={(event) =>
+                          updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                            ...current,
+                            code: event.target.value,
+                          }))
+                        }
+                        className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        placeholder="export function isAdmin(user) {\n  return true\n}"
+                      />
+                    </div>
+
+                    <div className="grid gap-2 sm:max-w-xs">
+                      <Label>Expected Decision</Label>
+                      <Select
+                        value={reviewCase.expectedOutput}
+                        onValueChange={(value) =>
+                          updateThatsNotMyCoderCase(caseIndex, (current) => ({
+                            ...current,
+                            expectedOutput:
+                              value === 'accept' ? 'accept' : 'deny',
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="accept">accept</SelectItem>
+                          <SelectItem value="deny">deny</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
             <div className="grid gap-2">
-              <Label htmlFor="challenge-examples">Examples</Label>
+              <Label htmlFor="challenge-test-cases">
+                {getTestCasesLabel(values.type)}
+              </Label>
               <textarea
-                id="challenge-examples"
-                value={values.examples}
+                id="challenge-test-cases"
+                value={values.testCases}
                 onChange={(event) =>
                   setValues((current) => ({
                     ...current,
-                    examples: event.target.value,
+                    testCases: event.target.value,
                   }))
                 }
-                className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                placeholder="One example per line"
+                className="min-h-56 rounded-md border border-input bg-transparent px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                placeholder={getTestCasesPlaceholder(values.type)}
               />
+              <p className="text-xs text-muted-foreground">
+                {getTestCasesHelpText(values.type)}
+              </p>
             </div>
+          )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="challenge-constraints">Constraints</Label>
-              <textarea
-                id="challenge-constraints"
-                value={values.constraints}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    constraints: event.target.value,
-                  }))
-                }
-                className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                placeholder="One constraint per line"
-              />
-            </div>
+          {!isCssBattleType && !isThatsNotMyCoderType ? (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="challenge-examples">Examples</Label>
+                <textarea
+                  id="challenge-examples"
+                  value={values.examples}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      examples: event.target.value,
+                    }))
+                  }
+                  className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  placeholder="One example per line"
+                />
+              </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="challenge-conditions">Conditions</Label>
-              <textarea
-                id="challenge-conditions"
-                value={values.conditions}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    conditions: event.target.value,
-                  }))
-                }
-                className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                placeholder="One condition per line"
-              />
+              <div className="grid gap-2">
+                <Label htmlFor="challenge-constraints">Constraints</Label>
+                <textarea
+                  id="challenge-constraints"
+                  value={values.constraints}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      constraints: event.target.value,
+                    }))
+                  }
+                  className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  placeholder="One constraint per line"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="challenge-conditions">Conditions</Label>
+                <textarea
+                  id="challenge-conditions"
+                  value={values.conditions}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      conditions: event.target.value,
+                    }))
+                  }
+                  className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  placeholder="One condition per line"
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
@@ -737,6 +1761,22 @@ function RouteComponent() {
       return data
     },
   })
+  const recommendationsQuery = useQuery({
+    queryKey: ['recommendations', 'me'],
+    enabled: isAuthenticated,
+    retry: false,
+    queryFn: async () => {
+      const { data } = await api.get<RecommendationResponse>(
+        '/recommendations/me',
+        {
+          params: {
+            limit: 5,
+          },
+        },
+      )
+      return data
+    },
+  })
 
   const createChallengeMutation = useMutation({
     mutationFn: async (values: ChallengeFormValues) => {
@@ -755,6 +1795,20 @@ function RouteComponent() {
     },
     onError: (error) => {
       setAdminActionError(getErrorMessage(error))
+    },
+  })
+
+  const generateChallengeDraftMutation = useMutation({
+    mutationFn: async (values: ChallengeFormValues) => {
+      const { data } = await api.post<GeneratedChallengeDraft>(
+        '/challenges/generate-draft',
+        {
+          title: values.title.trim(),
+          type: values.type,
+        },
+      )
+
+      return mapDraftToFormValues(data)
     },
   })
 
@@ -816,8 +1870,13 @@ function RouteComponent() {
   })
 
   const challenges = challengesQuery.data?.data ?? []
+  const recommendedChallenges = recommendationsQuery.data?.data ?? []
   const pvpChallenges = useMemo(
-    () => challenges.filter((challenge) => challenge.type === 'pvp'),
+    () =>
+      challenges.filter(
+        (challenge) =>
+          challenge.type === 'pvp' || challenge.type === 'quiz_pvp',
+      ),
     [challenges],
   )
 
@@ -904,6 +1963,17 @@ function RouteComponent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
   const featuredChallenge = filteredData[0] ?? challenges[0] ?? null
+  const recommendedChallengeCards = useMemo(
+    () =>
+      recommendedChallenges.filter(
+        (recommendation) =>
+          recommendation.challenge &&
+          challenges.some(
+            (challenge) => challenge.id === recommendation.challenge.id,
+          ),
+      ),
+    [challenges, recommendedChallenges],
+  )
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-6">
@@ -961,6 +2031,120 @@ function RouteComponent() {
           </div>
         )}
 
+        {isAuthenticated ? (
+          <Card className="border-primary/20 bg-linear-to-br from-primary/8 via-background to-background">
+            <CardHeader className="gap-3 border-b border-primary/10">
+              <div className="flex items-center gap-2 text-primary">
+                <Star className="h-4 w-4" />
+                <span className="text-xs font-bold uppercase tracking-[0.3em]">
+                  Recommended For You
+                </span>
+              </div>
+              <CardTitle className="flex items-center gap-2 text-2xl uppercase">
+                Next best challenges
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </CardTitle>
+              <CardDescription>
+                Personalized picks based on your ByteBattle submission history.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {recommendationsQuery.isLoading ? (
+                <div className="text-sm text-muted-foreground">
+                  Building recommendations...
+                </div>
+              ) : recommendationsQuery.isError ? (
+                <div className="text-sm text-muted-foreground">
+                  Recommendations are unavailable right now.
+                </div>
+              ) : recommendedChallengeCards.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  Solve a few solo or quiz challenges to unlock personalized
+                  recommendations.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {recommendedChallengeCards.map((recommendation) => {
+                    const score = Math.round(recommendation.score * 100)
+
+                    return (
+                      <div
+                        key={`${recommendation.challengeId}-${recommendation.rank}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
+                          navigate({
+                            to: '/challenge',
+                            search: { id: recommendation.challenge.id },
+                          })
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            navigate({
+                              to: '/challenge',
+                              search: { id: recommendation.challenge.id },
+                            })
+                          }
+                        }}
+                        className="group cursor-pointer border border-border bg-background/70 p-5 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <Badge className="bg-primary/10 text-primary border-primary/20 uppercase tracking-widest text-[10px]">
+                              Rank #{recommendation.rank}
+                            </Badge>
+                            <h3 className="text-lg font-bold uppercase group-hover:text-primary">
+                              {recommendation.challenge.title}
+                            </h3>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">
+                              {score}%
+                            </div>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                              solve score
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Badge variant="secondary" className="uppercase">
+                            {formatDifficulty(
+                              recommendation.challenge.difficulty,
+                            )}
+                          </Badge>
+                          <Badge variant="secondary" className="uppercase">
+                            {formatType(recommendation.challenge.type)}
+                          </Badge>
+                          <Badge variant="secondary" className="uppercase">
+                            {recommendation.challenge.topics[0] ?? 'General'}
+                          </Badge>
+                        </div>
+
+                        <p className="mt-4 text-sm text-muted-foreground">
+                          {recommendation.reason}
+                        </p>
+
+                        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            Acceptance{' '}
+                            {Number(
+                              recommendation.challenge.acceptanceRate,
+                            ).toFixed(1)}
+                            %
+                          </span>
+                          <span>Model-driven suggestion</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         {isAdmin ? (
           <div className="flex justify-end gap-2">
             <Button
@@ -981,7 +2165,12 @@ function RouteComponent() {
               onSubmit={async (values) => {
                 await createChallengeMutation.mutateAsync(values)
               }}
+              onGenerateDraft={async (values) => {
+                setAdminActionError(null)
+                return generateChallengeDraftMutation.mutateAsync(values)
+              }}
               isPending={createChallengeMutation.isPending}
+              isGeneratingDraft={generateChallengeDraftMutation.isPending}
               errorMessage={adminActionError}
               trigger={
                 <Button className="gap-2">
@@ -1079,8 +2268,17 @@ function RouteComponent() {
               <TabsList className="bg-background border border-border">
                 <TabsTrigger value="All">All</TabsTrigger>
                 <TabsTrigger value="Solo">Solo</TabsTrigger>
+                <TabsTrigger value="Quiz">Quiz</TabsTrigger>
                 <TabsTrigger value="1v1">1v1</TabsTrigger>
+                <TabsTrigger value="Quiz 1v1">Quiz 1v1</TabsTrigger>
                 <TabsTrigger value="Teams">Teams</TabsTrigger>
+                <TabsTrigger value="CSS Battle">CSS Battle</TabsTrigger>
+                <TabsTrigger value="That's Not My Coder">
+                  That&apos;s Not My Coder
+                </TabsTrigger>
+                <TabsTrigger value="Coders vs Imposter">
+                  Coders vs Imposter
+                </TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -1372,7 +2570,12 @@ function RouteComponent() {
                 id: editingChallenge.id,
               })
             }}
+            onGenerateDraft={async (values) => {
+              setAdminActionError(null)
+              return generateChallengeDraftMutation.mutateAsync(values)
+            }}
             isPending={updateChallengeMutation.isPending}
+            isGeneratingDraft={generateChallengeDraftMutation.isPending}
             errorMessage={adminActionError}
           />
         ) : null}
