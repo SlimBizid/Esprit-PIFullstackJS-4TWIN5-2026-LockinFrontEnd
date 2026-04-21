@@ -232,6 +232,10 @@ export default function Navbar() {
     return 'bg-background border-border shadow-lg'
   }
 
+  const navLinks = user?.type === 'admin'
+    ? [...NAV_LINKS, { to: '/admin/review-reports' as const, label: 'Reports' }]
+    : NAV_LINKS
+
   return (
     <>
       <a
@@ -270,7 +274,7 @@ export default function Navbar() {
             className="hidden md:flex items-center gap-6 font-semibold"
             role="list"
           >
-            {NAV_LINKS.map(({ to, label }) => (
+            {navLinks.map(({ to, label }) => (
               <li key={to}>
                 <Link
                   to={to}
@@ -310,7 +314,17 @@ export default function Navbar() {
                   className="text-primary font-bold"
                   aria-label={`Logged in as ${user?.username}`}
                 >
-                  {user?.username}
+                  <Link
+                    to="/profile/$userId"
+                    params={{ userId: user?.username ?? '' }}
+                    className="font-mono text-sm text-primary hover:opacity-80 transition-opacity tracking-widest uppercase"
+                    aria-label={`View profile of ${user?.username}`}
+                  >
+                    {user?.username}
+                    <span className="animate-peekaboo" aria-hidden="true">
+                      _
+                    </span>
+                  </Link>
                 </span>
                 <Button
                   onClick={handleLogout}
@@ -381,7 +395,7 @@ export default function Navbar() {
                   aria-label="Mobile navigation links"
                 >
                   <ul className="flex flex-col gap-2">
-                    {NAV_LINKS.map(({ to, label }) => (
+                    {navLinks.map(({ to, label }) => (
                       <li key={to}>
                         <SheetClose asChild>
                           <Link

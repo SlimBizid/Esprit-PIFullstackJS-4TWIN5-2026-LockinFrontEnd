@@ -523,7 +523,11 @@ export function TeamPage() {
                   <p className="text-xs text-muted-foreground mb-1">
                     Transfer Leadership
                   </p>
-                  <select className="w-full border rounded px-2 py-1 text-sm">
+                  <select
+                    className="w-full border rounded px-2 py-1 text-sm"
+                    value={newLeaderIdForQuit}
+                    onChange={(e) => setNewLeaderIdForQuit(e.target.value)}
+                  >
                     <option value="">Select new leader</option>
                     {team.users
                       .filter((u) => u.id !== leaderIdValue)

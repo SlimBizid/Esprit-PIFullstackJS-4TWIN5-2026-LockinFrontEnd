@@ -84,7 +84,7 @@ export const useUserStore = create<UserState>()(
         //dont use this yet, i didnt implement /me yet
         set({ isLoading: true, error: null })
         try {
-          const { data } = await api.get<User>('/auth/me')
+          const { data } = await api.get<User>('/users/me')
           set({ user: data, isAuthenticated: true, isLoading: false })
         } catch (err) {
           if (axios.isAxiosError(err) && err.response?.status === 401) {

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import {
   Terminal,
@@ -17,9 +17,14 @@ import { Progress } from '@/components/ui/progress'
 import { Editor, loader } from '@monaco-editor/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { api, useIsAuthenticated, useUser } from '@/stores/userStore'
+import {
+  api,
+  useIsAuthenticated,
+  useUser,
+  useUserStore,
+} from '@/stores/userStore'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
 import {
@@ -43,6 +48,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ChallengeReviewsPanel } from '@/components/challenge-reviews-panel'
 import { Input } from '@/components/ui/input'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import {
@@ -155,11 +161,18 @@ function formatMessageTime(value: string) {
 export const Route = createFileRoute('/challenge')({
   validateSearch: challengeSearchSchema,
   component: RouteComponent,
+  loader: async () => {
+    const user = useUserStore.getState().user
+    if (!user) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 function RouteComponent() {
   const navigate = useNavigate()
   const { id, matchId } = Route.useSearch()
+  const queryClient = useQueryClient()
   const isAuthenticated = useIsAuthenticated()
   const user = useUser()
   const { theme } = useTheme()
@@ -178,6 +191,11 @@ function RouteComponent() {
   const [chatDraft, setChatDraft] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [messageDialog, setMessageDialog] = useState<MessageDialogState | null>(
+    null,
+  )
+  const [matchResultDialog, setMatchResultDialog] =
+    useState<MessageDialogState | null>(null)
+  const [seenMatchResultKey, setSeenMatchResultKey] = useState<string | null>(
     null,
   )
   const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false)
@@ -303,7 +321,10 @@ function RouteComponent() {
 
       return data
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['challenge-reviews', id],
+      })
       void matchQuery.refetch()
     },
   })
@@ -328,8 +349,11 @@ function RouteComponent() {
 
       return data
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setTestResults(data.results)
+      await queryClient.invalidateQueries({
+        queryKey: ['challenge-reviews', id],
+      })
     },
   })
 
@@ -409,6 +433,7 @@ function RouteComponent() {
     setCodeByLanguage(buildCodeByLanguage(challenge))
     setActiveSidebarTab('content')
     setChatDraft('')
+    setSeenMatchResultKey(null)
   }, [challenge, id])
 
   const activeCase = useMemo(
@@ -423,6 +448,13 @@ function RouteComponent() {
   const opponentSubmission = currentMatch?.submissions.find(
     (submission) => submission.userId !== user?.id,
   )
+  const winningAcceptedSubmission = currentMatch?.winnerId
+    ? currentMatch.submissions.find(
+        (submission) =>
+          submission.userId === currentMatch.winnerId &&
+          submission.verdict === 'accepted',
+      )
+    : null
   const publicMatches = publicMatchesQuery.data ?? []
   const isCurrentUserWinner = currentMatch?.winner?.id === user?.id
   const isCurrentUserLoser =
@@ -431,6 +463,7 @@ function RouteComponent() {
     !!user?.id
   const isCancelledMatch =
     currentMatch?.status === 'finished' && !currentMatch.winnerId
+  const endedByAcceptedSubmission = !!winningAcceptedSubmission
   const canSubmitToMatch =
     !!currentMatch && currentMatch.status === 'active' && !currentMatch.winnerId
   const canViewChallenge =
@@ -466,6 +499,58 @@ function RouteComponent() {
                 : testCases.length === 0
                   ? 'No test cases available'
                   : 'Submit your solution'
+
+  useEffect(() => {
+    if (!currentMatch || currentMatch.status !== 'finished') {
+      return
+    }
+
+    const resultKey = `${currentMatch.id}:${currentMatch.endedAt ?? currentMatch.updatedAt}`
+
+    if (seenMatchResultKey === resultKey) {
+      return
+    }
+
+    if (isCancelledMatch) {
+      setMatchResultDialog({
+        title: 'Match Cancelled',
+        description: currentMatch.playerTwoId
+          ? 'The duel ended before anyone won. Create a new match to play again.'
+          : 'You closed the match before an opponent joined.',
+      })
+      setSeenMatchResultKey(resultKey)
+      return
+    }
+
+    if (isCurrentUserWinner) {
+      setMatchResultDialog({
+        title: 'You Won',
+        description: endedByAcceptedSubmission
+          ? 'Your accepted submission finished first and won the match.'
+          : 'Your opponent surrendered, so you win by forfeit.',
+      })
+      setSeenMatchResultKey(resultKey)
+      return
+    }
+
+    if (isCurrentUserLoser) {
+      setMatchResultDialog({
+        title: 'You Lost',
+        description: endedByAcceptedSubmission
+          ? `${currentMatch.winner?.username ?? 'Your opponent'} submitted the first accepted solution.`
+          : 'You surrendered the match, so your opponent wins by forfeit.',
+        variant: 'destructive',
+      })
+      setSeenMatchResultKey(resultKey)
+    }
+  }, [
+    currentMatch,
+    endedByAcceptedSubmission,
+    isCancelledMatch,
+    isCurrentUserLoser,
+    isCurrentUserWinner,
+    seenMatchResultKey,
+  ])
 
   const handleRunTests = async () => {
     if (!isAuthenticated || !challenge || !canViewChallenge) return
@@ -764,7 +849,7 @@ function RouteComponent() {
   if (challengeQuery.isError || !challenge) {
     return (
       <div className="mt-16 mx-auto max-w-3xl p-6">
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-none">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Challenge unavailable</AlertTitle>
           <AlertDescription>
@@ -783,7 +868,7 @@ function RouteComponent() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hover:bg-primary-foreground"
+                className="h-8 w-8 hover:bg-primary-foreground rounded-none"
                 onClick={() => navigate({ to: '/challenges' })}
                 aria-label="Back to challenges"
               >
@@ -797,7 +882,7 @@ function RouteComponent() {
             <span className="truncate text-foreground text-sm tracking-wider uppercase">
               {challenge.title}
             </span>
-            <Badge className="h-5 shrink-0 border-primary bg-primary/10 text-[10px] text-primary uppercase">
+            <Badge className="rounded-none h-5 shrink-0 border-primary bg-primary/10 text-[10px] text-primary uppercase">
               {formatDifficulty(challenge.difficulty)}
             </Badge>
           </div>
@@ -807,13 +892,14 @@ function RouteComponent() {
           <Button
             type="button"
             variant="ghost"
+            className="rounded-none"
             size="sm"
             onClick={() => setShortcutsOpen(true)}
           >
             Shortcuts
           </Button>
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <div className="h-2 w-2 rounded-none bg-primary animate-pulse" />
             Environment Ready
           </div>
         </div>
@@ -850,7 +936,7 @@ function RouteComponent() {
             {activeSidebarTab === 'content' ? (
               <>
                 {isPvpChallenge ? (
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
+                  <div className="rounded-none border border-primary/20 bg-primary/5 p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -860,13 +946,13 @@ function RouteComponent() {
                           Queue a duel or join an existing match by ID.
                         </p>
                       </div>
-                      <Badge className="bg-primary/10 text-primary uppercase">
+                      <Badge className="rounded-none bg-primary/10 text-primary uppercase">
                         {currentMatch?.status ?? 'lobby'}
                       </Badge>
                     </div>
 
                     {matchId ? (
-                      <div className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-3">
+                      <div className="space-y-3 rounded-none border border-border/60 bg-background/60 p-3">
                         <div className="space-y-1">
                           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                             Match ID
@@ -877,7 +963,7 @@ function RouteComponent() {
                         </div>
 
                         {matchQuery.isError ? (
-                          <Alert variant="destructive">
+                          <Alert variant="destructive" className="rounded-none">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Match unavailable</AlertTitle>
                             <AlertDescription>
@@ -896,7 +982,7 @@ function RouteComponent() {
                               </span>
                             </p>
                             {currentMatch.status === 'waiting' ? (
-                              <Alert>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Waiting For Opponent</AlertTitle>
                                 <AlertDescription>
@@ -908,7 +994,7 @@ function RouteComponent() {
 
                             {currentMatch.status === 'active' &&
                             !currentMatch.winner ? (
-                              <Alert>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Match In Progress</AlertTitle>
                                 <AlertDescription>
@@ -918,30 +1004,34 @@ function RouteComponent() {
                             ) : null}
 
                             {isCurrentUserWinner ? (
-                              <Alert>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>You Won</AlertTitle>
                                 <AlertDescription>
-                                  Your submission finished first and won the 1v1
-                                  match.
+                                  {endedByAcceptedSubmission
+                                    ? 'Your submission finished first and won the 1v1 match.'
+                                    : 'Your opponent surrendered, so you win by forfeit.'}
                                 </AlertDescription>
                               </Alert>
                             ) : null}
 
                             {isCurrentUserLoser ? (
-                              <Alert variant="destructive">
+                              <Alert
+                                variant="destructive"
+                                className="rounded-none"
+                              >
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>You Lost</AlertTitle>
                                 <AlertDescription>
-                                  {currentMatch.winner?.username ??
-                                    'Your opponent'}{' '}
-                                  submitted the first accepted solution.
+                                  {endedByAcceptedSubmission
+                                    ? `${currentMatch.winner?.username ?? 'Your opponent'} submitted the first accepted solution.`
+                                    : 'You surrendered the match, so your opponent wins by forfeit.'}
                                 </AlertDescription>
                               </Alert>
                             ) : null}
 
                             {isCancelledMatch ? (
-                              <Alert>
+                              <Alert className="rounded-none">
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Match Cancelled</AlertTitle>
                                 <AlertDescription>
@@ -1006,11 +1096,13 @@ function RouteComponent() {
                             variant="outline"
                             size="sm"
                             onClick={() => void handleCopyMatchId()}
+                            className="rounded-none"
                           >
                             Copy match ID
                           </Button>
                           <Button
                             type="button"
+                            className="rounded-none"
                             variant="destructive"
                             size="sm"
                             onClick={() => setSurrenderConfirmOpen(true)}
@@ -1027,6 +1119,7 @@ function RouteComponent() {
                           <Button
                             type="button"
                             variant="ghost"
+                            className="rounded-none"
                             size="sm"
                             onClick={() =>
                               navigate({ to: '/challenge', search: { id } })
@@ -1041,6 +1134,7 @@ function RouteComponent() {
                         <div className="flex flex-wrap gap-3">
                           <Button
                             type="button"
+                            className="rounded-none"
                             onClick={() =>
                               createMatchMutation.mutate('private')
                             }
@@ -1054,6 +1148,7 @@ function RouteComponent() {
                           </Button>
                           <Button
                             type="button"
+                            className="rounded-none"
                             variant="outline"
                             onClick={() => createMatchMutation.mutate('public')}
                             disabled={
@@ -1066,6 +1161,7 @@ function RouteComponent() {
                           </Button>
                           <Button
                             type="button"
+                            className="rounded-none"
                             variant="outline"
                             onClick={() => setJoinDialogOpen(true)}
                             disabled={
@@ -1077,6 +1173,7 @@ function RouteComponent() {
                           <Button
                             type="button"
                             variant="outline"
+                            className="rounded-none"
                             onClick={() => joinRandomMatchMutation.mutate()}
                             disabled={
                               !isAuthenticated ||
@@ -1106,7 +1203,7 @@ function RouteComponent() {
                               {publicMatches.map((match) => (
                                 <div
                                   key={match.id}
-                                  className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                  className="flex flex-col gap-2 rounded-none border border-border/60 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
                                 >
                                   <div className="space-y-1">
                                     <p className="text-xs text-foreground">
@@ -1122,6 +1219,7 @@ function RouteComponent() {
                                   </div>
                                   <Button
                                     type="button"
+                                    className="rounded-none"
                                     size="sm"
                                     onClick={() =>
                                       joinMatchMutation.mutate(match.id)
@@ -1177,7 +1275,7 @@ function RouteComponent() {
                         examples.map((example, index) => (
                           <div
                             key={`${example}-${index}`}
-                            className="rounded-lg border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
+                            className="rounded-none border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
                           >
                             <div className="text-foreground">
                               Example {index + 1}:
@@ -1194,7 +1292,7 @@ function RouteComponent() {
                       )}
                     </>
                   ) : (
-                    <Alert>
+                    <Alert className="rounded-none">
                       <AlertCircle className="h-4 w-4" />
                       <AlertTitle>Problem Locked</AlertTitle>
                       <AlertDescription>
@@ -1205,7 +1303,7 @@ function RouteComponent() {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-6">
+                <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-rarity-legendary">
                       <AlertCircle className="w-4 h-4" />
@@ -1233,7 +1331,7 @@ function RouteComponent() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-foreground/5 bg-foreground/2 p-6 space-y-4">
+                <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-4">
                   <div className="flex items-center gap-2 text-primary">
                     <ShieldCheck className="w-4 h-4" />
                     <h4 className="text-xs font-bold uppercase tracking-widest">
@@ -1248,7 +1346,7 @@ function RouteComponent() {
                             key={`${condition}-${index}`}
                             className="flex items-start gap-3 text-xs text-foreground"
                           >
-                            <div className="w-1 h-1 rounded-full bg-foreground mt-1.5" />
+                            <div className="w-1 h-1 rounded-none bg-foreground mt-1.5" />
                             {condition}
                           </li>
                         ))
@@ -1268,11 +1366,7 @@ function RouteComponent() {
             ) : null}
 
             {activeSidebarTab === 'reviews' ? (
-              <div className="rounded-xl border border-border bg-background/60 p-4">
-                <p className="text-sm text-muted-foreground">
-                  Challenge reviews are not wired yet.
-                </p>
-              </div>
+              <ChallengeReviewsPanel challengeId={id} />
             ) : null}
 
             {activeSidebarTab === 'chat' ? (
@@ -1288,7 +1382,7 @@ function RouteComponent() {
                 </div>
 
                 {!matchId ? (
-                  <Alert>
+                  <Alert className="rounded-none">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>No Match Selected</AlertTitle>
                     <AlertDescription>
@@ -1296,7 +1390,7 @@ function RouteComponent() {
                     </AlertDescription>
                   </Alert>
                 ) : !canUseMatchChat ? (
-                  <Alert>
+                  <Alert className="rounded-none">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Chat Locked</AlertTitle>
                     <AlertDescription>
@@ -1305,7 +1399,7 @@ function RouteComponent() {
                   </Alert>
                 ) : (
                   <>
-                    <div className="max-h-80 space-y-3 overflow-y-auto rounded-xl border border-border bg-background/60 p-4">
+                    <div className="max-h-80 space-y-3 overflow-y-auto rounded-none  bg-background/60 ">
                       {chatMessagesQuery.isLoading ? (
                         <p className="text-sm text-muted-foreground">
                           Loading messages...
@@ -1325,7 +1419,7 @@ function RouteComponent() {
                               }`}
                             >
                               <div
-                                className={`max-w-[85%] rounded-xl border p-3 ${
+                                className={`max-w-[85%] rounded-none border p-3 ${
                                   isCurrentUserMessage
                                     ? 'border-primary/30 bg-primary/10 text-foreground'
                                     : 'border-border bg-background text-foreground'
@@ -1369,12 +1463,13 @@ function RouteComponent() {
                             void handleSendChatMessage()
                           }
                         }}
-                        className="min-h-28 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        className="min-h-28 rounded-none border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                         placeholder="Send a message to your opponent..."
                       />
                       <div className="flex justify-end">
                         <Button
                           type="button"
+                          className="rounded-none"
                           onClick={() => void handleSendChatMessage()}
                           disabled={
                             !chatDraft.trim() ||
@@ -1568,7 +1663,7 @@ function RouteComponent() {
 
             {!isAuthenticated ? (
               <div className="border-b border-border p-4">
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="rounded-none">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Login Required</AlertTitle>
                   <AlertDescription>
@@ -1677,8 +1772,8 @@ function RouteComponent() {
                       </div>
                     </div>
                   ) : canViewChallenge ? (
-                    <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/5">
-                      <div className="p-3 rounded-full bg-muted/20 mb-2">
+                    <div className="h-32 flex flex-col items-center justify-center border border-dashed border-border rounded-none bg-muted/5">
+                      <div className="p-3 rounded-none bg-muted/20 mb-2">
                         <Play className="w-5 h-5 text-muted-foreground/50" />
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase tracking-widest animate-pulse">
@@ -1686,8 +1781,8 @@ function RouteComponent() {
                       </p>
                     </div>
                   ) : (
-                    <div className="h-32 flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/5">
-                      <div className="p-3 rounded-full bg-muted/20 mb-2">
+                    <div className="h-32 flex flex-col items-center justify-center rounded-none border border-dashed border-border bg-muted/5">
+                      <div className="p-3 rounded-none bg-muted/20 mb-2">
                         <AlertCircle className="w-5 h-5 text-muted-foreground/50" />
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
@@ -1701,7 +1796,7 @@ function RouteComponent() {
           </div>
 
           <div className="hidden border-t border-foreground/5 bg-background px-6 py-4 md:flex md:items-center md:justify-between">
-            <div className="flex items-center gap-4 rounded-lg border border-foreground/10 bg-primary-foreground p-2 pr-6">
+            <div className="flex items-center gap-4 rounded-none border border-foreground/10 bg-primary-foreground p-2 pr-6">
               <div className="w-10 h-10 rounded bg-linear-to-br from-primary to-blue-600 p-px">
                 <div className="w-full h-full bg-background rounded flex items-center justify-center overflow-hidden">
                   <img
@@ -1742,7 +1837,7 @@ function RouteComponent() {
             />
           </div>
           {joinMatchMutation.isError ? (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="rounded-none">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Join failed</AlertTitle>
               <AlertDescription>
@@ -1813,6 +1908,14 @@ function RouteComponent() {
         onOpenChange={(open) => {
           if (!open) {
             setMessageDialog(null)
+          }
+        }}
+      />
+      <MessageDialog
+        message={matchResultDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMatchResultDialog(null)
           }
         }}
       />
