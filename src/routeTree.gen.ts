@@ -16,6 +16,7 @@ import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TeamsIndexRouteImport } from './routes/teams/index'
+import { Route as AchievementsIndexRouteImport } from './routes/achievements/index'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
@@ -58,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
 const TeamsIndexRoute = TeamsIndexRouteImport.update({
   id: '/teams/',
   path: '/teams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AchievementsIndexRoute = AchievementsIndexRouteImport.update({
+  id: '/achievements/',
+  path: '/achievements/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/achievements/': typeof AchievementsIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/profile/edit/': typeof ProfileEditIndexRoute
 }
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/achievements': typeof AchievementsIndexRoute
   '/teams': typeof TeamsIndexRoute
   '/profile/edit': typeof ProfileEditIndexRoute
 }
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/achievements/': typeof AchievementsIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/profile/edit/': typeof ProfileEditIndexRoute
 }
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/profile/$userId'
     | '/teams/$teamId'
+    | '/achievements/'
     | '/teams/'
     | '/profile/edit/'
   fileRoutesByTo: FileRoutesByTo
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/profile/$userId'
     | '/teams/$teamId'
+    | '/achievements'
     | '/teams'
     | '/profile/edit'
   id:
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/profile/$userId'
     | '/teams/$teamId'
+    | '/achievements/'
     | '/teams/'
     | '/profile/edit/'
   fileRoutesById: FileRoutesById
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
+  AchievementsIndexRoute: typeof AchievementsIndexRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
   ProfileEditIndexRoute: typeof ProfileEditIndexRoute
 }
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       path: '/teams'
       fullPath: '/teams/'
       preLoaderRoute: typeof TeamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/achievements/': {
+      id: '/achievements/'
+      path: '/achievements'
+      fullPath: '/achievements/'
+      preLoaderRoute: typeof AchievementsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/teams/$teamId': {
@@ -349,6 +369,7 @@ const rootRouteChildren: RootRouteChildren = {
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
+  AchievementsIndexRoute: AchievementsIndexRoute,
   TeamsIndexRoute: TeamsIndexRoute,
   ProfileEditIndexRoute: ProfileEditIndexRoute,
 }

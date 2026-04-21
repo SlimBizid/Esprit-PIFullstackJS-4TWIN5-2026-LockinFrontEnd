@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Github, Mail, Shield, Star, Palette, Pencil } from 'lucide-react'
 import { api, useUser } from '@/stores/userStore'
+import { UserAchievementsPreview } from '@/components/userprofileachievements'
 
 interface UserProfile {
   id: string
@@ -70,20 +71,11 @@ function RouteComponent() {
       className="min-h-screen bg-background w-full py-16 sm:py-24 px-4 sm:px-8 lg:px-32"
     >
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header card */}
+        {/* Header */}
         <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-          {/* Decorative corner */}
-          <p
-            aria-hidden="true"
-            className="absolute top-4 right-4 font-mono text-xs text-primary/30 tracking-widest uppercase"
-          ></p>
-
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            {/* Avatar placeholder */}
-            <div
-              aria-hidden="true"
-              className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0"
-            >
+            {/* Avatar */}
+            <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0">
               <span className="font-mono-one text-3xl text-primary uppercase">
                 {user.username[0]}
               </span>
@@ -100,7 +92,7 @@ function RouteComponent() {
 
                 {user.type === 'admin' && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest text-destructive uppercase bg-destructive/10 border border-destructive/20 px-2 py-1 rounded">
-                    <Shield className="w-3 h-3" aria-hidden="true" />
+                    <Shield className="w-3 h-3" />
                     Admin
                   </span>
                 )}
@@ -108,7 +100,7 @@ function RouteComponent() {
                 {isOwnProfile && (
                   <Link to="/profile/edit">
                     <button className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-primary uppercase bg-primary/10 border border-primary/20 px-2 py-1 rounded hover:bg-primary/20 transition-colors">
-                      <Pencil className="w-3 h-3" aria-hidden="true" />
+                      <Pencil className="w-3 h-3" />
                       Edit Profile
                     </button>
                   </Link>
@@ -120,12 +112,9 @@ function RouteComponent() {
               </p>
             </div>
 
-            {/* XP badge */}
+            {/* XP */}
             {totalXp !== null ? (
-              <div
-                aria-label={`Total XP: ${totalXp}`}
-                className="flex flex-col items-center justify-center px-6 py-4 bg-background border border-primary/30 rounded-xl shadow-[0_0_20px_rgba(0,207,186,0.08)]"
-              >
+              <div className="flex flex-col items-center justify-center px-6 py-4 bg-background border border-primary/30 rounded-xl shadow-[0_0_20px_rgba(0,207,186,0.08)]">
                 <span className="text-2xl font-mono-one text-primary font-bold">
                   {totalXp.toLocaleString()}
                 </span>
@@ -134,14 +123,8 @@ function RouteComponent() {
                 </span>
               </div>
             ) : (
-              <div
-                aria-label="XP not yet available"
-                className="flex flex-col items-center justify-center px-6 py-4 bg-background border border-border rounded-xl opacity-40"
-              >
-                <Star
-                  className="w-4 h-4 text-muted-foreground mb-1"
-                  aria-hidden="true"
-                />
+              <div className="flex flex-col items-center justify-center px-6 py-4 bg-background border border-border rounded-xl opacity-40">
+                <Star className="w-4 h-4 text-muted-foreground mb-1" />
                 <span className="text-2xl font-mono-one text-muted-foreground font-bold">
                   —
                 </span>
@@ -153,9 +136,9 @@ function RouteComponent() {
           </div>
         </div>
 
-        {/* Info + Cosmetics grid */}
+        {/* Info + Cosmetics + Achievements */}
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Account info */}
+          {/* Account Info */}
           <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-2xl space-y-4">
             <h2 className="text-xs font-bold tracking-[0.2em] text-primary uppercase mb-6">
               Account Info
@@ -163,12 +146,9 @@ function RouteComponent() {
 
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-4 bg-background/50 rounded-xl border border-border">
-                <Mail
-                  className="w-4 h-4 text-muted-foreground flex-shrink-0"
-                  aria-hidden="true"
-                />
+                <Mail className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
                     Email
                   </p>
                   <p className="text-sm text-foreground font-mono">
@@ -178,12 +158,9 @@ function RouteComponent() {
               </div>
 
               <div className="flex items-center gap-3 p-4 bg-background/50 rounded-xl border border-border">
-                <Github
-                  className="w-4 h-4 text-muted-foreground flex-shrink-0"
-                  aria-hidden="true"
-                />
+                <Github className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
                     GitHub
                   </p>
                   {user.githubHandle ? (
@@ -204,12 +181,9 @@ function RouteComponent() {
               </div>
 
               <div className="flex items-center gap-3 p-4 bg-background/50 rounded-xl border border-border">
-                <Shield
-                  className="w-4 h-4 text-muted-foreground flex-shrink-0"
-                  aria-hidden="true"
-                />
+                <Shield className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
                     Role
                   </p>
                   <p className="text-sm text-foreground font-mono capitalize">
@@ -227,52 +201,40 @@ function RouteComponent() {
                 Cosmetics
               </h2>
               <Link to="/cosmetics">
-                <button className="text-[10px] font-bold tracking-widest text-primary uppercase hover:underline hover:cursor-pointer underline-offset-2 hover:opacity-80 transition-opacity">
+                <button className="text-[10px] font-bold tracking-widest text-primary uppercase hover:underline">
                   See All
                 </button>
               </Link>
             </div>
 
             {cosmetics.length > 0 ? (
-              <ul className="grid grid-cols-2 gap-3" role="list">
+              <ul className="grid grid-cols-2 gap-3">
                 {cosmetics.map((item) => (
                   <li
                     key={item}
-                    className="flex items-center gap-2 p-3 bg-background/50 rounded-xl border border-border text-sm text-foreground font-mono"
+                    className="flex items-center gap-2 p-3 bg-background/50 rounded-xl border border-border text-sm font-mono"
                   >
-                    <Palette
-                      className="w-4 h-4 text-primary flex-shrink-0"
-                      aria-hidden="true"
-                    />
+                    <Palette className="w-4 h-4 text-primary" />
                     {item}
                   </li>
                 ))}
               </ul>
             ) : (
-              <div
-                role="status"
-                className="flex-1 flex flex-col items-center justify-center gap-3 border border-dashed border-border rounded-xl text-center p-6"
-              >
-                <Palette
-                  className="w-6 h-6 text-muted-foreground/40"
-                  aria-hidden="true"
-                />
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 border border-dashed border-border rounded-xl p-6">
+                <Palette className="w-6 h-6 text-muted-foreground/40" />
                 <p className="text-sm text-muted-foreground">
                   No cosmetics equipped yet.
-                </p>
-                <p className="text-xs font-mono text-muted-foreground/50 uppercase tracking-widest">
-                  Earn them through ranked play
                 </p>
               </div>
             )}
           </div>
+
+          {/* Achievements (NEW COMPONENT) */}
+          <UserAchievementsPreview username={user.username} />
         </div>
 
-        {/* Footer tag */}
-        <div
-          aria-hidden="true"
-          className="flex justify-between items-center pt-2"
-        >
+        {/* Footer */}
+        <div className="flex justify-between items-center pt-2">
           <span className="text-xs font-mono text-muted-foreground/30 uppercase tracking-widest">
             L-IN // PROFILE
           </span>
