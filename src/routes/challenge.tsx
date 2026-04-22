@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ChallengeReviewsPanel } from '@/components/challenge-reviews-panel'
+import { ThatsNotMyCoderChallenge } from '@/components/thats-not-my-coder-challenge'
 import { Input } from '@/components/ui/input'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import {
@@ -57,7 +58,10 @@ import {
 } from '@/components/message-dialog'
 import type { Challenge } from '@/models/challenge'
 import type { EditorLanguage } from '@/models/editor-language'
-import type { ImposterLobbySummary, ImposterMatch } from '@/models/imposter-match'
+import type {
+  ImposterLobbySummary,
+  ImposterMatch,
+} from '@/models/imposter-match'
 import type { Match, MatchMessage } from '@/models/match'
 import type { TestResult } from '@/models/test-result'
 import { LANGUAGE_FILE_EXTENSIONS } from '@/models/language-file-extensions'
@@ -166,6 +170,231 @@ function buildInitialQuizAnswers(challenge?: Challenge) {
   ) as Record<string, string[]>
 }
 
+function getCaseInputValue(
+  testCase: Challenge['cases'][number] | null | undefined,
+  type: string,
+) {
+  if (!testCase) return ''
+
+  const match = testCase.inputs.find((input) => input.type === type)
+  return match?.value ?? ''
+}
+
+const DEFAULT_CSS_BATTLE_VIEWPORT = { width: 400, height: 300 }
+const DEFAULT_CSS_BATTLE_BACKGROUND = '#ffffff'
+const CSS_BATTLE_GRID = { columns: 40, rows: 30 }
+
+function buildCssBattleDocument(html: string, css: string, background: string) {
+  return `<!doctype html>
+<html>
+  <head>
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: ${background}; }
+      ${css}
+    </style>
+  </head>
+  <body>${html}</body>
+</html>`
+}
+
+function buildCssBattleStarterMarkup(html: string, css: string) {
+  const trimmedCss = css.trim()
+  const trimmedHtml = html.trim()
+
+  if (!trimmedCss) {
+    return trimmedHtml
+  }
+
+  return `<style>${trimmedCss}</style>\n${trimmedHtml}`
+}
+
+function parseCssColor(value: string) {
+  const match = value.match(/rgba?\(([^)]+)\)/i)
+  if (!match) return { r: 0, g: 0, b: 0, a: 1 }
+
+  const [r, g, b, a] = match[1]
+    .split(',')
+    .map((part) => part.trim())
+    .map((part, index) => (index === 3 ? Number(part) : Number(part)))
+
+  return {
+    r: Number.isFinite(r) ? r : 0,
+    g: Number.isFinite(g) ? g : 0,
+    b: Number.isFinite(b) ? b : 0,
+    a: Number.isFinite(a) ? a : 1,
+  }
+}
+
+function resolvePointColor(doc: Document, x: number, y: number) {
+  const element = doc.elementFromPoint(x, y)
+  let current = element as HTMLElement | null
+
+  while (current) {
+    const color = getComputedStyle(current).backgroundColor
+    const parsed = parseCssColor(color)
+    if (parsed.a > 0) {
+      return parsed
+    }
+    current = current.parentElement
+  }
+
+  const bodyColor = getComputedStyle(doc.body).backgroundColor
+  return parseCssColor(bodyColor)
+}
+
+async function renderCssBattleFrame(
+  markup: string,
+  width: number,
+  height: number,
+) {
+  const frame = document.createElement('iframe')
+  frame.style.position = 'absolute'
+  frame.style.left = '-10000px'
+  frame.style.top = '0'
+  frame.style.width = `${width}px`
+  frame.style.height = `${height}px`
+  frame.setAttribute('sandbox', 'allow-same-origin')
+  frame.srcdoc = markup
+  document.body.appendChild(frame)
+
+  await new Promise<void>((resolve) => {
+    frame.addEventListener('load', () => resolve(), { once: true })
+  })
+
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+
+  return frame
+}
+
+async function sampleFrameColors(
+  frame: HTMLIFrameElement,
+  width: number,
+  height: number,
+) {
+  const doc = frame.contentDocument
+
+  if (!doc) {
+    return []
+  }
+
+  const colors: Array<{ r: number; g: number; b: number }> = []
+  const stepX = width / CSS_BATTLE_GRID.columns
+  const stepY = height / CSS_BATTLE_GRID.rows
+
+  for (let row = 0; row < CSS_BATTLE_GRID.rows; row += 1) {
+    for (let col = 0; col < CSS_BATTLE_GRID.columns; col += 1) {
+      const x = Math.min(width - 1, Math.floor((col + 0.5) * stepX))
+      const y = Math.min(height - 1, Math.floor((row + 0.5) * stepY))
+      const { r, g, b } = resolvePointColor(doc, x, y)
+      colors.push({ r, g, b })
+    }
+  }
+
+  return colors
+}
+
+async function scoreCssBattleMarkup(
+  targetMarkup: string,
+  submissionMarkup: string,
+  width: number,
+  height: number,
+) {
+  const [targetFrame, submissionFrame] = await Promise.all([
+    renderCssBattleFrame(targetMarkup, width, height),
+    renderCssBattleFrame(submissionMarkup, width, height),
+  ])
+
+  try {
+    const [targetColors, submissionColors] = await Promise.all([
+      sampleFrameColors(targetFrame, width, height),
+      sampleFrameColors(submissionFrame, width, height),
+    ])
+
+    if (targetColors.length === 0 || submissionColors.length === 0) {
+      return 0
+    }
+
+    const maxDistance = Math.sqrt(255 * 255 * 3)
+    const totalDistance = targetColors.reduce((sum, color, index) => {
+      const sample = submissionColors[index]
+      if (!sample) return sum
+      const dr = color.r - sample.r
+      const dg = color.g - sample.g
+      const db = color.b - sample.b
+      return sum + Math.sqrt(dr * dr + dg * dg + db * db)
+    }, 0)
+
+    const avgDistance = totalDistance / targetColors.length
+    const similarity = Math.max(0, 1 - avgDistance / maxDistance)
+    return Math.round(similarity * 10000) / 100
+  } finally {
+    targetFrame.remove()
+    submissionFrame.remove()
+  }
+}
+
+async function buildCssBattleResults(
+  cases: Challenge['cases'],
+  sourceCode: string,
+) {
+  const results: TestResult[] = []
+
+  for (const testCase of cases) {
+    const targetHtml = getCaseInputValue(testCase, 'targetHtml')
+    const targetCss = getCaseInputValue(testCase, 'targetCss')
+    const background =
+      getCaseInputValue(testCase, 'background') || DEFAULT_CSS_BATTLE_BACKGROUND
+    const width = Number(getCaseInputValue(testCase, 'viewportWidth'))
+    const height = Number(getCaseInputValue(testCase, 'viewportHeight'))
+    const viewportWidth = Number.isFinite(width)
+      ? width
+      : DEFAULT_CSS_BATTLE_VIEWPORT.width
+    const viewportHeight = Number.isFinite(height)
+      ? height
+      : DEFAULT_CSS_BATTLE_VIEWPORT.height
+    const threshold = Number(testCase.expectedOutput)
+    const requiredScore = Number.isFinite(threshold) ? threshold : 100
+
+    if (!targetHtml.trim() || !targetCss.trim()) {
+      results.push({
+        passed: false,
+        actual: '0.00%',
+        expected: `${requiredScore.toFixed(2)}%`,
+        runtime: '0',
+        memoryKb: null,
+        status: 'Missing target HTML/CSS.',
+      })
+      continue
+    }
+
+    const targetMarkup = buildCssBattleDocument(
+      targetHtml,
+      targetCss,
+      background,
+    )
+    const submissionMarkup = buildCssBattleDocument(sourceCode, '', background)
+    const score = await scoreCssBattleMarkup(
+      targetMarkup,
+      submissionMarkup,
+      viewportWidth,
+      viewportHeight,
+    )
+    const passed = score >= requiredScore
+
+    results.push({
+      passed,
+      actual: `${score.toFixed(2)}%`,
+      expected: `${requiredScore.toFixed(2)}%`,
+      runtime: '0',
+      memoryKb: null,
+      status: `Similarity ${score.toFixed(2)}%`,
+    })
+  }
+
+  return results
+}
+
 export const Route = createFileRoute('/challenge')({
   validateSearch: challengeSearchSchema,
   component: RouteComponent,
@@ -188,6 +417,11 @@ function RouteComponent() {
     useState<EditorLanguage>('javascript')
   const [codeByLanguage, setCodeByLanguage] =
     useState<Record<EditorLanguage, string>>(buildCodeByLanguage)
+  const [cssBattleCode, setCssBattleCode] = useState('')
+  const [cssBattleComparePosition, setCssBattleComparePosition] = useState(50)
+  const [cssBattleCompareDirection, setCssBattleCompareDirection] = useState<
+    'horizontal' | 'vertical'
+  >('horizontal')
   const [activeTestCase, setActiveTestCase] = useState(0)
   const [activeSidebarTab, setActiveSidebarTab] = useState<
     'content' | 'reviews' | 'chat'
@@ -221,7 +455,7 @@ function RouteComponent() {
   })
 
   const challenge = challengeQuery.data
-  const testCases = challenge?.cases ?? []
+  const allCases = challenge?.cases ?? []
   const quizQuestions = challenge?.quizQuestions ?? []
   const examples = challenge?.examples ?? []
   const constraints = challenge?.constraints ?? []
@@ -233,6 +467,9 @@ function RouteComponent() {
   const isPvpChallenge =
     challenge?.type === 'pvp' || challenge?.type === 'quiz_pvp'
   const isImposterChallenge = challenge?.type === 'imposter'
+  const isThatsNotMyCoderChallenge = challenge?.type === 'thats_not_my_coder'
+  const isCssBattleChallenge = challenge?.type === 'css_battle'
+  const testCases = isCssBattleChallenge ? allCases.slice(0, 1) : allCases
 
   const matchQuery = useQuery({
     queryKey: ['match', matchId],
@@ -520,10 +757,15 @@ function RouteComponent() {
           ? {
               answers: quizAnswers,
             }
-          : {
-              language: selectedLanguage,
-              sourceCode: code,
-            }),
+          : isCssBattleChallenge
+            ? {
+                language: 'css',
+                sourceCode: cssBattleCode,
+              }
+            : {
+                language: selectedLanguage,
+                sourceCode: code,
+              }),
       })
 
       return data
@@ -610,6 +852,14 @@ function RouteComponent() {
     setTestResults([])
     setSelectedLanguage('javascript')
     setCodeByLanguage(buildCodeByLanguage(challenge))
+    setCssBattleComparePosition(50)
+    setCssBattleCompareDirection('horizontal')
+    setCssBattleCode(
+      buildCssBattleStarterMarkup(
+        getCaseInputValue(challenge?.cases?.[0], 'starterHtml'),
+        getCaseInputValue(challenge?.cases?.[0], 'starterCss'),
+      ),
+    )
     setQuizAnswers(buildInitialQuizAnswers(challenge))
     setActiveSidebarTab('content')
     setChatDraft('')
@@ -622,6 +872,54 @@ function RouteComponent() {
     () => testCases[activeTestCase] ?? null,
     [activeTestCase, testCases],
   )
+  const cssBattleTargetHtml = useMemo(
+    () => getCaseInputValue(activeCase, 'targetHtml'),
+    [activeCase],
+  )
+  const cssBattleTargetCss = useMemo(
+    () => getCaseInputValue(activeCase, 'targetCss'),
+    [activeCase],
+  )
+  const cssBattleStarterHtml = useMemo(
+    () => getCaseInputValue(activeCase, 'starterHtml'),
+    [activeCase],
+  )
+  const cssBattleStarterCss = useMemo(
+    () => getCaseInputValue(activeCase, 'starterCss'),
+    [activeCase],
+  )
+  const cssBattleBackground = useMemo(
+    () =>
+      getCaseInputValue(activeCase, 'background') ||
+      DEFAULT_CSS_BATTLE_BACKGROUND,
+    [activeCase],
+  )
+  const cssBattleViewportWidth = useMemo(() => {
+    const width = Number(getCaseInputValue(activeCase, 'viewportWidth'))
+    return Number.isFinite(width) ? width : DEFAULT_CSS_BATTLE_VIEWPORT.width
+  }, [activeCase])
+  const cssBattleViewportHeight = useMemo(() => {
+    const height = Number(getCaseInputValue(activeCase, 'viewportHeight'))
+    return Number.isFinite(height) ? height : DEFAULT_CSS_BATTLE_VIEWPORT.height
+  }, [activeCase])
+  const cssBattleNote = useMemo(
+    () => getCaseInputValue(activeCase, 'note'),
+    [activeCase],
+  )
+  const cssBattleTimeLimit = useMemo(
+    () => getCaseInputValue(activeCase, 'timeLimit'),
+    [activeCase],
+  )
+  const cssBattlePreviewHtml = useMemo(
+    () =>
+      cssBattleCode ||
+      buildCssBattleStarterMarkup(cssBattleStarterHtml, cssBattleStarterCss),
+    [cssBattleCode, cssBattleStarterCss, cssBattleStarterHtml],
+  )
+  const cssBattleRequiredScore = useMemo(() => {
+    const value = Number(activeCase?.expectedOutput)
+    return Number.isFinite(value) ? value : 100
+  }, [activeCase])
   const currentMatch = matchQuery.data
   const currentImposterMatch = imposterMatchQuery.data
   const chatMessages = chatMessagesQuery.data ?? []
@@ -666,12 +964,11 @@ function RouteComponent() {
         currentImposterMatch.winningSide === 'coders'))
   const canSubmitToMatch =
     !!currentMatch && currentMatch.status === 'active' && !currentMatch.winnerId
-  const canViewChallenge =
-    isPvpChallenge
-      ? !!currentMatch && currentMatch.canViewChallenge
-      : isImposterChallenge
-        ? !!currentImposterMatch && currentImposterMatch.canViewChallenge
-        : true
+  const canViewChallenge = isPvpChallenge
+    ? !!currentMatch && currentMatch.canViewChallenge
+    : isImposterChallenge
+      ? !!currentImposterMatch && currentImposterMatch.canViewChallenge
+      : true
   const canUseMatchChat =
     !!currentMatch &&
     !!currentMatch.playerTwoId &&
@@ -681,15 +978,17 @@ function RouteComponent() {
     ? 'Log in to run tests'
     : isQuizChallenge
       ? 'Quiz challenges do not use the code test runner'
-    : isPvpChallenge && !canViewChallenge
-      ? 'The problem unlocks when both players join the match'
-      : isImposterChallenge && !canViewChallenge
-        ? 'The problem unlocks once the host starts the imposter lobby'
-      : testCases.length === 0
-        ? 'No test cases available'
-        : isRunning
-          ? 'Running tests'
-          : 'Run the visible test cases'
+      : isCssBattleChallenge
+        ? 'Check your similarity score against the target'
+        : isPvpChallenge && !canViewChallenge
+          ? 'The problem unlocks when both players join the match'
+          : isImposterChallenge && !canViewChallenge
+            ? 'The problem unlocks once the host starts the imposter lobby'
+            : testCases.length === 0
+              ? 'No test cases available'
+              : isRunning
+                ? 'Running tests'
+                : 'Run the visible test cases'
   const submitTooltip = !isAuthenticated
     ? 'Log in to submit solutions'
     : isPvpChallenge && !canViewChallenge
@@ -710,17 +1009,19 @@ function RouteComponent() {
                   : isImposterChallenge &&
                       currentImposterMatch?.status === 'lobby'
                     ? 'The host must start the lobby before submissions open'
-              : submitMatchMutation.isPending
-                ? 'Submitting to the match'
-                : submitImposterMatchMutation.isPending
-                  ? 'Submitting to the imposter match'
-                : submitSoloMutation.isPending
-                  ? 'Submitting your solution'
-                  : !isQuizChallenge && testCases.length === 0
-                  ? 'No test cases available'
-                    : isQuizChallenge
-                      ? 'Submit your selected answers'
-                      : 'Submit your solution'
+                    : submitMatchMutation.isPending
+                      ? 'Submitting to the match'
+                      : submitImposterMatchMutation.isPending
+                        ? 'Submitting to the imposter match'
+                        : submitSoloMutation.isPending
+                          ? 'Submitting your solution'
+                          : !isQuizChallenge && testCases.length === 0
+                            ? 'No test cases available'
+                            : isQuizChallenge
+                              ? 'Submit your selected answers'
+                              : isCssBattleChallenge
+                                ? 'Submit your CSS/HTML'
+                                : 'Submit your solution'
   const lockReason = isPvpChallenge
     ? 'both players join the match'
     : isImposterChallenge
@@ -838,7 +1139,26 @@ function RouteComponent() {
   }, [currentImposterMatch, isImposterUserWinner, seenMatchResultKey])
 
   const handleRunTests = async () => {
-    if (!isAuthenticated || !challenge || !canViewChallenge || isQuizChallenge) {
+    if (
+      !isAuthenticated ||
+      !challenge ||
+      !canViewChallenge ||
+      isQuizChallenge
+    ) {
+      return
+    }
+
+    if (isCssBattleChallenge) {
+      setIsRunning(true)
+      try {
+        const results = await buildCssBattleResults(
+          challenge.cases,
+          cssBattleCode,
+        )
+        setTestResults(results)
+      } finally {
+        setIsRunning(false)
+      }
       return
     }
 
@@ -976,7 +1296,9 @@ function RouteComponent() {
         title: `Submission ${verdictLabel}`,
         description: isQuizChallenge
           ? `${submission.passedCount}/${submission.totalCount} quiz questions matched the correct answers.`
-          : `${submission.passedCount}/${submission.totalCount} test cases passed.`,
+          : isCssBattleChallenge
+            ? `${submission.passedCount}/${submission.totalCount} cases reached the target score.`
+            : `${submission.passedCount}/${submission.totalCount} test cases passed.`,
       })
     } catch (err) {
       const message = axios.isAxiosError(err)
@@ -1263,6 +1585,16 @@ function RouteComponent() {
       </div>
     )
   }
+
+  if (isThatsNotMyCoderChallenge) {
+    return (
+      <ThatsNotMyCoderChallenge
+        challenge={challenge}
+        onBack={() => navigate({ to: '/challenges' })}
+      />
+    )
+  }
+
   return (
     <div className="mt-16 flex min-h-screen flex-col bg-background text-muted-foreground">
       <nav className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -1749,8 +2081,7 @@ function RouteComponent() {
                               >
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>
-                                  {currentImposterMatch.winningSide ===
-                                  'coders'
+                                  {currentImposterMatch.winningSide === 'coders'
                                     ? 'Coders Win'
                                     : 'Imposter Wins'}
                                 </AlertTitle>
@@ -1856,14 +2187,16 @@ function RouteComponent() {
                                         <SelectValue placeholder="Select a suspect" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {imposterVoteOptions.map((participant) => (
-                                          <SelectItem
-                                            key={participant.userId}
-                                            value={participant.userId}
-                                          >
-                                            {participant.username}
-                                          </SelectItem>
-                                        ))}
+                                        {imposterVoteOptions.map(
+                                          (participant) => (
+                                            <SelectItem
+                                              key={participant.userId}
+                                              value={participant.userId}
+                                            >
+                                              {participant.username}
+                                            </SelectItem>
+                                          ),
+                                        )}
                                       </SelectContent>
                                     </Select>
                                     <Button
@@ -2008,7 +2341,10 @@ function RouteComponent() {
                                       if (match.isJoinedByCurrentUser) {
                                         navigate({
                                           to: '/challenge',
-                                          search: { id, imposterMatchId: match.id },
+                                          search: {
+                                            id,
+                                            imposterMatchId: match.id,
+                                          },
                                         })
                                         return
                                       }
@@ -2020,7 +2356,9 @@ function RouteComponent() {
                                       joinImposterMatchMutation.isPending
                                     }
                                   >
-                                    {match.isJoinedByCurrentUser ? 'Open' : 'Join'}
+                                    {match.isJoinedByCurrentUser
+                                      ? 'Open'
+                                      : 'Join'}
                                   </Button>
                                 </div>
                               ))}
@@ -2035,126 +2373,134 @@ function RouteComponent() {
                     )}
                   </div>
                 ) : null}
-                <div className="space-y-2">
-                  <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
-                    Mission Briefing
-                  </h3>
-                  <h1 className="text-2xl text-foreground uppercase tracking-tight sm:text-3xl">
-                    {challenge.title}
-                  </h1>
-                </div>
-
-                <div className="space-y-4 text-sm leading-relaxed text-foreground">
-                  {canViewChallenge ? (
-                    challenge.content
-                      .split('\n')
-                      .filter(Boolean)
-                      .map((paragraph) => <p key={paragraph}>{paragraph}</p>)
-                  ) : (
-                    <p className="text-muted-foreground">
-                      The challenge briefing is hidden until {lockReason}.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-6">
-                  {canViewChallenge ? (
-                    <>
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground">
-                        <Code2 className="w-4 h-4" /> Examples
-                      </div>
-
-                      {examples.length > 0 ? (
-                        examples.map((example, index) => (
-                          <div
-                            key={`${example}-${index}`}
-                            className="rounded-none border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
-                          >
-                            <div className="text-foreground">
-                              Example {index + 1}:
-                            </div>
-                            <div className="text-muted-foreground whitespace-pre-wrap">
-                              {example}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-xs text-muted-foreground">
-                          No examples provided.
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <Alert className="rounded-none">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Problem Locked</AlertTitle>
-                      <AlertDescription>
-                        The full challenge statement, examples, and editor
-                        unlock once {lockReason}.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-
-                <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-rarity-legendary">
-                      <AlertCircle className="w-4 h-4" />
-                      <h4 className="text-xs font-bold uppercase tracking-widest">
-                        Constraints
-                      </h4>
+                {!isCssBattleChallenge ? (
+                  <>
+                    <div className="space-y-2">
+                      <h3 className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em]">
+                        Mission Briefing
+                      </h3>
+                      <h1 className="text-2xl text-foreground uppercase tracking-tight sm:text-3xl">
+                        {challenge.title}
+                      </h1>
                     </div>
-                    {canViewChallenge ? (
-                      <ul className="space-y-2 font-mono text-[12px] text-foreground">
-                        {constraints.length > 0 ? (
-                          constraints.map((constraint, index) => (
-                            <li key={`${constraint}-${index}`}>{constraint}</li>
-                          ))
-                        ) : (
-                          <li className="text-muted-foreground">
-                            No constraints provided.
-                          </li>
-                        )}
-                      </ul>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Constraints are hidden until {lockReason}.
-                      </p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <ShieldCheck className="w-4 h-4" />
-                    <h4 className="text-xs font-bold uppercase tracking-widest">
-                      Victory Conditions
-                    </h4>
-                  </div>
-                  {canViewChallenge ? (
-                    <ul className="space-y-3">
-                      {conditions.length > 0 ? (
-                        conditions.map((condition, index) => (
-                          <li
-                            key={`${condition}-${index}`}
-                            className="flex items-start gap-3 text-xs text-foreground"
-                          >
-                            <div className="w-1 h-1 rounded-none bg-foreground mt-1.5" />
-                            {condition}
-                          </li>
-                        ))
+                    <div className="space-y-4 text-sm leading-relaxed text-foreground">
+                      {canViewChallenge ? (
+                        challenge.content
+                          .split('\n')
+                          .filter(Boolean)
+                          .map((paragraph) => (
+                            <p key={paragraph}>{paragraph}</p>
+                          ))
                       ) : (
-                        <li className="text-xs text-muted-foreground">
-                          No specific victory conditions provided.
-                        </li>
+                        <p className="text-muted-foreground">
+                          The challenge briefing is hidden until {lockReason}.
+                        </p>
                       )}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Victory conditions are hidden until {lockReason}.
-                    </p>
-                  )}
-                </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {canViewChallenge ? (
+                        <>
+                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground">
+                            <Code2 className="w-4 h-4" /> Examples
+                          </div>
+
+                          {examples.length > 0 ? (
+                            examples.map((example, index) => (
+                              <div
+                                key={`${example}-${index}`}
+                                className="rounded-none border border-foreground/5 bg-foreground/1 p-4 space-y-2 font-mono text-[13px]"
+                              >
+                                <div className="text-foreground">
+                                  Example {index + 1}:
+                                </div>
+                                <div className="text-muted-foreground whitespace-pre-wrap">
+                                  {example}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              No examples provided.
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <Alert className="rounded-none">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Problem Locked</AlertTitle>
+                          <AlertDescription>
+                            The full challenge statement, examples, and editor
+                            unlock once {lockReason}.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+
+                    <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-rarity-legendary">
+                          <AlertCircle className="w-4 h-4" />
+                          <h4 className="text-xs font-bold uppercase tracking-widest">
+                            Constraints
+                          </h4>
+                        </div>
+                        {canViewChallenge ? (
+                          <ul className="space-y-2 font-mono text-[12px] text-foreground">
+                            {constraints.length > 0 ? (
+                              constraints.map((constraint, index) => (
+                                <li key={`${constraint}-${index}`}>
+                                  {constraint}
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-muted-foreground">
+                                No constraints provided.
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Constraints are hidden until {lockReason}.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-4">
+                      <div className="flex items-center gap-2 text-primary">
+                        <ShieldCheck className="w-4 h-4" />
+                        <h4 className="text-xs font-bold uppercase tracking-widest">
+                          Victory Conditions
+                        </h4>
+                      </div>
+                      {canViewChallenge ? (
+                        <ul className="space-y-3">
+                          {conditions.length > 0 ? (
+                            conditions.map((condition, index) => (
+                              <li
+                                key={`${condition}-${index}`}
+                                className="flex items-start gap-3 text-xs text-foreground"
+                              >
+                                <div className="w-1 h-1 rounded-none bg-foreground mt-1.5" />
+                                {condition}
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-xs text-muted-foreground">
+                              No specific victory conditions provided.
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Victory conditions are hidden until {lockReason}.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : null}
               </>
             ) : null}
 
@@ -2300,7 +2646,350 @@ function RouteComponent() {
         </aside>
 
         <main className="relative flex flex-1 flex-col bg-background">
-          {isQuizChallenge ? (
+          {isCssBattleChallenge ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
+                <span className="mr-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  CSS Battle
+                </span>
+                <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} className="w-full sm:w-auto">
+                        <Button
+                          variant="outline"
+                          onClick={handleRunTests}
+                          aria-keyshortcuts="Control+Shift+Enter Meta+Shift+Enter"
+                          disabled={
+                            isRunning ||
+                            !isAuthenticated ||
+                            testCases.length === 0 ||
+                            !canViewChallenge
+                          }
+                          className="h-10 w-full rounded-none border-foreground/10 bg-transparent text-xs font-bold gap-2 hover:bg-primary-foreground sm:w-auto"
+                        >
+                          <Play
+                            className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`}
+                          />
+                          {isRunning ? 'CHECKING...' : 'CHECK SCORE'}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>{runTestsTooltip}</p>
+                        <p>`Ctrl/Cmd+Shift+Enter` checks score</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} className="w-full sm:w-auto">
+                        <Button
+                          disabled={
+                            !isAuthenticated ||
+                            testCases.length === 0 ||
+                            !canViewChallenge ||
+                            submitMatchMutation.isPending ||
+                            submitImposterMatchMutation.isPending ||
+                            submitSoloMutation.isPending
+                          }
+                          onClick={handleSubmit}
+                          aria-keyshortcuts="Control+Enter Meta+Enter"
+                          className="h-10 w-full rounded-none bg-primary px-8 text-xs font-bold gap-2 text-primary-foreground hover:shadow-[0_0_20px_rgba(0,207,186,0.4)] disabled:opacity-50 sm:w-auto"
+                        >
+                          <Send className="w-3 h-3" />
+                          {submitMatchMutation.isPending ||
+                          submitImposterMatchMutation.isPending ||
+                          submitSoloMutation.isPending
+                            ? 'SUBMITTING...'
+                            : 'SUBMIT'}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>{submitTooltip}</p>
+                        <p>`Ctrl/Cmd+Enter` submits</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+
+              {!isAuthenticated ? (
+                <div className="border-b border-border p-4">
+                  <Alert variant="destructive" className="rounded-none">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Login Required</AlertTitle>
+                    <AlertDescription>
+                      Guests can view the target, but checking scores and
+                      submitting CSS requires a signed-in account.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              ) : null}
+
+              <div className="grid flex-1 gap-0 lg:grid-cols-[minmax(0,1fr)_460px]">
+                <div className="min-h-0 flex flex-col">
+                  <div className="border-b border-border bg-muted/10 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          Target Brief
+                        </div>
+                        <div className="text-sm text-foreground">
+                          {challenge.title}
+                        </div>
+                        {cssBattleNote ? (
+                          <p className="text-xs text-muted-foreground">
+                            {cssBattleNote}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="space-y-1 text-right text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {cssBattleTimeLimit ? (
+                          <div>Time {cssBattleTimeLimit}s</div>
+                        ) : null}
+                        <div>
+                          Target score {cssBattleRequiredScore.toFixed(0)}%
+                        </div>
+                        <div>
+                          Viewport {cssBattleViewportWidth}x
+                          {cssBattleViewportHeight}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {canViewChallenge ? (
+                    <div className="min-h-88 flex-1">
+                      <Editor
+                        key={`${id}-css-battle`}
+                        path={`challenge-${id}/css-battle.html`}
+                        language="html"
+                        options={{
+                          minimap: { enabled: true },
+                          padding: { top: 24 },
+                          readOnly: false,
+                          scrollBeyondLastLine: false,
+                          automaticLayout: true,
+                        }}
+                        value={cssBattleCode}
+                        onChange={(value) => setCssBattleCode(value || '')}
+                        theme="lockin-theme"
+                        loading={
+                          <div className="h-full w-full animate-pulse bg-background" />
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex min-h-88 items-center justify-center border-t border-border bg-background p-6 text-center">
+                      <div className="max-w-md space-y-3">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
+                          Editor Locked
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          The editor unlocks once {lockReason}.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border bg-background lg:border-l lg:border-t-0">
+                  <div className="border-b border-border px-4 py-3">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Preview & Similarity
+                    </h3>
+                  </div>
+                  <div className="space-y-4 p-4">
+                    {canViewChallenge ? (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            <span>Your Output</span>
+                            <span className="font-normal text-[9px] tracking-normal uppercase">
+                              {cssBattleCompareDirection === 'horizontal'
+                                ? 'Left → Right'
+                                : 'Top → Bottom'}{' '}
+                              • Hold Shift to switch
+                            </span>
+                          </div>
+                          {cssBattleTargetHtml &&
+                          cssBattleTargetCss &&
+                          cssBattlePreviewHtml ? (
+                            <div
+                              className="relative w-full overflow-hidden rounded-none border border-border bg-background"
+                              style={{ height: cssBattleViewportHeight }}
+                              onMouseMove={(event) => {
+                                const rect =
+                                  event.currentTarget.getBoundingClientRect()
+                                const horizontal =
+                                  ((event.clientX - rect.left) / rect.width) *
+                                  100
+                                const vertical =
+                                  ((event.clientY - rect.top) / rect.height) *
+                                  100
+                                const nextDirection = event.shiftKey
+                                  ? 'vertical'
+                                  : 'horizontal'
+
+                                setCssBattleCompareDirection(nextDirection)
+                                setCssBattleComparePosition(
+                                  Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      nextDirection === 'horizontal'
+                                        ? horizontal
+                                        : vertical,
+                                    ),
+                                  ),
+                                )
+                              }}
+                            >
+                              <iframe
+                                title="CSS battle output target base"
+                                className="pointer-events-none absolute inset-0 h-full w-full"
+                                sandbox=""
+                                srcDoc={buildCssBattleDocument(
+                                  cssBattleTargetHtml,
+                                  cssBattleTargetCss,
+                                  cssBattleBackground,
+                                )}
+                              />
+                              <iframe
+                                title="CSS battle output overlay"
+                                className="pointer-events-none absolute inset-0 h-full w-full"
+                                sandbox=""
+                                style={{
+                                  clipPath:
+                                    cssBattleCompareDirection === 'horizontal'
+                                      ? `inset(0 ${100 - cssBattleComparePosition}% 0 0)`
+                                      : `inset(0 0 ${100 - cssBattleComparePosition}% 0)`,
+                                }}
+                                srcDoc={buildCssBattleDocument(
+                                  cssBattlePreviewHtml,
+                                  '',
+                                  cssBattleBackground,
+                                )}
+                              />
+                              <div
+                                className="pointer-events-none absolute bg-primary/90"
+                                style={
+                                  cssBattleCompareDirection === 'horizontal'
+                                    ? {
+                                        left: `${cssBattleComparePosition}%`,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: '2px',
+                                        transform: 'translateX(-1px)',
+                                      }
+                                    : {
+                                        top: `${cssBattleComparePosition}%`,
+                                        left: 0,
+                                        right: 0,
+                                        height: '2px',
+                                        transform: 'translateY(-1px)',
+                                      }
+                                }
+                              />
+                            </div>
+                          ) : cssBattlePreviewHtml ? (
+                            <iframe
+                              title="CSS battle output"
+                              className="w-full rounded-none border border-border bg-background"
+                              sandbox=""
+                              style={{ height: cssBattleViewportHeight }}
+                              srcDoc={buildCssBattleDocument(
+                                cssBattlePreviewHtml,
+                                '',
+                                cssBattleBackground,
+                              )}
+                            />
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Start writing HTML/CSS to preview.
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Target
+                          </div>
+                          {cssBattleTargetHtml && cssBattleTargetCss ? (
+                            <iframe
+                              title="CSS battle target"
+                              className="w-full rounded-none border border-border bg-background"
+                              sandbox=""
+                              style={{ height: cssBattleViewportHeight }}
+                              srcDoc={buildCssBattleDocument(
+                                cssBattleTargetHtml,
+                                cssBattleTargetCss,
+                                cssBattleBackground,
+                              )}
+                            />
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Target HTML/CSS missing for this case.
+                            </div>
+                          )}
+                        </div>
+                        <div className="rounded-none border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                          Target score: {cssBattleRequiredScore.toFixed(0)}%
+                        </div>
+
+                        {testResults[activeTestCase] ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              <div className="space-y-1">
+                                <span className="text-[9px] uppercase text-muted-foreground">
+                                  Actual
+                                </span>
+                                <div
+                                  className={`rounded border p-3 font-bold ${
+                                    testResults[activeTestCase].passed
+                                      ? 'border-green-500/20 bg-green-500/5 text-green-500'
+                                      : 'border-destructive/20 bg-destructive/5 text-destructive'
+                                  }`}
+                                >
+                                  {testResults[activeTestCase].actual}
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <span className="text-[9px] uppercase text-muted-foreground">
+                                  Expected
+                                </span>
+                                <div className="rounded border border-border bg-muted/30 p-3 text-foreground">
+                                  {testResults[activeTestCase].expected}
+                                </div>
+                              </div>
+                            </div>
+                            {testResults[activeTestCase].status ? (
+                              <div className="rounded border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+                                {testResults[activeTestCase].status}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="rounded-none border border-dashed border-border bg-muted/5 p-6 text-center">
+                            <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                              Check score to review case results.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Preview unlocks once {lockReason}.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : isQuizChallenge ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
                 <span className="mr-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -2358,7 +3047,8 @@ function RouteComponent() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Login Required</AlertTitle>
                     <AlertDescription>
-                      Guests can read the quiz, but submitting answers requires a signed-in account.
+                      Guests can read the quiz, but submitting answers requires
+                      a signed-in account.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -2391,7 +3081,9 @@ function RouteComponent() {
                               <div className="space-y-3">
                                 {question.options.map((option) => {
                                   const inputId = `quiz-${question.id}-${option.id}`
-                                  const checked = selectedOptions.includes(option.id)
+                                  const checked = selectedOptions.includes(
+                                    option.id,
+                                  )
 
                                   return (
                                     <label
@@ -2425,7 +3117,8 @@ function RouteComponent() {
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>No quiz questions</AlertTitle>
                         <AlertDescription>
-                          This quiz challenge does not have any questions configured yet.
+                          This quiz challenge does not have any questions
+                          configured yet.
                         </AlertDescription>
                       </Alert>
                     )
@@ -2574,7 +3267,9 @@ function RouteComponent() {
                     <Button
                       key={index}
                       onClick={() => setActiveTestCase(index)}
-                      variant={activeTestCase === index ? 'default' : 'secondary'}
+                      variant={
+                        activeTestCase === index ? 'default' : 'secondary'
+                      }
                       className="h-9 rounded-none font-bold"
                     >
                       CASE_{index + 1}
@@ -2740,7 +3435,8 @@ function RouteComponent() {
                             </span>
                             {testResults[activeTestCase].memoryKb != null ? (
                               <span>
-                                Memory: {testResults[activeTestCase].memoryKb} KB
+                                Memory: {testResults[activeTestCase].memoryKb}{' '}
+                                KB
                               </span>
                             ) : null}
                             <span
@@ -2904,7 +3600,9 @@ function RouteComponent() {
                 joinImposterMatchMutation.isPending
               }
             >
-              {joinImposterMatchMutation.isPending ? 'Joining...' : 'Join match'}
+              {joinImposterMatchMutation.isPending
+                ? 'Joining...'
+                : 'Join match'}
             </Button>
           </DialogFooter>
         </DialogContent>

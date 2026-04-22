@@ -7,7 +7,15 @@ export type RecommendedChallenge = {
     id: number
     title: string
     difficulty: 'easy' | 'medium' | 'hard'
-    type: 'solo' | 'quiz' | 'pvp' | 'quiz_pvp' | 'teams' | 'imposter'
+    type:
+      | 'solo'
+      | 'quiz'
+      | 'pvp'
+      | 'quiz_pvp'
+      | 'teams'
+      | 'imposter'
+      | 'thats_not_my_coder'
+      | 'css_battle'
     topics: string[]
     acceptanceRate: number
   }
