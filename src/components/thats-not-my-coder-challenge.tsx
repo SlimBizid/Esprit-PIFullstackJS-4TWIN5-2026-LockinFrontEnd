@@ -27,6 +27,7 @@ const DEFAULT_TIME_LIMIT_MS = 15_000
 const CHARACTER_ENTER_MS = 700
 const CASE_REVEAL_MS = 2_750
 const CHARACTER_EXIT_MS = 900
+const POST_DECISION_HOLD_MS = 3_000
 
 const TNMC_ASSETS = {
   background: '/TNMC_/TNMC_bg.png',
@@ -40,28 +41,37 @@ const TNMC_ASSETS = {
 } as const
 
 const PRE_REVIEW_DIALOG = [
-  'Fresh patch. Clean consciencef.',
-  'Go on, inspect it. I can wait.',
-  'Nothing suspicious here. Probably.',
-  'I brought comments and everything.',
-  'Take your time. This one should pass.',
-  'You are going to like this commit.',
+  'I wrote this at 3 AM. Please be gentle.',
+  'It works on my machine ¯\\_(ツ)_/¯',
+  'Is it giving production-ready or is it giving severance package?',
+  'Don’t look, just trust me bro.',
+  'I cooked. Promise.',
+  'Gemini said this was totally fine.',
+  'No cap, this might break prod.',
+  'Praying to the linter gods right now.',
+  'I wrote this myself, no cap, on god fr fr',
 ]
 
 const ACCEPT_DIALOG = [
-  'Knew it. Shipping quality.',
-  'Told you it was solid.',
-  'Into production I go.',
-  'Finally, a reviewer with taste.',
-  'Left side. As expected.',
+  'W PR. We take those.',
+  'Wait, really? I mean... obviously.',
+  'Merging this before you change your mind.',
+  'Time to go pretend I am working for the rest of the day.',
+  'It’s giving 10x developer.',
+  'May the servers have mercy on us all.',
+  'Deploying on a Friday, let’s go.',
+  'Slayyy 💅. Straight to main.',
 ]
 
 const DENY_DIALOG = [
-  'Harsh. Fair, but harsh.',
-  'Alright, back to staging.',
-  'You found the bug, didn’t you?',
-  'Rejected. I deserved that one.',
-  'Fine. I will rewrite it.',
+  'Bruh, it’s a feature, not a bug.',
+  'Caught me lacking.',
+  'Fine, I’ll go cry and ask Slim to fix it.',
+  'My imposter syndrome just leveled up.',
+  'Guess I am cooked.',
+  'L reviewer.',
+  'Bold of you to assume I know how to fix that.',
+  'You’re just jealous of my 7-layer nested if-statements.',
 ]
 
 type ReviewDecision = 'accept' | 'deny'
@@ -425,7 +435,7 @@ export function ThatsNotMyCoderChallenge({
       }
 
       setCaseIndex((current) => current + 1)
-    }, CHARACTER_EXIT_MS)
+    }, CHARACTER_EXIT_MS + POST_DECISION_HOLD_MS)
   }
 
   const reviewedCount = results.length
