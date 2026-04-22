@@ -225,6 +225,30 @@ function parseCssColor(value: string) {
   }
 }
 
+function parseCssBattleColors(value: string) {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return [] as string[]
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry) => String(entry ?? '').trim())
+        .filter((entry) => entry.length > 0)
+    }
+  } catch {
+    // Fallback parsing below.
+  }
+
+  return trimmed
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
+
 function resolvePointColor(doc: Document, x: number, y: number) {
   const element = doc.elementFromPoint(x, y)
   let current = element as HTMLElement | null
@@ -908,6 +932,10 @@ function RouteComponent() {
   )
   const cssBattleTimeLimit = useMemo(
     () => getCaseInputValue(activeCase, 'timeLimit'),
+    [activeCase],
+  )
+  const cssBattlePalette = useMemo(
+    () => parseCssBattleColors(getCaseInputValue(activeCase, 'colors')),
     [activeCase],
   )
   const cssBattlePreviewHtml = useMemo(
@@ -2746,6 +2774,29 @@ function RouteComponent() {
                           <p className="text-xs text-muted-foreground">
                             {cssBattleNote}
                           </p>
+                        ) : null}
+                        {cssBattlePalette.length > 0 ? (
+                          <div className="space-y-1 pt-1">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              Palette
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {cssBattlePalette.map((color, index) => (
+                                <div
+                                  key={`${color}-${index}`}
+                                  className="inline-flex items-center gap-2 rounded-none border border-border bg-background px-2 py-1"
+                                >
+                                  <span
+                                    className="h-3 w-3 rounded-none border border-border"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  <span className="text-[10px] font-mono text-muted-foreground">
+                                    {color}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         ) : null}
                       </div>
                       <div className="space-y-1 text-right text-[10px] uppercase tracking-widest text-muted-foreground">
