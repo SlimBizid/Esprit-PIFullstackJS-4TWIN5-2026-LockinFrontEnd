@@ -14,7 +14,8 @@ import {
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect, useId } from 'react'
 import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
-import { Menu, X } from 'lucide-react'
+import { LogOut, Menu, Underline, X } from 'lucide-react'
+import AccessibilitySettingsMenu from '@/components/accessibility/AccessibilitySettingsMenu'
 
 const NAV_LINKS = [
   { to: '/teams', label: 'Teams' },
@@ -297,23 +298,27 @@ export default function Navbar() {
             ))}
           </ul>
 
-          <div className="hidden md:flex justify-end items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             {!isAuthenticated ? (
-              <div>
-                <Link to="/auth/register">
-                  <Button
-                    variant="secondary"
-                    className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  >
-                    Sign Up
-                  </Button>
-                </Link>
-                <Link to="/auth/login">
-                  <Button className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                    Log In
-                  </Button>
-                </Link>
-              </div>
+              <>
+                <div>
+                  <Link to="/auth/register">
+                    <Button
+                      variant="secondary"
+                      className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+                <div>
+                  <Link to="/auth/login">
+                    <Button className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                      Log In
+                    </Button>
+                  </Link>
+                </div>
+              </>
             ) : (
               <>
                 <span
@@ -336,13 +341,15 @@ export default function Navbar() {
                   onClick={handleLogout}
                   disabled={isLoading}
                   aria-busy={isLoading}
-                  variant={'link'}
-                  className="text-destructive"
+                  variant={'outline'}
+                  className="font-semibold"
                 >
-                  {isLoading ? 'Logging out…' : 'Logout'}
+                  <LogOut />
                 </Button>
               </>
             )}
+
+            <AccessibilitySettingsMenu />
           </div>
 
           <div className="md:hidden">
@@ -420,6 +427,8 @@ export default function Navbar() {
                 </nav>
 
                 <div className="mt-auto border-t pt-6 pb-8 flex flex-col gap-3 px-4">
+                  <AccessibilitySettingsMenu mobile />
+
                   {!isAuthenticated ? (
                     <>
                       <SheetClose asChild>
