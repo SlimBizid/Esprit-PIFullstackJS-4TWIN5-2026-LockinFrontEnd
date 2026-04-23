@@ -14,7 +14,7 @@ import {
 import { Link } from '@tanstack/react-router'
 import { useState, useEffect, useId } from 'react'
 import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
-import { LogOut, Menu, Underline, X } from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
 import AccessibilitySettingsMenu from '@/components/accessibility/AccessibilitySettingsMenu'
 
 const NAV_LINKS = [
