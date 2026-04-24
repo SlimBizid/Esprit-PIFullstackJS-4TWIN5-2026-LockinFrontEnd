@@ -1,42 +1,52 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { Trophy, Lock, Gift } from 'lucide-react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
+import { ArrowRight, Layers3, Trophy } from 'lucide-react'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import {
+  ACHIEVEMENT_TYPE_BLURBS,
+  achievementTypeToSlug,
+  type Achievement,
+  type AchievementType,
+} from '@/models/achievement'
 import { api, useUser } from '@/stores/userStore'
 
-interface Achievement {
-  id: string
-  name: string
-  imageUrl: string | null
-  unlocked: boolean
-  unlockedAt: string | null
-  rewards?: any[]
+function getErrorMessage(error: unknown, fallback: string) {
+  if (!axios.isAxiosError(error)) return fallback
+
+  const message = error.response?.data?.message
+  if (Array.isArray(message)) return message.join(', ')
+  if (typeof message === 'string' && message.trim()) return message
+  return fallback
 }
 
 export const Route = createFileRoute('/achievements/')({
-  component: RouteComponent,
+  component: AchievementsHubPage,
 })
 
-function RouteComponent() {
-  const [achievements, setAchievements] = useState<Achievement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
+function AchievementsHubPage() {
   const user = useUser()
 
-  useEffect(() => {
-    if (!user?.username) return
+  const typesQuery = useQuery({
+    queryKey: ['achievement-types'],
+    queryFn: async () => {
+      const { data } = await api.get('/achievement/types')
+      return data as AchievementType[]
+    },
+  })
 
-    setLoading(true)
-    setError(null)
+  const achievementsQuery = useQuery({
+    queryKey: ['user-achievements', user?.username],
+    enabled: !!user?.username,
+    queryFn: async () => {
+      const { data } = await api.get(`/users/${user?.username}/achievements`)
+      return data as Achievement[]
+    },
+  })
 
-    api
-      .get(`/users/${user.username}/achievements`)
-      .then((res) => setAchievements(res.data))
-      .catch(() => setError('Failed to load achievements'))
-      .finally(() => setLoading(false))
-  }, [user?.username])
-
-  if (!user?.username || loading) {
+  if (!user?.username || typesQuery.isLoading || achievementsQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="font-mono text-primary animate-pulse uppercase tracking-widest text-sm">
@@ -46,131 +56,130 @@ function RouteComponent() {
     )
   }
 
-  if (error) {
+  if (typesQuery.isError || achievementsQuery.isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="font-mono text-destructive uppercase tracking-widest text-sm">
-          {error}
-        </p>
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <Alert variant="destructive" className="max-w-xl">
+          <AlertTitle>Failed to load achievements</AlertTitle>
+          <AlertDescription>
+            {getErrorMessage(
+              typesQuery.error ?? achievementsQuery.error,
+              'Please try again in a moment.',
+            )}
+          </AlertDescription>
+        </Alert>
       </div>
     )
   }
 
-  return (
-    <main className="min-h-screen bg-background px-6 py-20 lg:px-32 relative">
-      <div className="max-w-5xl mx-auto relative">
-        {/* vertical path line */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-primary/10" />
+  const achievements = achievementsQuery.data ?? []
+  const types = typesQuery.data ?? []
 
-        {/* header */}
-        <div className="flex items-center gap-4 mb-16">
-          <Trophy className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-mono-one uppercase tracking-tight text-foreground">
-            Achievements
-          </h1>
+  return (
+    <main className="min-h-screen bg-background px-6 py-20 lg:px-16">
+      <div className="mx-auto max-w-6xl">
+        <div className="relative overflow-hidden  border bg-primary/10 border-primary/15 px-6 py-10 sm:px-10">
+          <div className="absolute right-0 top-0 h-44 w-44 hidden bg-primary/10 blur-3xl" />
+          <div className="relative space-y-4">
+            <Badge
+              variant="outline"
+              className="border-primary/30 bg-background/40"
+            >
+              Achievement archive
+            </Badge>
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="border border-primary/20 bg-primary/10 p-3">
+                    <Trophy className="h-6 w-6 text-primary" />
+                  </div>
+                  <h1 className="text-3xl font-mono-one uppercase tracking-tight text-foreground">
+                    Achievements
+                  </h1>
+                </div>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Browse your progress by category and dive into each lane to
+                  see the full timeline of what you have unlocked and what is
+                  still ahead.
+                </p>
+              </div>
+              <div className="border border-border/60 bg-background/60 px-4 py-3 text-sm">
+                <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  Total achievements
+                </div>
+                <div className="mt-1 text-2xl font-black">
+                  {achievements.length}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* path list */}
-        <div className="space-y-16">
-          {achievements.map((achievement, index) => {
-            const unlocked = achievement.unlocked
-            const rewardCount = achievement.rewards?.length ?? 0
-            const isLeft = index % 2 === 0
+        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {types.map((type, index) => {
+            const achievementsForType = achievements.filter(
+              (achievement) => achievement.type === type,
+            )
+            const unlockedCount = achievementsForType.filter(
+              (achievement) => achievement.unlocked,
+            ).length
+            const slug = achievementTypeToSlug(type)
 
             return (
-              <div
-                key={achievement.id}
-                className="relative flex items-center w-full"
+              <Link
+                key={type}
+                to="/achievements/$type"
+                params={{ type: slug }}
+                className="group relative overflow-hidden border border-border/60 bg-card/80 p-6 transition-colors duration-300 hover:border-primary/35 hover:shadow-[0_22px_60px_rgba(0,0,0,0.25)]"
               >
-                {/* CARD WRAPPER */}
                 <div
-                  className={`w-1/2 flex ${
-                    isLeft ? 'justify-end pr-8' : 'justify-start pl-8 ml-auto'
-                  }`}
-                >
-                  <div
-                    className={`relative max-w-md border rounded-2xl p-5 transition-all duration-300 pt-10
-                      ${
-                        unlocked
-                          ? 'bg-card border-primary/30 shadow-[0_0_20px_rgba(0,207,186,0.08)]'
-                          : 'bg-card border-red-700/40 border-muted-foreground/40'
-                      }`}
-                  >
-                    {/* STATUS BADGE */}
-                    <div className="absolute top-3 right-3">
-                      {unlocked ? (
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-primary">
-                          Unlocked
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-red-700 flex items-center gap-1">
-                          <Lock className="w-3 h-3" />
-                          Locked
-                        </span>
-                      )}
-                    </div>
-
-                    {/* IMAGE */}
-                    <div className="w-full h-28 mb-4 rounded-xl bg-background border border-border flex items-center justify-center overflow-hidden">
-                      {achievement.imageUrl ? (
-                        <img
-                          src={achievement.imageUrl}
-                          alt={achievement.name}
-                          className="object-cover w-full h-full"
-                        />
-                      ) : (
-                        <Trophy className="w-8 h-8 text-primary/40" />
-                      )}
-                    </div>
-
-                    {/* TEXT */}
+                  className="absolute inset-0 opacity-70"
+                  style={{
+                    background:
+                      index % 3 === 0
+                        ? 'rgba(7, 189, 101, 0.16)'
+                        : index % 3 === 1
+                          ? 'rgba(248,113,113,0.16)'
+                          : 'rgba(250,204,21,0.16)',
+                  }}
+                />
+                <div className="relative space-y-6">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="space-y-2">
-                      <h2 className="text-sm font-mono uppercase tracking-wide text-foreground">
-                        {achievement.name}
+                      <h2 className="text-xl font-black leading-tight text-foreground">
+                        {type}
                       </h2>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
+                  </div>
 
-                      {rewardCount > 0 ? (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-                          <Gift className="w-3 h-3" />
-                          {rewardCount} reward{rewardCount > 1 ? 's' : ''}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground font-mono italic">
-                          No rewards
-                        </p>
-                      )}
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {ACHIEVEMENT_TYPE_BLURBS[type]}
+                  </p>
 
-                      {unlocked && achievement.unlockedAt && (
-                        <p className="text-[10px] text-primary/70 font-mono uppercase tracking-widest">
-                          Unlocked{' '}
-                          {new Date(
-                            achievement.unlockedAt,
-                          ).toLocaleDateString()}
-                        </p>
-                      )}
-
-                      {!unlocked && (
-                        <p className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-widest">
-                          Not completed yet
-                        </p>
-                      )}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                      <span>Unlocked</span>
+                      <span>
+                        {unlockedCount}/{achievementsForType.length}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{
+                          width:
+                            achievementsForType.length === 0
+                              ? '0%'
+                              : `${(unlockedCount / achievementsForType.length) * 100}%`,
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
-
-                {/* CENTER NODE */}
-                <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border border-primary/40 bg-background z-10" />
-              </div>
+              </Link>
             )
           })}
-        </div>
-
-        {/* footer */}
-        <div className="mt-20 flex justify-between items-center">
-          <span className="text-xs font-mono text-muted-foreground/30 uppercase tracking-widest">
-            L-IN //
-          </span>
-          <div className="w-10 h-px bg-primary/20" />
         </div>
       </div>
     </main>

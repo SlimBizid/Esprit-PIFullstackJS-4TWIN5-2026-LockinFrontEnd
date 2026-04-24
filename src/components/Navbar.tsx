@@ -236,7 +236,7 @@ export default function Navbar() {
     user?.type === 'admin'
       ? [
           ...NAV_LINKS,
-          { to: '/admin/review-reports' as const, label: 'Reports' },
+          { to: '/admin' as const, label: 'Admin' },
         ]
       : NAV_LINKS
 
