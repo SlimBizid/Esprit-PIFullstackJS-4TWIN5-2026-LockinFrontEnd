@@ -1,29 +1,33 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import {
-  Plus,
-  Pencil,
-  Trash2,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
+  ArrowRight,
+  CheckCircle2,
+  Coins,
   ImageOff,
+  Pencil,
+  Plus,
+  ShoppingBag,
+  Trash2,
 } from 'lucide-react'
-import { api, useIsAdmin, useIsAuthenticated } from '@/stores/userStore'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { useMemo, useState } from 'react'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  MessageDialog,
+  type MessageDialogState,
+} from '@/components/message-dialog'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -32,72 +36,53 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-} from '@/components/ui/pagination'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
-  MessageDialog,
-  type MessageDialogState,
-} from '@/components/message-dialog'
-import type { Cosmetic, CosmeticRarity, CosmeticType } from '@/models/cosmetic'
+  COSMETIC_RARITIES,
+  COSMETIC_TYPES,
+  COSMETIC_TYPE_LABELS,
+  type Cosmetic,
+  type CosmeticRarity,
+  type CosmeticType,
+} from '@/models/cosmetic'
+import { api, useIsAdmin, useIsAuthenticated } from '@/stores/userStore'
 
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const ITEMS_PER_PAGE = 12
 const FETCH_LIMIT = 200
-
-const RARITY_ORDER: CosmeticRarity[] = ['common', 'rare', 'epic', 'legendary']
 
 const RARITY_STYLES: Record<
   CosmeticRarity,
-  { badge: string; ring: string; glow: string; label: string }
+  { badge: string; accent: string; label: string }
 > = {
   common: {
-    badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-    ring: 'ring-1 ring-slate-500/30',
-    glow: '',
+    badge: 'border-slate-400/30 bg-slate-400/10 text-slate-200',
+    accent: 'from-slate-500/20 to-transparent',
     label: 'Common',
   },
   rare: {
-    badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    ring: 'ring-1 ring-blue-500/40',
-    glow: 'shadow-[0_0_12px_rgba(59,130,246,0.15)]',
+    badge: 'border-sky-400/30 bg-sky-400/10 text-sky-200',
+    accent: 'from-sky-500/20 to-transparent',
     label: 'Rare',
   },
   epic: {
-    badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-    ring: 'ring-2 ring-purple-500/50',
-    glow: 'shadow-[0_0_16px_rgba(168,85,247,0.2)]',
+    badge: 'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200',
+    accent: 'from-fuchsia-500/20 to-transparent',
     label: 'Epic',
   },
   legendary: {
-    badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    ring: 'ring-2 ring-amber-500/60',
-    glow: 'shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+    badge: 'border-amber-400/30 bg-amber-400/10 text-amber-200',
+    accent: 'from-amber-500/20 to-transparent',
     label: 'Legendary',
   },
 }
-
-const TYPE_LABELS: Record<CosmeticType, string> = {
-  skin: 'Skin',
-  emote: 'Emote',
-  avatar: 'Avatar',
-  banner: 'Banner',
-}
-
-const COSMETIC_TYPES: CosmeticType[] = ['skin', 'emote', 'avatar', 'banner']
-const COSMETIC_RARITIES: CosmeticRarity[] = [
-  'common',
-  'rare',
-  'epic',
-  'legendary',
-]
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (!axios.isAxiosError(error)) return fallback
@@ -113,7 +98,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
-// ─── Form state ──────────────────────────────────────────────────────────────
+function formatPrice(price: number | null) {
+  if (price == null) return 'Reward only'
+  return `${price.toLocaleString()} coins`
+}
 
 type CosmeticFormState = {
   imageUrl: string
@@ -122,6 +110,7 @@ type CosmeticFormState = {
   cosmeticRarity: CosmeticRarity
   cosmeticType: CosmeticType
   achievementId: string
+  price: string
 }
 
 const DEFAULT_FORM: CosmeticFormState = {
@@ -131,16 +120,18 @@ const DEFAULT_FORM: CosmeticFormState = {
   cosmeticRarity: 'common',
   cosmeticType: 'avatar',
   achievementId: '',
+  price: '',
 }
 
-function cosmeticToForm(c: Cosmetic): CosmeticFormState {
+function cosmeticToForm(cosmetic: Cosmetic): CosmeticFormState {
   return {
-    imageUrl: c.imageUrl,
-    cosmeticTitle: c.cosmeticTitle,
-    cosmeticDescription: c.cosmeticDescription,
-    cosmeticRarity: c.cosmeticRarity,
-    cosmeticType: c.cosmeticType,
-    achievementId: c.achievementId ?? '',
+    imageUrl: cosmetic.imageUrl,
+    cosmeticTitle: cosmetic.cosmeticTitle,
+    cosmeticDescription: cosmetic.cosmeticDescription,
+    cosmeticRarity: cosmetic.cosmeticRarity,
+    cosmeticType: cosmetic.cosmeticType,
+    achievementId: cosmetic.achievementId ?? '',
+    price: cosmetic.price?.toString() ?? '',
   }
 }
 
@@ -148,13 +139,27 @@ function validateForm(form: CosmeticFormState): string | null {
   if (!form.imageUrl.trim()) return 'Image URL is required.'
   if (!form.cosmeticTitle.trim()) return 'Title is required.'
   if (!form.cosmeticDescription.trim()) return 'Description is required.'
+
   if (
     form.achievementId.trim() &&
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       form.achievementId.trim(),
     )
-  )
+  ) {
     return 'Achievement ID must be a valid UUID.'
+  }
+
+  if (form.price.trim()) {
+    const price = Number(form.price)
+    if (!Number.isFinite(price) || price < 0 || !Number.isInteger(price)) {
+      return 'Price must be a non-negative whole number.'
+    }
+  }
+
+  if (form.achievementId.trim() && form.price.trim()) {
+    return 'A cosmetic linked to an achievement cannot have a price.'
+  }
+
   return null
 }
 
@@ -166,229 +171,248 @@ function buildPayload(form: CosmeticFormState) {
     cosmeticRarity: form.cosmeticRarity,
     cosmeticType: form.cosmeticType,
     achievementId: form.achievementId.trim() || null,
+    price: form.price.trim() ? Number(form.price.trim()) : null,
   }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-type CosmeticCardProps = {
+type ShopCardProps = {
   cosmetic: Cosmetic
   isAdmin: boolean
-  onEdit: (cosmetic: Cosmetic) => void
   onDelete: (cosmetic: Cosmetic) => void
+  onEdit: (cosmetic: Cosmetic) => void
 }
 
-function CosmeticCard({
-  cosmetic,
-  isAdmin,
-  onEdit,
-  onDelete,
-}: CosmeticCardProps) {
+function ShopCard({ cosmetic, isAdmin, onDelete, onEdit }: ShopCardProps) {
+  const [imageError, setImageError] = useState(false)
   const rarity = RARITY_STYLES[cosmetic.cosmeticRarity]
-  const [imgError, setImgError] = useState(false)
 
   return (
-    <div
-      className={`group relative flex flex-col rounded-xl overflow-hidden bg-card border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-border/80 ${rarity.ring} ${rarity.glow}`}
+    <Link
+      to="/cosmetic/$id"
+      params={{ id: cosmetic.id }}
+      className="group relative overflow-hidden border border-border/60 bg-card/90 transition-all duration-300 hover:border-primary/40 hover:shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
     >
-      {/* Image */}
-      <div className="relative aspect-square bg-muted overflow-hidden">
-        {!imgError ? (
-          <img
-            src={cosmetic.imageUrl}
-            alt={cosmetic.cosmeticTitle}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <ImageOff className="h-10 w-10 text-muted-foreground/40" />
-          </div>
-        )}
+      <div
+        className={`absolute inset-x-0 top-0 h-40 bg-gradient-to-b ${rarity.accent}`}
+      />
 
-        {/* Rarity ribbon */}
-        <span
-          className={`absolute top-2 left-2 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full border ${rarity.badge}`}
-        >
-          {rarity.label}
-        </span>
+      {isAdmin ? (
+        <div className="absolute right-3 top-3 z-10 flex gap-2">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-8 w-8 rounded-none"
+            onClick={(event) => {
+              event.preventDefault()
+              onEdit(cosmetic)
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="destructive"
+            className="h-8 w-8 rounded-none"
+            onClick={(event) => {
+              event.preventDefault()
+              onDelete(cosmetic)
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : null}
 
-        {/* Admin actions overlay */}
-        {isAdmin && (
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              size="icon"
-              variant="secondary"
-              className="h-7 w-7"
-              onClick={() => onEdit(cosmetic)}
-              aria-label="Edit cosmetic"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="icon"
-              variant="destructive"
-              className="h-7 w-7"
-              onClick={() => onDelete(cosmetic)}
-              aria-label="Delete cosmetic"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex flex-col gap-1.5 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold leading-tight line-clamp-1">
-            {cosmetic.cosmeticTitle}
-          </p>
-          <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
-            {TYPE_LABELS[cosmetic.cosmeticType]}
+      <div className="relative flex flex-col gap-4 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <Badge className={rarity.badge}>{rarity.label}</Badge>
+          <Badge variant="outline" className="rounded-none capitalize">
+            {COSMETIC_TYPE_LABELS[cosmetic.cosmeticType]}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-          {cosmetic.cosmeticDescription}
-        </p>
+
+        <div className="aspect-[4/3] overflow-hidden border border-border/60 bg-muted/30">
+          {imageError ? (
+            <div className="flex h-full items-center justify-center">
+              <ImageOff className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+          ) : (
+            <img
+              src={cosmetic.imageUrl}
+              alt={cosmetic.cosmeticTitle}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
+              onError={() => setImageError(true)}
+            />
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-lg font-black leading-tight text-foreground">
+              {cosmetic.cosmeticTitle}
+            </h2>
+            <div className="flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-primary">
+              <Coins className="h-4 w-4" />
+              {formatPrice(cosmetic.price)}
+            </div>
+          </div>
+          <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {cosmetic.cosmeticDescription}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm">
+          <span className="text-muted-foreground">Open cosmetic</span>
+          <ArrowRight className="h-4 w-4 text-primary" />
+        </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
-// ─── Form dialog ──────────────────────────────────────────────────────────────
-
 type CosmeticFormDialogProps = {
-  open: boolean
   editing: Cosmetic | null
   form: CosmeticFormState
   formError: string | null
   isPending: boolean
   onChange: (patch: Partial<CosmeticFormState>) => void
-  onSubmit: () => void
   onClose: () => void
+  onSubmit: () => void
+  open: boolean
 }
 
 function CosmeticFormDialog({
-  open,
   editing,
   form,
   formError,
   isPending,
   onChange,
-  onSubmit,
   onClose,
+  onSubmit,
+  open,
 }: CosmeticFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>
-            {editing ? 'Edit Cosmetic' : 'New Cosmetic'}
-          </DialogTitle>
+          <DialogTitle>{editing ? 'Edit cosmetic' : 'New cosmetic'}</DialogTitle>
           <DialogDescription>
-            {editing
-              ? 'Update the details of this cosmetic item.'
-              : 'Fill in the details to add a new cosmetic to the shop.'}
+            Cosmetics sold in the shop need a price. Cosmetics linked to an
+            achievement must leave the price empty.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-2">
-          {formError && (
+        <div className="space-y-4">
+          {formError ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Validation error</AlertTitle>
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
-          )}
+          ) : null}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="imageUrl">Image URL</Label>
-            <Input
-              id="imageUrl"
-              placeholder="https://example.com/image.png"
-              value={form.imageUrl}
-              onChange={(e) => onChange({ imageUrl: e.target.value })}
-            />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="cosmetic-image-url">Image URL</Label>
+              <Input
+                id="cosmetic-image-url"
+                placeholder="https://example.com/cosmetic.png"
+                value={form.imageUrl}
+                onChange={(event) => onChange({ imageUrl: event.target.value })}
+              />
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cosmeticTitle">Title</Label>
-            <Input
-              id="cosmeticTitle"
-              placeholder="Shadow Cloak"
-              value={form.cosmeticTitle}
-              onChange={(e) => onChange({ cosmeticTitle: e.target.value })}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="cosmetic-title">Title</Label>
+              <Input
+                id="cosmetic-title"
+                placeholder="Signal Crown"
+                value={form.cosmeticTitle}
+                onChange={(event) =>
+                  onChange({ cosmeticTitle: event.target.value })
+                }
+              />
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cosmeticDescription">Description</Label>
-            <Input
-              id="cosmeticDescription"
-              placeholder="A dark cloak worn by the most dedicated coders."
-              value={form.cosmeticDescription}
-              onChange={(e) =>
-                onChange({ cosmeticDescription: e.target.value })
-              }
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="cosmetic-price">Price</Label>
+              <Input
+                id="cosmetic-price"
+                placeholder="1200"
+                inputMode="numeric"
+                value={form.price}
+                onChange={(event) => onChange({ price: event.target.value })}
+              />
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="cosmetic-description">Description</Label>
+              <Input
+                id="cosmetic-description"
+                placeholder="A polished reward for coders who like to stand out."
+                value={form.cosmeticDescription}
+                onChange={(event) =>
+                  onChange({ cosmeticDescription: event.target.value })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Type</Label>
               <Select
                 value={form.cosmeticType}
-                onValueChange={(v) =>
-                  onChange({ cosmeticType: v as CosmeticType })
+                onValueChange={(value) =>
+                  onChange({ cosmeticType: value as CosmeticType })
                 }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COSMETIC_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {TYPE_LABELS[t]}
+                  {COSMETIC_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {COSMETIC_TYPE_LABELS[type]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="space-y-2">
               <Label>Rarity</Label>
               <Select
                 value={form.cosmeticRarity}
-                onValueChange={(v) =>
-                  onChange({ cosmeticRarity: v as CosmeticRarity })
+                onValueChange={(value) =>
+                  onChange({ cosmeticRarity: value as CosmeticRarity })
                 }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COSMETIC_RARITIES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {RARITY_STYLES[r].label}
+                  {COSMETIC_RARITIES.map((rarity) => (
+                    <SelectItem key={rarity} value={rarity}>
+                      {RARITY_STYLES[rarity].label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="achievementId">
-              Achievement ID{' '}
-              <span className="text-muted-foreground text-xs">(optional)</span>
-            </Label>
-            <Input
-              id="achievementId"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={form.achievementId}
-              onChange={(e) => onChange({ achievementId: e.target.value })}
-            />
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="cosmetic-achievement-id">
+                Achievement ID{' '}
+                <span className="text-xs text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="cosmetic-achievement-id"
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                value={form.achievementId}
+                onChange={(event) =>
+                  onChange({ achievementId: event.target.value })
+                }
+              />
+            </div>
           </div>
         </div>
 
@@ -399,8 +423,8 @@ function CosmeticFormDialog({
           <Button onClick={onSubmit} disabled={isPending}>
             {isPending
               ? editing
-                ? 'Saving…'
-                : 'Creating…'
+                ? 'Saving...'
+                : 'Creating...'
               : editing
                 ? 'Save changes'
                 : 'Create cosmetic'}
@@ -410,8 +434,6 @@ function CosmeticFormDialog({
     </Dialog>
   )
 }
-
-// ─── Route ────────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute('/cosmetics')({
   component: CosmeticsPage,
@@ -423,14 +445,10 @@ function CosmeticsPage() {
   const isAdmin = useIsAdmin()
   const isAuthenticated = useIsAuthenticated()
 
-  // ── Filter / pagination state
   const [typeFilter, setTypeFilter] = useState<CosmeticType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | 'all'>(
     'all',
   )
-  const [page, setPage] = useState(1)
-
-  // ── Dialog state
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Cosmetic | null>(null)
   const [form, setForm] = useState<CosmeticFormState>(DEFAULT_FORM)
@@ -438,11 +456,11 @@ function CosmeticsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Cosmetic | null>(null)
   const [message, setMessage] = useState<MessageDialogState | null>(null)
 
-  // ── Fetch
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['cosmetics'],
+  const shopQuery = useQuery({
+    queryKey: ['cosmetics', 'shop'],
+    enabled: isAuthenticated,
     queryFn: async () => {
-      const { data } = await api.get('/cosmetics', {
+      const { data } = await api.get('/cosmetics/shop', {
         params: { page: 1, limit: FETCH_LIMIT },
       })
       return data as {
@@ -452,56 +470,37 @@ function CosmeticsPage() {
         lastPage: number
       }
     },
-    enabled: isAuthenticated,
   })
 
-  // ── Filtered + paginated cosmetics
-  const filtered = useMemo(() => {
-    if (!data) return []
-    return data.data.filter((c) => {
-      if (typeFilter !== 'all' && c.cosmeticType !== typeFilter) return false
-      if (rarityFilter !== 'all' && c.cosmeticRarity !== rarityFilter)
+  const filteredCosmetics = useMemo(() => {
+    const cosmetics = shopQuery.data?.data ?? []
+    return cosmetics.filter((cosmetic) => {
+      if (typeFilter !== 'all' && cosmetic.cosmeticType !== typeFilter) {
         return false
+      }
+      if (rarityFilter !== 'all' && cosmetic.cosmeticRarity !== rarityFilter) {
+        return false
+      }
       return true
     })
-  }, [data, typeFilter, rarityFilter])
+  }, [rarityFilter, shopQuery.data?.data, typeFilter])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
-  const currentPage = Math.min(page, totalPages)
-  const paginated = filtered.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  )
-
-  // Reset to page 1 when filters change
-  function applyTypeFilter(v: CosmeticType | 'all') {
-    setTypeFilter(v)
-    setPage(1)
-  }
-
-  function applyRarityFilter(v: CosmeticRarity | 'all') {
-    setRarityFilter(v)
-    setPage(1)
-  }
-
-  // ── Create mutation
   const createMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof buildPayload>) =>
       api.post('/cosmetics', payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cosmetics'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['cosmetics'] })
       closeForm()
       setMessage({
         title: 'Cosmetic created',
-        description: 'The new cosmetic has been added to the shop.',
+        description: 'The cosmetic is now available in the content pipeline.',
       })
     },
-    onError: (err) => {
-      setFormError(getErrorMessage(err, 'Failed to create cosmetic.'))
+    onError: (error) => {
+      setFormError(getErrorMessage(error, 'Failed to create cosmetic.'))
     },
   })
 
-  // ── Update mutation
   const updateMutation = useMutation({
     mutationFn: ({
       id,
@@ -510,41 +509,39 @@ function CosmeticsPage() {
       id: string
       payload: ReturnType<typeof buildPayload>
     }) => api.patch(`/cosmetics/${id}`, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cosmetics'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['cosmetics'] })
       closeForm()
       setMessage({
         title: 'Cosmetic updated',
-        description: 'The cosmetic has been saved successfully.',
+        description: 'The cosmetic has been updated successfully.',
       })
     },
-    onError: (err) => {
-      setFormError(getErrorMessage(err, 'Failed to update cosmetic.'))
+    onError: (error) => {
+      setFormError(getErrorMessage(error, 'Failed to update cosmetic.'))
     },
   })
 
-  // ── Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/cosmetics/${id}`),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cosmetics'] })
+    onSuccess: async () => {
       setDeleteTarget(null)
+      await queryClient.invalidateQueries({ queryKey: ['cosmetics'] })
       setMessage({
         title: 'Cosmetic deleted',
-        description: 'The cosmetic has been removed from the shop.',
+        description: 'The cosmetic has been removed.',
       })
     },
-    onError: (err) => {
+    onError: (error) => {
       setDeleteTarget(null)
       setMessage({
         title: 'Delete failed',
-        description: getErrorMessage(err, 'Failed to delete cosmetic.'),
+        description: getErrorMessage(error, 'Failed to delete cosmetic.'),
         variant: 'destructive',
       })
     },
   })
 
-  // ── Form handlers
   function openCreate() {
     setEditing(null)
     setForm(DEFAULT_FORM)
@@ -565,35 +562,31 @@ function CosmeticsPage() {
     setFormError(null)
   }
 
-  function handleFormChange(patch: Partial<CosmeticFormState>) {
-    setForm((prev) => ({ ...prev, ...patch }))
-    setFormError(null)
-  }
-
   function handleSubmit() {
     const validationError = validateForm(form)
     if (validationError) {
       setFormError(validationError)
       return
     }
+
     const payload = buildPayload(form)
     if (editing) {
       updateMutation.mutate({ id: editing.id, payload })
-    } else {
-      createMutation.mutate(payload)
+      return
     }
+
+    createMutation.mutate(payload)
   }
 
-  // ── Not authenticated
   if (!isAuthenticated) {
     return (
       <main className="flex flex-1 items-center justify-center p-8">
-        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+        <div className="max-w-sm space-y-4 text-center">
           <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Authentication required</AlertTitle>
+            <ShoppingBag className="h-4 w-4" />
+            <AlertTitle>Sign in to enter the shop</AlertTitle>
             <AlertDescription>
-              You need to be logged in to browse the cosmetics shop.
+              Cosmetics are available once you are logged in.
             </AlertDescription>
           </Alert>
           <Button onClick={() => void navigate({ to: '/auth/login' })}>
@@ -604,15 +597,17 @@ function CosmeticsPage() {
     )
   }
 
-  // ── Fetch error
-  if (isError) {
+  if (shopQuery.isError) {
     return (
       <main className="flex flex-1 items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-md">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Failed to load cosmetics</AlertTitle>
+          <AlertTitle>Failed to load the shop</AlertTitle>
           <AlertDescription>
-            {getErrorMessage(error, 'An unexpected error occurred.')}
+            {getErrorMessage(
+              shopQuery.error,
+              'An unexpected error occurred while loading cosmetics.',
+            )}
           </AlertDescription>
         </Alert>
       </main>
@@ -620,141 +615,151 @@ function CosmeticsPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cosmetics Shop</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isLoading
-              ? 'Loading items…'
-              : `${filtered.length} item${filtered.length !== 1 ? 's' : ''} available`}
-          </p>
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border border-primary/15 bg-[linear-gradient(135deg,rgba(0,207,186,0.16),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent)] px-6 py-10 sm:px-8">
+        <div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_center,rgba(0,207,186,0.18),transparent_60%)] opacity-70" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-4">
+            <Badge variant="outline" className="rounded-none border-primary/30">
+              LockIN Shop
+            </Badge>
+            <div className="space-y-3">
+              <h1 className="text-4xl font-black tracking-tight text-foreground">
+                Cosmetics
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                Browse the collection of purchasable cosmetics. Each piece is
+                crafted to feel like a trophy, even before buying is wired in.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="border border-border/60 bg-background/70 px-4 py-3 text-center">
+              <div className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                Shop items
+              </div>
+              <div className="mt-1 text-2xl font-black">
+                {shopQuery.data?.total ?? 0}
+              </div>
+            </div>
+            <div className="border border-border/60 bg-background/70 px-4 py-3 text-center">
+              <div className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                Filtered
+              </div>
+              <div className="mt-1 text-2xl font-black">
+                {filteredCosmetics.length}
+              </div>
+            </div>
+            <div className="border border-border/60 bg-background/70 px-4 py-3 text-center">
+              <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Prices live
+              </div>
+              <div className="mt-1 text-2xl font-black">Ready</div>
+            </div>
+          </div>
         </div>
-        {isAdmin && (
-          <Button onClick={openCreate} className="shrink-0">
-            <Plus className="h-4 w-4 mr-2" />
-            Add cosmetic
-          </Button>
-        )}
-      </div>
+      </section>
 
-      {/* ── Filters ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs
-          value={typeFilter}
-          onValueChange={(v) => applyTypeFilter(v as CosmeticType | 'all')}
-        >
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            {COSMETIC_TYPES.map((t) => (
-              <TabsTrigger key={t} value={t}>
-                {TYPE_LABELS[t]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      <section className="flex flex-col gap-4 border border-border/60 bg-card/70 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <Tabs
+            value={typeFilter}
+            onValueChange={(value) =>
+              setTypeFilter(value as CosmeticType | 'all')
+            }
+          >
+            <TabsList className="rounded-none">
+              <TabsTrigger value="all">All</TabsTrigger>
+              {COSMETIC_TYPES.map((type) => (
+                <TabsTrigger key={type} value={type}>
+                  {COSMETIC_TYPE_LABELS[type]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-        <Select
-          value={rarityFilter}
-          onValueChange={(v) => applyRarityFilter(v as CosmeticRarity | 'all')}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All rarities" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All rarities</SelectItem>
-            {RARITY_ORDER.map((r) => (
-              <SelectItem key={r} value={r}>
-                {RARITY_STYLES[r].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={rarityFilter}
+              onValueChange={(value) =>
+                setRarityFilter(value as CosmeticRarity | 'all')
+              }
+            >
+              <SelectTrigger className="w-44 rounded-none">
+                <SelectValue placeholder="All rarities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All rarities</SelectItem>
+                {COSMETIC_RARITIES.map((rarity) => (
+                  <SelectItem key={rarity} value={rarity}>
+                    {RARITY_STYLES[rarity].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-      {/* ── Grid ── */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
+            {isAdmin ? (
+              <Button onClick={openCreate} className="rounded-none">
+                <Plus className="mr-2 h-4 w-4" />
+                Add cosmetic
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      {shopQuery.isLoading ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
             <div
-              key={i}
-              className="rounded-xl bg-muted animate-pulse aspect-[3/4]"
+              key={index}
+              className="aspect-[4/5] animate-pulse border border-border/60 bg-muted/40"
             />
           ))}
         </div>
-      ) : paginated.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-24">
-          <p className="text-muted-foreground text-sm">
-            No cosmetics match the selected filters.
-          </p>
-        </div>
+      ) : filteredCosmetics.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No shop cosmetics found</CardTitle>
+            <CardDescription>
+              Try a different filter combination or add a new priced cosmetic as
+              an admin.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {paginated.map((cosmetic) => (
-            <CosmeticCard
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredCosmetics.map((cosmetic) => (
+            <ShopCard
               key={cosmetic.id}
               cosmetic={cosmetic}
               isAdmin={isAdmin}
-              onEdit={openEdit}
               onDelete={setDeleteTarget}
+              onEdit={openEdit}
             />
           ))}
         </div>
       )}
 
-      {/* ── Pagination ── */}
-      {totalPages > 1 && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-            </PaginationItem>
-
-            <PaginationItem>
-              <span className="px-4 text-sm text-muted-foreground">
-                {currentPage} / {totalPages}
-              </span>
-            </PaginationItem>
-
-            <PaginationItem>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
-
-      {/* ── Dialogs ── */}
       <CosmeticFormDialog
         open={formOpen}
         editing={editing}
         form={form}
         formError={formError}
         isPending={createMutation.isPending || updateMutation.isPending}
-        onChange={handleFormChange}
-        onSubmit={handleSubmit}
+        onChange={(patch) => {
+          setForm((current) => ({ ...current, ...patch }))
+          setFormError(null)
+        }}
         onClose={closeForm}
+        onSubmit={handleSubmit}
       />
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete cosmetic"
         description={`Are you sure you want to delete "${deleteTarget?.cosmeticTitle}"? This action cannot be undone.`}
         confirmLabel="Delete"
@@ -769,7 +774,11 @@ function CosmeticsPage() {
 
       <MessageDialog
         message={message}
-        onOpenChange={(v) => !v && setMessage(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMessage(null)
+          }
+        }}
       />
     </main>
   )

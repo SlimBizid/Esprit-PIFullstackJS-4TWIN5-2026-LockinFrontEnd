@@ -17,6 +17,7 @@ import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 import { Menu, X } from 'lucide-react'
 
 const NAV_LINKS = [
+  { to: '/cosmetics', label: 'Shop' },
   { to: '/teams', label: 'Teams' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/challenges', label: 'Challenges' },

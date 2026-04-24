@@ -21,6 +21,7 @@ import { Route as AchievementsIndexRouteImport } from './routes/achievements/ind
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
+import { Route as CosmeticIdRouteImport } from './routes/cosmetic/$id'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
@@ -89,6 +90,11 @@ const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   path: '/demo/tanstack-query',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CosmeticIdRoute = CosmeticIdRouteImport.update({
+  id: '/cosmetic/$id',
+  path: '/cosmetic/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
     | '/teams/$teamId'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
     | '/teams/$teamId'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
     | '/teams/$teamId'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
+  CosmeticIdRoute: typeof CosmeticIdRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoTanstackQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cosmetic/$id': {
+      id: '/cosmetic/$id'
+      path: '/cosmetic/$id'
+      fullPath: '/cosmetic/$id'
+      preLoaderRoute: typeof CosmeticIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/register': {
       id: '/auth/register'
       path: '/auth/register'
@@ -427,6 +447,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
+  CosmeticIdRoute: CosmeticIdRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
