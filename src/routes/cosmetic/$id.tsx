@@ -1,7 +1,14 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { AlertCircle, ArrowLeft, Coins, ShoppingBag } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Shield,
+  ShoppingBag,
+  Sparkles,
+  Tag,
+} from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +17,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -109,7 +117,7 @@ function CosmeticDetailsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-      <Button asChild variant="outline" className="w-fit rounded-none">
+      <Button asChild variant="outline" className="w-fit">
         <Link to="/cosmetics">
           <ArrowLeft className="h-4 w-4" />
           Back to shop
@@ -117,56 +125,94 @@ function CosmeticDetailsPage() {
       </Button>
 
       <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="overflow-hidden border border-border/60 bg-card/80">
-          <div className="aspect-square bg-muted/30">
+        <Card className="overflow-hidden border-border/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(7,11,20,0.98))] py-0 shadow-[0_24px_60px_rgba(0,0,0,0.32)]">
+          <div className="relative aspect-square overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,207,186,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.18))]" />
             <img
               src={cosmetic.imageUrl}
               alt={cosmetic.cosmeticTitle}
               className="h-full w-full object-cover"
             />
-          </div>
-        </div>
-
-        <Card className="rounded-none">
-          <CardHeader className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="rounded-none capitalize">
-                {COSMETIC_TYPE_LABELS[cosmetic.cosmeticType]}
-              </Badge>
-              <Badge className="rounded-none">
-                {RARITY_LABELS[cosmetic.cosmeticRarity]}
-              </Badge>
+            <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(2,6,13,0.92))] px-6 pb-6 pt-16">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="border border-white/10 bg-black/40 text-white">
+                  {COSMETIC_TYPE_LABELS[cosmetic.cosmeticType]}
+                </Badge>
+                <Badge className="bg-primary/90 text-primary-foreground">
+                  {RARITY_LABELS[cosmetic.cosmeticRarity]}
+                </Badge>
+              </div>
             </div>
+          </div>
+        </Card>
+
+        <Card className="h-full border-border/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(8,12,22,0.98))] shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
+          <CardHeader className="space-y-4 border-b border-border/60">
+            <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
+              Featured cosmetic
+            </Badge>
             <div className="space-y-2">
-              <CardTitle className="text-3xl font-black tracking-tight">
+              <CardTitle className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
                 {cosmetic.cosmeticTitle}
               </CardTitle>
-              <CardDescription className="text-base leading-7">
+              <CardDescription className="text-base leading-7 text-muted-foreground">
                 {cosmetic.cosmeticDescription}
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="border border-border/60 bg-muted/20 p-4">
-              <div className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                Price
-              </div>
-              <div className="mt-2 flex items-center gap-2 text-2xl font-black text-primary">
-                <Coins className="h-5 w-5" />
-                {formatPrice(cosmetic.price)}
-              </div>
+          <CardContent className="flex flex-1 flex-col gap-6 pt-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Card className="gap-3 border-border/60 bg-background/35 py-4 shadow-none">
+                <CardHeader className="px-4">
+                  <CardDescription className="flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-muted-foreground">
+                    <Tag className="h-3.5 w-3.5 text-primary" />
+                    Price
+                  </CardDescription>
+                  <CardTitle className="text-2xl font-black text-primary">
+                    {formatPrice(cosmetic.price)}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+
+              <Card className="gap-3 border-border/60 bg-background/35 py-4 shadow-none">
+                <CardHeader className="px-4">
+                  <CardDescription className="flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-muted-foreground">
+                    <Shield className="h-3.5 w-3.5 text-primary" />
+                    Type
+                  </CardDescription>
+                  <CardTitle className="text-xl font-black text-foreground">
+                    {COSMETIC_TYPE_LABELS[cosmetic.cosmeticType]}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button className="rounded-none">
-                <ShoppingBag className="h-4 w-4" />
-                Buy
-              </Button>
-              <Button asChild variant="outline" className="rounded-none">
-                <Link to="/cosmetics">Keep browsing</Link>
-              </Button>
-            </div>
+            <Card className="gap-4 border-border/60 bg-background/30 py-5 shadow-none">
+              <CardHeader className="px-5">
+                <CardDescription className="flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-muted-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Cosmetic notes
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 text-sm leading-7 text-muted-foreground">
+                Add this item to give your profile a stronger presence in the
+                shop rotation. The current artwork, rarity, and category are all
+                tuned to keep it feeling collectible instead of generic.
+              </CardContent>
+            </Card>
+
+            <div className="flex-1" />
           </CardContent>
+
+          <CardFooter className="mt-auto flex flex-col gap-3 border-t border-border/60 pt-6 sm:flex-row">
+            <Button className="w-full sm:flex-1">
+              <ShoppingBag className="h-4 w-4" />
+              Buy
+            </Button>
+            <Button asChild variant="outline" className="w-full sm:flex-1">
+              <Link to="/cosmetics">Keep browsing</Link>
+            </Button>
+          </CardFooter>
         </Card>
       </section>
     </main>
