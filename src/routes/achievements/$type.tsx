@@ -1,27 +1,17 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import { ArrowLeft } from 'lucide-react'
 
 import { AchievementTimeline } from '@/components/achievement-timeline'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { useAchievementTypes } from '@/hooks/use-achievement-types'
+import { useUserAchievements } from '@/hooks/use-user-achievements'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   ACHIEVEMENT_TYPE_BLURBS,
   slugToAchievementType,
-  type Achievement,
-  type AchievementType,
 } from '@/models/achievement'
-import { api, useUser } from '@/stores/userStore'
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (!axios.isAxiosError(error)) return fallback
-
-  const message = error.response?.data?.message
-  if (Array.isArray(message)) return message.join(', ')
-  if (typeof message === 'string' && message.trim()) return message
-  return fallback
-}
+import { useUser } from '@/stores/userStore'
 
 export const Route = createFileRoute('/achievements/$type')({
   component: AchievementTypePage,
@@ -30,23 +20,8 @@ export const Route = createFileRoute('/achievements/$type')({
 function AchievementTypePage() {
   const { type: typeSlug } = Route.useParams()
   const user = useUser()
-
-  const typesQuery = useQuery({
-    queryKey: ['achievement-types'],
-    queryFn: async () => {
-      const { data } = await api.get('/achievement/types')
-      return data as AchievementType[]
-    },
-  })
-
-  const achievementsQuery = useQuery({
-    queryKey: ['user-achievements', user?.username],
-    enabled: !!user?.username,
-    queryFn: async () => {
-      const { data } = await api.get(`/users/${user?.username}/achievements`)
-      return data as Achievement[]
-    },
-  })
+  const typesQuery = useAchievementTypes()
+  const achievementsQuery = useUserAchievements(user?.username)
 
   if (!user?.username || typesQuery.isLoading || achievementsQuery.isLoading) {
     return (
@@ -64,7 +39,7 @@ function AchievementTypePage() {
         <Alert variant="destructive" className="max-w-xl">
           <AlertTitle>Failed to load achievements</AlertTitle>
           <AlertDescription>
-            {getErrorMessage(
+            {getApiErrorMessage(
               typesQuery.error ?? achievementsQuery.error,
               'Please try again in a moment.',
             )}

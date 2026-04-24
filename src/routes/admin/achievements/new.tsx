@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { AlertCircle, Check, ImagePlus, Loader2, Sparkles } from 'lucide-react'
+import { AlertCircle, Check, ImagePlus, Loader2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import {
@@ -311,10 +311,7 @@ function NewAchievementPage() {
                       Creating...
                     </>
                   ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Create achievement
-                    </>
+                    <>Create achievement</>
                   )}
                 </Button>
               </div>

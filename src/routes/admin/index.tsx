@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { AlertCircle, Shield, Sparkles, Users } from 'lucide-react'
-
+import { AlertCircle, Shield, Users } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -97,7 +96,9 @@ function AdminDashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <Badge variant="outline">Admin hub</Badge>
-          <h1 className="text-3xl font-black tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-3xl font-black tracking-tight">
+            Admin Dashboard
+          </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
             Review platform users and jump to the rest of the admin tools from
             one place.
@@ -186,10 +187,7 @@ function AdminDashboardPage() {
               <Link to="/admin/review-reports">Review reports</Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link to="/admin/achievements/new">
-                <Sparkles className="h-4 w-4" />
-                Create achievement
-              </Link>
+              <Link to="/admin/achievements/new">Create achievement</Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
               <Link to="/challenges">Manage challenges</Link>

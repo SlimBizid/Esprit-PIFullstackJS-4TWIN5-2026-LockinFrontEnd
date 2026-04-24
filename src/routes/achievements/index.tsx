@@ -1,26 +1,13 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
-import { ArrowRight, Layers3, Trophy } from 'lucide-react'
+import { createFileRoute } from '@tanstack/react-router'
+import { Trophy } from 'lucide-react'
 
+import { AchievementTypeCard } from '@/components/achievement-type-card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import {
-  ACHIEVEMENT_TYPE_BLURBS,
-  achievementTypeToSlug,
-  type Achievement,
-  type AchievementType,
-} from '@/models/achievement'
-import { api, useUser } from '@/stores/userStore'
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (!axios.isAxiosError(error)) return fallback
-
-  const message = error.response?.data?.message
-  if (Array.isArray(message)) return message.join(', ')
-  if (typeof message === 'string' && message.trim()) return message
-  return fallback
-}
+import { useAchievementTypes } from '@/hooks/use-achievement-types'
+import { useUserAchievements } from '@/hooks/use-user-achievements'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { useUser } from '@/stores/userStore'
 
 export const Route = createFileRoute('/achievements/')({
   component: AchievementsHubPage,
@@ -28,23 +15,8 @@ export const Route = createFileRoute('/achievements/')({
 
 function AchievementsHubPage() {
   const user = useUser()
-
-  const typesQuery = useQuery({
-    queryKey: ['achievement-types'],
-    queryFn: async () => {
-      const { data } = await api.get('/achievement/types')
-      return data as AchievementType[]
-    },
-  })
-
-  const achievementsQuery = useQuery({
-    queryKey: ['user-achievements', user?.username],
-    enabled: !!user?.username,
-    queryFn: async () => {
-      const { data } = await api.get(`/users/${user?.username}/achievements`)
-      return data as Achievement[]
-    },
-  })
+  const typesQuery = useAchievementTypes()
+  const achievementsQuery = useUserAchievements(user?.username)
 
   if (!user?.username || typesQuery.isLoading || achievementsQuery.isLoading) {
     return (
@@ -62,7 +34,7 @@ function AchievementsHubPage() {
         <Alert variant="destructive" className="max-w-xl">
           <AlertTitle>Failed to load achievements</AlertTitle>
           <AlertDescription>
-            {getErrorMessage(
+            {getApiErrorMessage(
               typesQuery.error ?? achievementsQuery.error,
               'Please try again in a moment.',
             )}
@@ -74,6 +46,9 @@ function AchievementsHubPage() {
 
   const achievements = achievementsQuery.data ?? []
   const types = typesQuery.data ?? []
+  const unlockedAchievements = achievements.filter(
+    (achievement) => achievement.unlocked,
+  ).length
 
   return (
     <main className="min-h-screen bg-background px-6 py-20 lg:px-16">
@@ -103,12 +78,12 @@ function AchievementsHubPage() {
                   still ahead.
                 </p>
               </div>
-              <div className="border border-border/60 bg-background/60 px-4 py-3 text-sm">
+              <div className="border border-border/60 bg-background/60 px-4 py-3 text-center text-sm">
                 <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Total achievements
+                  Your achievements
                 </div>
                 <div className="mt-1 text-2xl font-black">
-                  {achievements.length}
+                  {unlockedAchievements}
                 </div>
               </div>
             </div>
@@ -116,70 +91,14 @@ function AchievementsHubPage() {
         </div>
 
         <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {types.map((type, index) => {
-            const achievementsForType = achievements.filter(
-              (achievement) => achievement.type === type,
-            )
-            const unlockedCount = achievementsForType.filter(
-              (achievement) => achievement.unlocked,
-            ).length
-            const slug = achievementTypeToSlug(type)
-
-            return (
-              <Link
-                key={type}
-                to="/achievements/$type"
-                params={{ type: slug }}
-                className="group relative overflow-hidden border border-border/60 bg-card/80 p-6 transition-colors duration-300 hover:border-primary/35 hover:shadow-[0_22px_60px_rgba(0,0,0,0.25)]"
-              >
-                <div
-                  className="absolute inset-0 opacity-70"
-                  style={{
-                    background:
-                      index % 3 === 0
-                        ? 'rgba(7, 189, 101, 0.16)'
-                        : index % 3 === 1
-                          ? 'rgba(248,113,113,0.16)'
-                          : 'rgba(250,204,21,0.16)',
-                  }}
-                />
-                <div className="relative space-y-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-2">
-                      <h2 className="text-xl font-black leading-tight text-foreground">
-                        {type}
-                      </h2>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
-                  </div>
-
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {ACHIEVEMENT_TYPE_BLURBS[type]}
-                  </p>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                      <span>Unlocked</span>
-                      <span>
-                        {unlockedCount}/{achievementsForType.length}
-                      </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{
-                          width:
-                            achievementsForType.length === 0
-                              ? '0%'
-                              : `${(unlockedCount / achievementsForType.length) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
+          {types.map((type, index) => (
+            <AchievementTypeCard
+              key={type}
+              achievements={achievements}
+              index={index}
+              type={type}
+            />
+          ))}
         </div>
       </div>
     </main>
