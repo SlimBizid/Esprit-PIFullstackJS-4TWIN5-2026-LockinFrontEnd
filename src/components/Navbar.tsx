@@ -18,6 +18,7 @@ import { LogOut, Menu, X } from 'lucide-react'
 import AccessibilitySettingsMenu from '@/components/accessibility/AccessibilitySettingsMenu'
 
 const NAV_LINKS = [
+  { to: '/cosmetics', label: 'Shop' },
   { to: '/teams', label: 'Teams' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/challenges', label: 'Challenges' },
@@ -237,7 +238,7 @@ export default function Navbar() {
     user?.type === 'admin'
       ? [
           ...NAV_LINKS,
-          { to: '/admin/review-reports' as const, label: 'Reports' },
+          { to: '/admin' as const, label: 'Admin' },
         ]
       : NAV_LINKS
 

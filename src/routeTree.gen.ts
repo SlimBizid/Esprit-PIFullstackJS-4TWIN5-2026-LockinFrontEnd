@@ -16,14 +16,20 @@ import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as ChallengeRouteImport } from './routes/challenge'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TeamsIndexRouteImport } from './routes/teams/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AchievementsIndexRouteImport } from './routes/achievements/index'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
+import { Route as ProfileCosmeticsRouteImport } from './routes/profile/cosmetics'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
+import { Route as CosmeticIdRouteImport } from './routes/cosmetic/$id'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
+import { Route as AchievementsTypeRouteImport } from './routes/achievements/$type'
 import { Route as ProfileEditIndexRouteImport } from './routes/profile/edit/index'
+import { Route as AdminAchievementsNewRouteImport } from './routes/admin/achievements/new'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -60,9 +66,24 @@ const TeamsIndexRoute = TeamsIndexRouteImport.update({
   path: '/teams/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AchievementsIndexRoute = AchievementsIndexRouteImport.update({
+  id: '/achievements/',
+  path: '/achievements/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
   id: '/teams/$teamId',
   path: '/teams/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileCosmeticsRoute = ProfileCosmeticsRouteImport.update({
+  id: '/profile/cosmetics',
+  path: '/profile/cosmetics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
@@ -73,6 +94,11 @@ const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   id: '/demo/tanstack-query',
   path: '/demo/tanstack-query',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CosmeticIdRoute = CosmeticIdRouteImport.update({
+  id: '/cosmetic/$id',
+  path: '/cosmetic/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
@@ -95,9 +121,19 @@ const AdminReviewReportsRoute = AdminReviewReportsRouteImport.update({
   path: '/admin/review-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AchievementsTypeRoute = AchievementsTypeRouteImport.update({
+  id: '/achievements/$type',
+  path: '/achievements/$type',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileEditIndexRoute = ProfileEditIndexRouteImport.update({
   id: '/profile/edit/',
   path: '/profile/edit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAchievementsNewRoute = AdminAchievementsNewRouteImport.update({
+  id: '/admin/achievements/new',
+  path: '/admin/achievements/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -108,14 +144,20 @@ export interface FileRoutesByFullPath {
   '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/achievements/$type': typeof AchievementsTypeRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/profile/cosmetics': typeof ProfileCosmeticsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/achievements/': typeof AchievementsIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/teams/': typeof TeamsIndexRoute
+  '/admin/achievements/new': typeof AdminAchievementsNewRoute
   '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesByTo {
@@ -125,14 +167,20 @@ export interface FileRoutesByTo {
   '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/achievements/$type': typeof AchievementsTypeRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/profile/cosmetics': typeof ProfileCosmeticsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/achievements': typeof AchievementsIndexRoute
+  '/admin': typeof AdminIndexRoute
   '/teams': typeof TeamsIndexRoute
+  '/admin/achievements/new': typeof AdminAchievementsNewRoute
   '/profile/edit': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesById {
@@ -143,14 +191,20 @@ export interface FileRoutesById {
   '/cosmetics': typeof CosmeticsRoute
   '/home': typeof HomeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/achievements/$type': typeof AchievementsTypeRoute
   '/admin/review-reports': typeof AdminReviewReportsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/profile/cosmetics': typeof ProfileCosmeticsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/achievements/': typeof AchievementsIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/teams/': typeof TeamsIndexRoute
+  '/admin/achievements/new': typeof AdminAchievementsNewRoute
   '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRouteTypes {
@@ -162,14 +216,20 @@ export interface FileRouteTypes {
     | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/achievements/$type'
     | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
+    | '/profile/cosmetics'
     | '/teams/$teamId'
+    | '/achievements/'
+    | '/admin/'
     | '/teams/'
+    | '/admin/achievements/new'
     | '/profile/edit/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -179,14 +239,20 @@ export interface FileRouteTypes {
     | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/achievements/$type'
     | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
+    | '/profile/cosmetics'
     | '/teams/$teamId'
+    | '/achievements'
+    | '/admin'
     | '/teams'
+    | '/admin/achievements/new'
     | '/profile/edit'
   id:
     | '__root__'
@@ -196,14 +262,20 @@ export interface FileRouteTypes {
     | '/cosmetics'
     | '/home'
     | '/leaderboard'
+    | '/achievements/$type'
     | '/admin/review-reports'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/register'
+    | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
+    | '/profile/cosmetics'
     | '/teams/$teamId'
+    | '/achievements/'
+    | '/admin/'
     | '/teams/'
+    | '/admin/achievements/new'
     | '/profile/edit/'
   fileRoutesById: FileRoutesById
 }
@@ -214,14 +286,20 @@ export interface RootRouteChildren {
   CosmeticsRoute: typeof CosmeticsRoute
   HomeRoute: typeof HomeRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  AchievementsTypeRoute: typeof AchievementsTypeRoute
   AdminReviewReportsRoute: typeof AdminReviewReportsRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
+  CosmeticIdRoute: typeof CosmeticIdRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
+  ProfileCosmeticsRoute: typeof ProfileCosmeticsRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
+  AchievementsIndexRoute: typeof AchievementsIndexRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
+  AdminAchievementsNewRoute: typeof AdminAchievementsNewRoute
   ProfileEditIndexRoute: typeof ProfileEditIndexRoute
 }
 
@@ -276,11 +354,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/achievements/': {
+      id: '/achievements/'
+      path: '/achievements'
+      fullPath: '/achievements/'
+      preLoaderRoute: typeof AchievementsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/teams/$teamId': {
       id: '/teams/$teamId'
       path: '/teams/$teamId'
       fullPath: '/teams/$teamId'
       preLoaderRoute: typeof TeamsTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/cosmetics': {
+      id: '/profile/cosmetics'
+      path: '/profile/cosmetics'
+      fullPath: '/profile/cosmetics'
+      preLoaderRoute: typeof ProfileCosmeticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile/$userId': {
@@ -295,6 +394,13 @@ declare module '@tanstack/react-router' {
       path: '/demo/tanstack-query'
       fullPath: '/demo/tanstack-query'
       preLoaderRoute: typeof DemoTanstackQueryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cosmetic/$id': {
+      id: '/cosmetic/$id'
+      path: '/cosmetic/$id'
+      fullPath: '/cosmetic/$id'
+      preLoaderRoute: typeof CosmeticIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/register': {
@@ -325,11 +431,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/achievements/$type': {
+      id: '/achievements/$type'
+      path: '/achievements/$type'
+      fullPath: '/achievements/$type'
+      preLoaderRoute: typeof AchievementsTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile/edit/': {
       id: '/profile/edit/'
       path: '/profile/edit'
       fullPath: '/profile/edit/'
       preLoaderRoute: typeof ProfileEditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/achievements/new': {
+      id: '/admin/achievements/new'
+      path: '/admin/achievements/new'
+      fullPath: '/admin/achievements/new'
+      preLoaderRoute: typeof AdminAchievementsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -342,14 +462,20 @@ const rootRouteChildren: RootRouteChildren = {
   CosmeticsRoute: CosmeticsRoute,
   HomeRoute: HomeRoute,
   LeaderboardRoute: LeaderboardRoute,
+  AchievementsTypeRoute: AchievementsTypeRoute,
   AdminReviewReportsRoute: AdminReviewReportsRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
+  CosmeticIdRoute: CosmeticIdRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
+  ProfileCosmeticsRoute: ProfileCosmeticsRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
+  AchievementsIndexRoute: AchievementsIndexRoute,
+  AdminIndexRoute: AdminIndexRoute,
   TeamsIndexRoute: TeamsIndexRoute,
+  AdminAchievementsNewRoute: AdminAchievementsNewRoute,
   ProfileEditIndexRoute: ProfileEditIndexRoute,
 }
 export const routeTree = rootRouteImport
