@@ -19,6 +19,7 @@ import { Route as TeamsIndexRouteImport } from './routes/teams/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AchievementsIndexRouteImport } from './routes/achievements/index'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
+import { Route as ProfileCosmeticsRouteImport } from './routes/profile/cosmetics'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as CosmeticIdRouteImport } from './routes/cosmetic/$id'
@@ -78,6 +79,11 @@ const AchievementsIndexRoute = AchievementsIndexRouteImport.update({
 const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
   id: '/teams/$teamId',
   path: '/teams/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileCosmeticsRoute = ProfileCosmeticsRouteImport.update({
+  id: '/profile/cosmetics',
+  path: '/profile/cosmetics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/profile/cosmetics': typeof ProfileCosmeticsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/achievements/': typeof AchievementsIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/profile/cosmetics': typeof ProfileCosmeticsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/achievements': typeof AchievementsIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/cosmetic/$id': typeof CosmeticIdRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/profile/cosmetics': typeof ProfileCosmeticsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
   '/achievements/': typeof AchievementsIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
+    | '/profile/cosmetics'
     | '/teams/$teamId'
     | '/achievements/'
     | '/admin/'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
+    | '/profile/cosmetics'
     | '/teams/$teamId'
     | '/achievements'
     | '/admin'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/cosmetic/$id'
     | '/demo/tanstack-query'
     | '/profile/$userId'
+    | '/profile/cosmetics'
     | '/teams/$teamId'
     | '/achievements/'
     | '/admin/'
@@ -282,6 +294,7 @@ export interface RootRouteChildren {
   CosmeticIdRoute: typeof CosmeticIdRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
+  ProfileCosmeticsRoute: typeof ProfileCosmeticsRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   AchievementsIndexRoute: typeof AchievementsIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -360,6 +373,13 @@ declare module '@tanstack/react-router' {
       path: '/teams/$teamId'
       fullPath: '/teams/$teamId'
       preLoaderRoute: typeof TeamsTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/cosmetics': {
+      id: '/profile/cosmetics'
+      path: '/profile/cosmetics'
+      fullPath: '/profile/cosmetics'
+      preLoaderRoute: typeof ProfileCosmeticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile/$userId': {
@@ -450,6 +470,7 @@ const rootRouteChildren: RootRouteChildren = {
   CosmeticIdRoute: CosmeticIdRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
+  ProfileCosmeticsRoute: ProfileCosmeticsRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
   AchievementsIndexRoute: AchievementsIndexRoute,
   AdminIndexRoute: AdminIndexRoute,

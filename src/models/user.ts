@@ -9,6 +9,8 @@ export type User = {
 
   type: UserType
 
+  coins: number
+
   xp: number
 
   createdAt: Date

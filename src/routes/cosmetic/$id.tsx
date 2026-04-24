@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
+import { useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
@@ -26,7 +27,11 @@ import {
   type Cosmetic,
   type CosmeticRarity,
 } from '@/models/cosmetic'
-import { api, useIsAuthenticated } from '@/stores/userStore'
+import { api, initializeAuth, useIsAuthenticated, useUser } from '@/stores/userStore'
+
+type CosmeticDetail = Cosmetic & {
+  owned?: boolean
+}
 
 const RARITY_LABELS: Record<CosmeticRarity, string> = {
   common: 'Common',
@@ -57,13 +62,17 @@ function CosmeticDetailsPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
   const isAuthenticated = useIsAuthenticated()
+  const currentUser = useUser()
+  const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null)
+  const [isPurchasing, setIsPurchasing] = useState(false)
 
   const cosmeticQuery = useQuery({
     queryKey: ['cosmetics', 'detail', id],
     enabled: isAuthenticated,
     queryFn: async () => {
       const { data } = await api.get(`/cosmetics/${id}`)
-      return data as Cosmetic
+      return data as CosmeticDetail
     },
   })
 
@@ -114,6 +123,25 @@ function CosmeticDetailsPage() {
   }
 
   const cosmetic = cosmeticQuery.data
+  const canBuy = cosmetic.price != null && !cosmetic.owned
+
+  async function handleBuy() {
+    try {
+      setIsPurchasing(true)
+      setPurchaseError(null)
+      setPurchaseSuccess(null)
+      await api.post(`/cosmetics/buy/${cosmetic.id}`)
+      await initializeAuth()
+      setPurchaseSuccess('Cosmetic purchased successfully.')
+      await cosmeticQuery.refetch()
+    } catch (error) {
+      setPurchaseError(
+        getErrorMessage(error, 'This cosmetic could not be purchased.'),
+      )
+    } finally {
+      setIsPurchasing(false)
+    }
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
@@ -187,6 +215,19 @@ function CosmeticDetailsPage() {
               </Card>
             </div>
 
+            {currentUser ? (
+              <Card className="gap-3 border-border/60 bg-background/30 py-4 shadow-none">
+                <CardHeader className="px-4">
+                  <CardDescription className="text-[11px] uppercase tracking-[0.26em] text-muted-foreground">
+                    Balance
+                  </CardDescription>
+                  <CardTitle className="text-2xl font-black text-foreground">
+                    {currentUser.coins.toLocaleString()} coins
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            ) : null}
+
             <Card className="gap-4 border-border/60 bg-background/30 py-5 shadow-none">
               <CardHeader className="px-5">
                 <CardDescription className="flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-muted-foreground">
@@ -201,13 +242,37 @@ function CosmeticDetailsPage() {
               </CardContent>
             </Card>
 
+            {purchaseError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Purchase failed</AlertTitle>
+                <AlertDescription>{purchaseError}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {purchaseSuccess ? (
+              <Alert>
+                <AlertTitle>Purchase complete</AlertTitle>
+                <AlertDescription>{purchaseSuccess}</AlertDescription>
+              </Alert>
+            ) : null}
+
             <div className="flex-1" />
           </CardContent>
 
           <CardFooter className="mt-auto flex flex-col gap-3 border-t border-border/60 pt-6 sm:flex-row">
-            <Button className="w-full sm:flex-1">
+            <Button
+              className="w-full sm:flex-1"
+              disabled={!canBuy || isPurchasing}
+              onClick={() => void handleBuy()}
+            >
               <ShoppingBag className="h-4 w-4" />
-              Buy
+              {cosmetic.owned
+                ? 'Owned'
+                : !canBuy
+                ? 'Reward only'
+                : isPurchasing
+                  ? 'Buying...'
+                  : 'Buy'}
             </Button>
             <Button asChild variant="outline" className="w-full sm:flex-1">
               <Link to="/cosmetics">Keep browsing</Link>
