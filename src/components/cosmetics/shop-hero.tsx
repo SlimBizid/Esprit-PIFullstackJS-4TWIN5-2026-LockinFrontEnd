@@ -38,9 +38,6 @@ export function ShopHero({ featuredCosmetic }: ShopHeroProps) {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button className="h-11 rounded-full px-6" asChild>
-              <Link to="/cosmetics">Browse cosmetics</Link>
-            </Button>
             {featuredCosmetic ? (
               <Button
                 variant="outline"
