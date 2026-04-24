@@ -1,4 +1,5 @@
 import { Lock, Gift, Trophy } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import type { Achievement } from '@/models/achievement'
 
@@ -7,6 +8,7 @@ type AchievementTimelineProps = {
   title: string
   eyebrow?: string
   description?: string
+  action?: ReactNode
 }
 
 export function AchievementTimeline({
@@ -14,11 +16,14 @@ export function AchievementTimeline({
   title,
   eyebrow,
   description,
+  action,
 }: AchievementTimelineProps) {
   if (achievements.length === 0) {
     return (
       <main className="min-h-screen bg-background px-6 py-20 lg:px-32 relative">
         <div className="max-w-5xl mx-auto relative">
+          {action ? <div className="mb-8">{action}</div> : null}
+
           <div className="mb-16 space-y-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
@@ -64,6 +69,8 @@ export function AchievementTimeline({
   return (
     <main className="min-h-screen bg-background px-6 py-20 lg:px-32 relative">
       <div className="max-w-5xl mx-auto relative">
+        {action ? <div className="mb-8">{action}</div> : null}
+
         <div className="absolute left-1/2 top-40 bottom-0 hidden w-px bg-primary/10 md:block" />
 
         <div className="mb-16 space-y-4">

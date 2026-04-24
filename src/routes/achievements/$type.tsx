@@ -1,9 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
+import { ArrowLeft } from 'lucide-react'
 
 import { AchievementTimeline } from '@/components/achievement-timeline'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
   ACHIEVEMENT_TYPE_BLURBS,
   slugToAchievementType,
@@ -100,6 +102,13 @@ function AchievementTypePage() {
       eyebrow="Achievement lane"
       title={selectedType}
       description={ACHIEVEMENT_TYPE_BLURBS[selectedType]}
+      action={
+        <Button asChild variant="outline" size="icon" className="rounded-none">
+          <Link to="/achievements">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+      }
     />
   )
 }
