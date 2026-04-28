@@ -94,7 +94,7 @@ export default function Footer() {
             <nav aria-label="Team members">
               <AvatarGroup>
                 {TEAM_MEMBERS.map(({ href, src, fallback, name }) => (
-                  <Avatar key={href} size="sm" className="cursor-pointer">
+                  <Avatar key={href} size="lg" className="cursor-pointer">
                     <a
                       href={href}
                       target="_blank"
@@ -150,10 +150,7 @@ export default function Footer() {
               aria-label="Engine status: Locking in"
               className="flex items-center gap-2 text-sm bg-secondary px-4 py-2 rounded-full"
             >
-              <span
-                aria-hidden="true"
-                className="relative flex-shrink-0 w-3 h-3"
-              >
+              <span aria-hidden="true" className="relative shrink-0 w-3 h-3">
                 <span className="w-3 h-3 rounded-full bg-primary animate-ping absolute" />
                 <span className="w-3 h-3 rounded-full bg-primary relative block" />
               </span>
