@@ -48,7 +48,7 @@ export function UserAchievementsPreview({ username }: { username: string }) {
         </h2>
 
         <Link to="/achievements">
-          <button className="text-[10px] font-bold tracking-widest text-primary uppercase hover:underline underline-offset-2 hover:opacity-80 transition-opacity">
+          <button className="p-2 text-[10px] font-bold tracking-widest text-primary uppercase hover:underline underline-offset-2 hover:opacity-80 transition-opacity">
             See All
           </button>
         </Link>
@@ -85,7 +85,7 @@ export function UserAchievementsPreview({ username }: { username: string }) {
           <p className="text-sm text-muted-foreground">
             No achievements unlocked yet.
           </p>
-          <p className="text-xs font-mono text-muted-foreground/50 uppercase tracking-widest">
+          <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
             Play to unlock rewards
           </p>
         </div>

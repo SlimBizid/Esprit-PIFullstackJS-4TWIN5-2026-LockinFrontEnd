@@ -44,7 +44,9 @@ function getEquippedAvatar(user: UserProfile): EquippedCosmeticRecord | null {
   return null
 }
 
-function getCosmeticDisplay(item: string | Partial<Cosmetic> | EquippedCosmeticRecord) {
+function getCosmeticDisplay(
+  item: string | Partial<Cosmetic> | EquippedCosmeticRecord,
+) {
   if (typeof item === 'string') {
     return {
       key: item,
@@ -62,7 +64,11 @@ function getCosmeticDisplay(item: string | Partial<Cosmetic> | EquippedCosmeticR
   return {
     key: item.id ?? item.cosmeticTitle ?? item.imageUrl ?? 'equipped-cosmetic',
     id: item.id ?? null,
-    label: item.cosmeticTitle ?? item.cosmeticType ?? cosmeticType ?? 'Equipped cosmetic',
+    label:
+      item.cosmeticTitle ??
+      item.cosmeticType ??
+      cosmeticType ??
+      'Equipped cosmetic',
     imageUrl: item.imageUrl ?? null,
     type: item.cosmeticType ?? cosmeticType ?? null,
     equipped: equipped ?? false,
@@ -149,7 +155,7 @@ function RouteComponent() {
                 </h1>
 
                 {user.type === 'admin' && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest text-destructive uppercase bg-destructive/10 border border-destructive/20 px-2 py-1 rounded">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest text-destructive uppercase bg-background border border-destructive/20 px-2 py-1 rounded">
                     <Shield className="w-3 h-3" />
                     Admin
                   </span>
@@ -165,7 +171,7 @@ function RouteComponent() {
                 )}
               </div>
 
-              <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+              <p className="text-xs font-mono text-foreground uppercase tracking-widest">
                 Joined {joinedAt}
               </p>
             </div>
@@ -319,14 +325,6 @@ function RouteComponent() {
 
           {/* Achievements (NEW COMPONENT) */}
           <UserAchievementsPreview username={user.username} />
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-2">
-          <span className="text-xs font-mono text-muted-foreground/30 uppercase tracking-widest">
-            L-IN // PROFILE
-          </span>
-          <div className="w-8 h-px bg-primary/20" />
         </div>
       </div>
     </main>
