@@ -118,7 +118,7 @@ export default function BenefitsSection() {
                   <div className="mt-8 pt-6 border-t border-border/50 flex justify-between items-center">
                     <span
                       aria-hidden="true"
-                      className="text-xs font-mono text-primary/50"
+                      className="text-xs font-mono text-primary"
                     >
                       L-IN // 00{index + 1}
                     </span>
