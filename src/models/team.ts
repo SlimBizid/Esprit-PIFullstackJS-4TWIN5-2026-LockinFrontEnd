@@ -24,6 +24,12 @@ export type Team = {
       }
   pendingInvitations: PendingInvitation[]
   status: 'PENDING' | 'ACTIVE'
+  challenges?: Array<{
+    id: number
+    title: string
+    type: string
+    difficulty: string
+  }>
 }
 
 import type { User } from './user'

@@ -1724,6 +1724,30 @@ function RouteComponent() {
                   </div>
                 ) : null}
 
+                {(challenge.teams?.length ?? 0) > 0 ? (
+                  <div className="rounded-none border border-border/60 bg-background/70 p-4 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Linked Teams
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        This challenge is connected to the following teams.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {challenge.teams?.map((team) => (
+                        <Badge
+                          key={team.id}
+                          variant="outline"
+                          className="rounded-none"
+                        >
+                          {team.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 {isPvpChallenge ? (
                   <div className="rounded-none border border-primary/20 bg-primary/5 p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
