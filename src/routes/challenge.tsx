@@ -846,7 +846,7 @@ function RouteComponent() {
           inherit: true,
           rules: [
             { token: 'comment', foreground: colors.muted, fontStyle: 'italic' },
-            { token: 'keyword', foreground: colors.rare },
+            { token: 'keyword', foreground: colors.primary },
             { token: 'number', foreground: colors.epic },
             { token: 'string', foreground: colors.destructive },
           ],
@@ -2470,9 +2470,9 @@ function RouteComponent() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-rarity-legendary">
                           <AlertCircle className="w-4 h-4" />
-                          <h4 className="text-xs font-bold uppercase tracking-widest">
+                          <h1 className="text-xs font-bold uppercase tracking-widest">
                             Constraints
-                          </h4>
+                          </h1>
                         </div>
                         {canViewChallenge ? (
                           <ul className="space-y-2 font-mono text-[12px] text-foreground">
@@ -2499,9 +2499,9 @@ function RouteComponent() {
                     <div className="rounded-none border border-foreground/5 bg-foreground/2 p-6 space-y-4">
                       <div className="flex items-center gap-2 text-primary">
                         <ShieldCheck className="w-4 h-4" />
-                        <h4 className="text-xs font-bold uppercase tracking-widest">
+                        <h1 className="text-xs font-bold uppercase tracking-widest">
                           Victory Conditions
-                        </h4>
+                        </h1>
                       </div>
                       {canViewChallenge ? (
                         <ul className="space-y-3">
@@ -2668,6 +2668,7 @@ function RouteComponent() {
               <Progress
                 value={Number(challenge.acceptanceRate)}
                 className="h-1 bg-primary-foreground"
+                aria-label="acceptance rate"
               />
             </div>
           ) : null}
@@ -3508,7 +3509,7 @@ function RouteComponent() {
                           <div className="p-3 rounded-none bg-muted/20 mb-2">
                             <Play className="w-5 h-5 text-muted-foreground/50" />
                           </div>
-                          <p className="text-[11px] text-muted-foreground uppercase tracking-widest animate-pulse">
+                          <p className="text-[11px] text-foreground uppercase tracking-widest">
                             Waiting for compilation...
                           </p>
                         </div>
@@ -3541,9 +3542,9 @@ function RouteComponent() {
                 </div>
               </div>
               <div>
-                <h5 className="text-[10px] font-bold text-foreground leading-none">
+                <h1 className="text-[10px] font-bold text-foreground leading-none">
                   NEON DRAGON
-                </h5>
+                </h1>
                 <p className="text-[10px] text-primary uppercase font-bold tracking-tighter">
                   Buff Active: +15% XP
                 </p>
