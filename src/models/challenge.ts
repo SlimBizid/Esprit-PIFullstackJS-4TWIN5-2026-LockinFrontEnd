@@ -28,6 +28,12 @@ export type ChallengeAchievement = {
   imageUrl?: string | null
 }
 
+export type ChallengeTeam = {
+  id: number
+  name: string
+  status: 'PENDING' | 'ACTIVE'
+}
+
 export type Challenge = {
   id: number
   title: string
@@ -54,4 +60,5 @@ export type Challenge = {
   topics: string[]
   acceptanceRate: number
   achievements?: ChallengeAchievement[]
+  teams?: ChallengeTeam[]
 }

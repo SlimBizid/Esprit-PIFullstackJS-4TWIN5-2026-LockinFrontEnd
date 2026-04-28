@@ -72,6 +72,7 @@ import type { ChallengeCase } from '@/models/challenge'
 import type { ChallengeQuizQuestion } from '@/models/challenge'
 import type { Match } from '@/models/match'
 import type { PaginatedChallenges } from '@/models/paginated-challenge'
+import type { Team } from '@/models/team'
 import type { RecommendationResponse } from '@/models/recommendation'
 
 const ITEMS_PER_PAGE = 10
@@ -154,6 +155,7 @@ type ChallengeFormValues = {
   conditions: string
   testCases: string
   quizQuestions: string
+  teamIds: number[]
 }
 
 type ChallengePayload = {
@@ -170,6 +172,7 @@ type ChallengePayload = {
   conditions: string[]
   cases: ChallengeCase[]
   quizQuestions: ChallengeQuizQuestion[]
+  teamIds: number[]
 }
 
 type GeneratedChallengeDraft = {
@@ -338,6 +341,7 @@ function getDefaultFormValues(challenge?: Challenge): ChallengeFormValues {
       challenge?.quizQuestions && challenge.quizQuestions.length > 0
         ? JSON.stringify(challenge.quizQuestions, null, 2)
         : '',
+    teamIds: challenge?.teams?.map((team) => team.id) ?? [],
   }
 }
 
@@ -713,6 +717,7 @@ function buildChallengePayload(values: ChallengeFormValues): ChallengePayload {
     conditions: isThatsNotMyCoderType ? [] : splitMultiline(values.conditions),
     cases: isQuizType ? [] : parseChallengeCases(values.testCases),
     quizQuestions: isQuizType ? parseQuizQuestions(values.quizQuestions) : [],
+    teamIds: values.teamIds,
   }
 }
 
@@ -839,6 +844,7 @@ function mapDraftToFormValues(
       draft.quizQuestions.length > 0
         ? JSON.stringify(draft.quizQuestions, null, 2)
         : '[]',
+    teamIds: [],
   }
 }
 
@@ -852,6 +858,7 @@ function ChallengeFormDialog({
   isGeneratingDraft = false,
   trigger,
   errorMessage,
+  teams,
 }: {
   challenge?: Challenge
   open: boolean
@@ -864,6 +871,7 @@ function ChallengeFormDialog({
   isGeneratingDraft?: boolean
   trigger?: React.ReactNode
   errorMessage?: string | null
+  teams: Team[]
 }) {
   const [values, setValues] = useState<ChallengeFormValues>(() =>
     getDefaultFormValues(challenge),
@@ -1144,6 +1152,8 @@ function ChallengeFormDialog({
                   setValues((current) => ({
                     ...current,
                     type: nextType,
+                    teamIds:
+                      nextType === 'teams' ? current.teamIds : [],
                   }))
 
                   const parsedCases = safeParseChallengeCases(values.testCases)
@@ -1242,6 +1252,53 @@ function ChallengeFormDialog({
                   Select at least one topic.
                 </p>
               ) : null}
+            </div>
+          ) : null}
+
+          {values.type === 'teams' ? (
+            <div className="grid gap-2">
+              <Label htmlFor="challenge-teams">Linked Teams</Label>
+              <div
+                id="challenge-teams"
+                className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-input p-3"
+              >
+                {teams.map((team) => {
+                  const isSelected = values.teamIds.includes(team.id)
+
+                  return (
+                    <Button
+                      key={team.id}
+                      type="button"
+                      variant={isSelected ? 'default' : 'outline'}
+                      size="sm"
+                      className="justify-start"
+                      onClick={() =>
+                        setValues((current) => ({
+                          ...current,
+                          teamIds: isSelected
+                            ? current.teamIds.filter((id) => id !== team.id)
+                            : [...current.teamIds, team.id],
+                        }))
+                      }
+                    >
+                      {team.name}
+                    </Button>
+                  )
+                })}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {values.teamIds
+                  .map((teamId) => teams.find((team) => team.id === teamId))
+                  .filter(Boolean)
+                  .map((team) => (
+                    <Badge key={team!.id} variant="secondary">
+                      {team!.name}
+                    </Badge>
+                  ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Link one or more teams to this challenge.
+              </p>
             </div>
           ) : null}
 
@@ -1762,6 +1819,14 @@ function RouteComponent() {
   const isAdmin = useIsAdmin()
   const isAuthenticated = useIsAuthenticated()
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const teamsQuery = useQuery({
+    queryKey: ['teams', 'challenge-links'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data } = await api.get<Team[]>('/teams')
+      return data
+    },
+  })
 
   const challengesQuery = useQuery({
     queryKey: ['challenges'],
@@ -2185,6 +2250,7 @@ function RouteComponent() {
               isPending={createChallengeMutation.isPending}
               isGeneratingDraft={generateChallengeDraftMutation.isPending}
               errorMessage={adminActionError}
+              teams={teamsQuery.data ?? []}
               trigger={
                 <Button className="gap-2">
                   <Plus className="h-4 w-4" />
@@ -2601,6 +2667,7 @@ function RouteComponent() {
             isPending={updateChallengeMutation.isPending}
             isGeneratingDraft={generateChallengeDraftMutation.isPending}
             errorMessage={adminActionError}
+            teams={teamsQuery.data ?? []}
           />
         ) : null}
 
