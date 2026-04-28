@@ -1699,6 +1699,31 @@ function RouteComponent() {
           <div className="space-y-8 overflow-y-auto p-4 sm:p-6 lg:max-h-[calc(100vh-7rem)]">
             {activeSidebarTab === 'content' ? (
               <>
+                {(challenge.achievements?.length ?? 0) > 0 ? (
+                  <div className="rounded-none border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Linked Achievements
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Completing or mastering this challenge may contribute to
+                        these achievement tracks.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {challenge.achievements?.map((achievement) => (
+                        <Badge
+                          key={achievement.id}
+                          variant="outline"
+                          className="rounded-none"
+                        >
+                          {achievement.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 {isPvpChallenge ? (
                   <div className="rounded-none border border-primary/20 bg-primary/5 p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">

@@ -21,6 +21,13 @@ export type ChallengeQuizQuestion = {
   explanation?: string
 }
 
+export type ChallengeAchievement = {
+  id: string
+  name: string
+  type: string
+  imageUrl?: string | null
+}
+
 export type Challenge = {
   id: number
   title: string
@@ -46,4 +53,5 @@ export type Challenge = {
     | 'css_battle'
   topics: string[]
   acceptanceRate: number
+  achievements?: ChallengeAchievement[]
 }

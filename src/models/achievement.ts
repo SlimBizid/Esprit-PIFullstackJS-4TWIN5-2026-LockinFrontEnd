@@ -11,6 +11,13 @@ export type AchievementReward = {
   cosmeticTitle?: string
 }
 
+export type AchievementChallenge = {
+  id: number
+  title: string
+  type: string
+  difficulty: string
+}
+
 export type Achievement = {
   id: string
   name: string
@@ -21,6 +28,7 @@ export type Achievement = {
   unlocked: boolean
   unlockedAt: string | null
   rewards?: AchievementReward[]
+  challenges?: AchievementChallenge[]
 }
 
 export function achievementTypeToSlug(type: AchievementType) {
