@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { LeaderboardEntry } from '@/models/leaderboard'
 import type { User } from '@/models/user'
 
@@ -333,6 +333,8 @@ function RouteComponent() {
               XP
             </TabsTrigger>
           </TabsList>
+          <TabsContent value="score" />
+          <TabsContent value="xp" />
         </Tabs>
 
         {}
