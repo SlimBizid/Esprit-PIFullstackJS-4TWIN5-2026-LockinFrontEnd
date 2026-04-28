@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { AchievementType } from '@/models/achievement'
+import type { PaginatedChallenges } from '@/models/paginated-challenge'
 import type { Cosmetic } from '@/models/cosmetic'
 import { api, useIsAdmin } from '@/stores/userStore'
 
@@ -59,6 +60,7 @@ function NewAchievementPage() {
   const [type, setType] = useState<AchievementType | ''>('')
   const [image, setImage] = useState<File | null>(null)
   const [selectedCosmeticIds, setSelectedCosmeticIds] = useState<string[]>([])
+  const [selectedChallengeIds, setSelectedChallengeIds] = useState<number[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [message, setMessage] = useState<MessageDialogState | null>(null)
 
@@ -80,12 +82,35 @@ function NewAchievementPage() {
     },
   })
 
+  const challengesQuery = useQuery({
+    queryKey: ['challenges', 'achievement-links'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data } = await api.get<PaginatedChallenges>('/challenges', {
+        params: {
+          page: 1,
+          limit: 100,
+        },
+      })
+
+      return data.data
+    },
+  })
+
   const selectedCosmetics = useMemo(
     () =>
       (cosmeticsQuery.data ?? []).filter((cosmetic) =>
         selectedCosmeticIds.includes(cosmetic.id),
       ),
     [cosmeticsQuery.data, selectedCosmeticIds],
+  )
+
+  const selectedChallenges = useMemo(
+    () =>
+      (challengesQuery.data ?? []).filter((challenge) =>
+        selectedChallengeIds.includes(challenge.id),
+      ),
+    [challengesQuery.data, selectedChallengeIds],
   )
 
   useEffect(() => {
@@ -125,6 +150,10 @@ function NewAchievementPage() {
         payload.append('cosmeticIds', cosmeticId)
       }
 
+      for (const challengeId of selectedChallengeIds) {
+        payload.append('challengeIds', String(challengeId))
+      }
+
       await api.post('/achievement', payload, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -137,6 +166,7 @@ function NewAchievementPage() {
       setType(typesQuery.data?.[0] ?? '')
       setImage(null)
       setSelectedCosmeticIds([])
+      setSelectedChallengeIds([])
       setFormError(null)
       await queryClient.invalidateQueries({
         queryKey: ['achievements'],
@@ -161,6 +191,15 @@ function NewAchievementPage() {
       current.includes(cosmeticId)
         ? current.filter((id) => id !== cosmeticId)
         : [...current, cosmeticId],
+    )
+    setFormError(null)
+  }
+
+  function toggleChallenge(challengeId: number) {
+    setSelectedChallengeIds((current) =>
+      current.includes(challengeId)
+        ? current.filter((id) => id !== challengeId)
+        : [...current, challengeId],
     )
     setFormError(null)
   }
@@ -319,6 +358,91 @@ function NewAchievementPage() {
           </Card>
 
           <Card>
+            <CardHeader>
+              <CardTitle>Challenge links</CardTitle>
+              <CardDescription>
+                Select the challenges this achievement should be associated with.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  {selectedChallengeIds.length} selected
+                </Badge>
+                {selectedChallenges.slice(0, 2).map((challenge) => (
+                  <Badge key={challenge.id} variant="outline">
+                    {challenge.title}
+                  </Badge>
+                ))}
+              </div>
+
+              {challengesQuery.isLoading ? (
+                <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-sm text-muted-foreground">
+                  Loading challenges...
+                </div>
+              ) : null}
+
+              {challengesQuery.isError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Failed to load challenges</AlertTitle>
+                  <AlertDescription>
+                    {getErrorMessage(
+                      challengesQuery.error,
+                      'The challenge list could not be loaded.',
+                    )}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              {!challengesQuery.isLoading &&
+              !challengesQuery.isError &&
+              (challengesQuery.data?.length ?? 0) === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-sm text-muted-foreground">
+                  No challenges are available yet.
+                </div>
+              ) : null}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {challengesQuery.data?.map((challenge) => {
+                  const selected = selectedChallengeIds.includes(challenge.id)
+
+                  return (
+                    <button
+                      key={challenge.id}
+                      type="button"
+                      onClick={() => toggleChallenge(challenge.id)}
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                        selected
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border bg-muted text-xs font-black uppercase text-primary">
+                        #{challenge.id}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold">
+                          {challenge.title}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground capitalize">
+                          {challenge.type.replaceAll('_', ' ')} •{' '}
+                          {challenge.difficulty}
+                        </div>
+                      </div>
+
+                      {selected ? (
+                        <Check className="h-4 w-4 shrink-0 text-primary" />
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-start-2">
             <CardHeader>
               <CardTitle>Reward cosmetics</CardTitle>
               <CardDescription>
