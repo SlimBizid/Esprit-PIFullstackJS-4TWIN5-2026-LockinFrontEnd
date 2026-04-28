@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState, useRef } from 'react'
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -340,6 +340,9 @@ export function TeamsRoute() {
                   <TabsTrigger value="myTeams">My Team</TabsTrigger>
                   <TabsTrigger value="invites">Invites</TabsTrigger>
                 </TabsList>
+                <TabsContent value="allTeams" />
+                <TabsContent value="myTeams" />
+                <TabsContent value="invites" />
               </Tabs>
 
               {tab === 'allTeams' && (
@@ -401,7 +404,7 @@ export function TeamsRoute() {
                     key={t.id}
                     className={
                       tab === 'allTeams'
-                        ? 'group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer min-w-[320px] sm:min-w-[360px] md:min-w-[400px]'
+                        ? 'group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer min-w-[320px] sm:min-w-90 md:min-w-100'
                         : 'group overflow-hidden border-border/80 bg-card/90 shadow-lg shadow-black/10 transition-all hover:-translate-y-1 hover:shadow-primary/10 cursor-pointer'
                     }
                     onClick={() =>
