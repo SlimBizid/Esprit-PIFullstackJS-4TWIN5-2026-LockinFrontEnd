@@ -155,7 +155,7 @@ function RouteComponent() {
                 </h1>
 
                 {user.type === 'admin' && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest text-destructive uppercase bg-background border border-destructive/20 px-2 py-1 rounded">
+                  <span className="inline-flex items-center gap-1 text-sm font-bold tracking-widest text-destructive uppercase bg-background border border-destructive/20 px-2 py-1 rounded">
                     <Shield className="w-3 h-3" />
                     Admin
                   </span>
@@ -163,7 +163,7 @@ function RouteComponent() {
 
                 {isOwnProfile && (
                   <Link to="/profile/edit">
-                    <button className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-primary uppercase bg-primary/10 border border-primary/20 px-2 py-1 rounded hover:bg-primary/20 transition-colors">
+                    <button className="inline-flex items-center gap-1.5 text-sm font-bold tracking-widest text-primary uppercase bg-primary/10 border border-primary/20 px-2 py-1 rounded hover:bg-primary/20 transition-colors">
                       <Pencil className="w-3 h-3" />
                       Edit Profile
                     </button>
@@ -266,9 +266,9 @@ function RouteComponent() {
               </h2>
               {isOwnProfile ? (
                 <Link to="/profile/cosmetics">
-                  <button className="text-[10px] font-bold tracking-widest text-primary uppercase hover:underline">
+                  <p className="text-sm font-bold tracking-widest text-primary uppercase hover:underline">
                     See All
-                  </button>
+                  </p>
                 </Link>
               ) : null}
             </div>
