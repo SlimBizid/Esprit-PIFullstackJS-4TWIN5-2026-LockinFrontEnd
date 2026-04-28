@@ -43,7 +43,11 @@ function getCosmeticDisplay(item: string | OwnedCosmetic) {
   return {
     key: item.id ?? item.cosmeticTitle ?? item.imageUrl ?? 'owned-cosmetic',
     id: item.id ?? null,
-    label: item.cosmeticTitle ?? item.cosmeticType ?? cosmeticType ?? 'Owned cosmetic',
+    label:
+      item.cosmeticTitle ??
+      item.cosmeticType ??
+      cosmeticType ??
+      'Owned cosmetic',
     imageUrl: item.imageUrl ?? null,
     type: item.cosmeticType ?? cosmeticType ?? null,
     equipped: equipped ?? false,
@@ -78,7 +82,9 @@ function ProfileCosmeticsPage() {
 
   async function refreshProfile() {
     if (!currentUser?.username) return
-    const { data } = await api.get<UserProfile>(`/users/profile/${currentUser.username}`)
+    const { data } = await api.get<UserProfile>(
+      `/users/profile/${currentUser.username}`,
+    )
     setProfile(data)
   }
 
@@ -134,9 +140,12 @@ function ProfileCosmeticsPage() {
         </Link>
       </Button>
 
-      <Card className="border-border/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(8,12,22,0.98))] shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
+      <Card className="border-border/70 bg-background shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
         <CardHeader>
-          <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
+          <Badge
+            variant="outline"
+            className="w-fit border-primary/25 bg-primary/10 text-primary"
+          >
             Cosmetic locker
           </Badge>
           <CardTitle className="text-3xl font-black text-foreground">
@@ -190,7 +199,9 @@ function ProfileCosmeticsPage() {
                             </Badge>
                           ) : null}
                           <Badge
-                            variant={cosmetic.equipped ? 'default' : 'secondary'}
+                            variant={
+                              cosmetic.equipped ? 'default' : 'secondary'
+                            }
                             className="uppercase"
                           >
                             {cosmetic.equipped ? 'Equipped' : 'Owned'}
@@ -201,7 +212,9 @@ function ProfileCosmeticsPage() {
                       {cosmetic.id ? (
                         <Button
                           variant={cosmetic.equipped ? 'secondary' : 'outline'}
-                          disabled={cosmetic.equipped || equippingId === cosmetic.id}
+                          disabled={
+                            cosmetic.equipped || equippingId === cosmetic.id
+                          }
                           onClick={() => void handleEquip(cosmetic.id!)}
                         >
                           {cosmetic.equipped
