@@ -32,13 +32,13 @@ export default function StoryTelling() {
           >
             <p
               aria-hidden="true"
-              className="absolute top-0 right-0 p-4 font-mono text-xs text-destructive/50"
+              className="absolute top-0 right-0 p-4 font-mono text-xs text-destructive"
             >
               ERROR: Focus_Lost
             </p>
 
             <figure aria-hidden="true">
-              <pre className="text-sm font-mono text-muted-foreground opacity-40 select-none overflow-x-auto">
+              <pre className="text-sm font-mono text-foreground  select-none overflow-x-auto">
                 <code>{`while(isGaming) {
   improveCodingSkills = false;
   discipline--;
@@ -50,7 +50,7 @@ export default function StoryTelling() {
             <div
               role="alert"
               aria-label="Locked Out by Distractions"
-              className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive font-bold text-center"
+              className="mt-4 p-4 bg-background border border-destructive/20 rounded-lg text-destructive font-bold text-center"
             >
               Locked Out by Distractions
             </div>

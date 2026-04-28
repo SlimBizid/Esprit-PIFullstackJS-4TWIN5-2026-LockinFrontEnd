@@ -54,23 +54,23 @@ code {
   --popover: #ffffff;
   --popover-foreground: #02060d;
 
-  --primary: #00cfba;
+  --primary: #004fcf;
   --primary-foreground: #f3faff;
 
   --secondary: #edf2f8;
   --secondary-foreground: #02060d;
   --muted: #edf2f8;
-  --muted-foreground: #4d5660;
+  --muted-foreground: #3b4148;
   --accent: #f4f4f4;
   --accent-foreground: #02060d;
-  --destructive: #d74745;
+  --destructive: #8a0a08;
   --destructive-foreground: #f8f8f8;
   --border: #e0e5eb;
   --input: #e0e5eb;
   --ring: #00cfba;
   --radius: 0.5rem;
 
-  --common: #94a3b8;
+  --common: #545c67;
   --rare: #3b82f6;
   --epic: #a855f7;
   --legendary: #e9bf42;
