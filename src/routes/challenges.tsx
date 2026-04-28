@@ -2451,7 +2451,7 @@ function RouteComponent() {
                             challenge.difficulty === 'easy'
                               ? 'text-emerald-500'
                               : challenge.difficulty === 'medium'
-                                ? 'text-amber-500'
+                                ? 'text-rarity-legendary'
                                 : 'text-rarity-epic'
                           }`}
                         >
