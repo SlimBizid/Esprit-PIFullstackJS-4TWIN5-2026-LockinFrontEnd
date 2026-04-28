@@ -39,7 +39,7 @@ import {
   PaginationContent,
   PaginationItem,
 } from '@/components/ui/pagination'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Label } from '@/components/ui/label'
@@ -118,6 +118,19 @@ const CHALLENGE_TOPICS = [
   'Monotonic Stack',
   'Enumeration',
 ] as const
+
+const CHALLENGE_TYPES = [
+  { value: 'all', label: 'All Challenges' },
+  { value: 'solo', label: 'Solo Challenges' },
+  { value: 'quiz', label: 'Quiz Challenges' },
+  { value: '1v1', label: '1v1 Challenges' },
+  { value: 'quiz-1v1', label: 'Quiz 1v1 Challenges' },
+  { value: 'teams', label: 'Teams Challenges' },
+  { value: 'css-battle', label: 'CSS Battle Challenges' },
+  { value: 'not-my-coder', label: "That's Not My Coder" },
+  { value: 'coders-vs-imposter', label: 'Coders vs Imposter' },
+] as const
+
 const EDITOR_LANGUAGES = [
   'javascript',
   'typescript',
@@ -277,19 +290,19 @@ function formatType(type: Challenge['type']) {
     case 'pvp':
       return '1v1'
     case 'quiz':
-      return 'Quiz'
+      return 'quiz'
     case 'quiz_pvp':
-      return 'Quiz 1v1'
+      return 'quiz-1v1'
     case 'imposter':
-      return 'Coders vs Imposter'
+      return 'coders-vs-imposter'
     case 'thats_not_my_coder':
-      return "That's Not My Coder"
+      return 'not-my-coder'
     case 'css_battle':
-      return 'CSS Battle'
+      return 'css-battle'
     case 'solo':
-      return 'Solo'
+      return 'solo'
     case 'teams':
-      return 'Teams'
+      return 'teams'
     default:
       return type
   }
@@ -1727,7 +1740,7 @@ export const Route = createFileRoute('/challenges')({
 })
 
 function RouteComponent() {
-  const [typeFilter, setTypeFilter] = useState('All')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [topicFilter, setTopicFilter] = useState('All Topics')
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -1892,7 +1905,7 @@ function RouteComponent() {
     () =>
       challenges.filter((challenge) => {
         const matchesType =
-          typeFilter === 'All' || formatType(challenge.type) === typeFilter
+          typeFilter === 'all' || formatType(challenge.type) === typeFilter
         const matchesTopic =
           topicFilter === 'All Topics' || challenge.topics.includes(topicFilter)
         const normalizedSearch = search.trim().toLowerCase()
@@ -2256,32 +2269,42 @@ function RouteComponent() {
           </div>
         ) : null}
 
-        <div className="flex flex-col xl:flex-row gap-4 items-center justify-between bg-card/30 p-4 border border-border">
-          <div className="flex flex-wrap gap-4 w-full xl:w-auto">
+        <div className="flex flex-col gap-4 items-center justify-between bg-card/30 p-4 border border-border">
+          <div className="flex flex-wrap gap-4 w-auto ">
             <Tabs
-              defaultValue="All"
+              defaultValue="all"
               onValueChange={(value) => {
                 setTypeFilter(value)
                 setCurrentPage(1)
               }}
+              className="w-full"
             >
-              <TabsList className="bg-background border border-border">
-                <TabsTrigger value="All">All</TabsTrigger>
-                <TabsTrigger value="Solo">Solo</TabsTrigger>
-                <TabsTrigger value="Quiz">Quiz</TabsTrigger>
-                <TabsTrigger value="1v1">1v1</TabsTrigger>
-                <TabsTrigger value="Quiz 1v1">Quiz 1v1</TabsTrigger>
-                <TabsTrigger value="Teams">Teams</TabsTrigger>
-                <TabsTrigger value="CSS Battle">CSS Battle</TabsTrigger>
-                <TabsTrigger value="That's Not My Coder">
-                  That&apos;s Not My Coder
-                </TabsTrigger>
-                <TabsTrigger value="Coders vs Imposter">
-                  Coders vs Imposter
-                </TabsTrigger>
+              <TabsList
+                aria-label="Filter challenges by type"
+                className="bg-background border border-border h-auto! flex-wrap justify-start w-full p-1 grid grid-cols-2 md:flex"
+              >
+                {CHALLENGE_TYPES.map((tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="flex-1 md:flex-none shrink-0 h-9!"
+                  >
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
               </TabsList>
-            </Tabs>
 
+              {CHALLENGE_TYPES.map((tab) => (
+                <TabsContent
+                  key={tab.value}
+                  value={tab.value}
+                  className="mt-4"
+                ></TabsContent>
+              ))}
+            </Tabs>
+          </div>
+
+          <div className="flex justify-between w-full">
             <Select
               onValueChange={(value) => {
                 setTopicFilter(value)
@@ -2306,36 +2329,36 @@ function RouteComponent() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
 
-          <div className="flex w-full items-center gap-2 xl:w-auto">
-            <div className="relative w-full xl:w-96">
-              <Label htmlFor="challenge-search" className="sr-only">
-                Search challenges
-              </Label>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                id="challenge-search"
-                placeholder="Filter problems..."
-                className="pl-10 bg-background border-border"
-                aria-keyshortcuts="/ Control+K Meta+K"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setCurrentPage(1)
-                }}
-              />
+            <div className="flex w-full items-center gap-2 xl:w-auto">
+              <div className="relative w-full xl:w-96">
+                <Label htmlFor="challenge-search" className="sr-only">
+                  Search challenges
+                </Label>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  id="challenge-search"
+                  placeholder="Filter problems..."
+                  className="pl-10 bg-background border-border"
+                  aria-keyshortcuts="/ Control+K Meta+K"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value)
+                    setCurrentPage(1)
+                  }}
+                />
+              </div>
+              {!isAdmin ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShortcutsOpen(true)}
+                >
+                  Shortcuts
+                </Button>
+              ) : null}
             </div>
-            {!isAdmin ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShortcutsOpen(true)}
-              >
-                Shortcuts
-              </Button>
-            ) : null}
           </div>
         </div>
 
@@ -2444,7 +2467,10 @@ function RouteComponent() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm text-muted-foreground px-6">
-                        <Progress value={Number(challenge.acceptanceRate)} />
+                        <Progress
+                          value={Number(challenge.acceptanceRate)}
+                          aria-label="acceptance-rate"
+                        />
                       </TableCell>
                       {isAdmin ? (
                         <TableCell className="px-6">
@@ -2510,7 +2536,7 @@ function RouteComponent() {
                 challenges
               </p>
               <Pagination className="mx-0 w-auto">
-                <PaginationContent>
+                <PaginationContent className="gap-1">
                   <PaginationItem>
                     <Button
                       disabled={currentPage === 1}
@@ -2521,23 +2547,21 @@ function RouteComponent() {
                     </Button>
                   </PaginationItem>
 
-                  <div className="flex gap-1 px-2">
-                    {Array.from({ length: totalPages }, (_, index) => (
-                      <PaginationItem key={index}>
-                        <Button
-                          variant="secondary"
-                          onClick={() => setCurrentPage(index + 1)}
-                          className={`w-8 h-8 text-xs font-bold transition-all ${
-                            currentPage === index + 1
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-muted'
-                          }`}
-                        >
-                          {index + 1}
-                        </Button>
-                      </PaginationItem>
-                    ))}
-                  </div>
+                  {Array.from({ length: totalPages }, (_, index) => (
+                    <PaginationItem key={index}>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setCurrentPage(index + 1)}
+                        className={`w-8 h-8 text-xs font-bold transition-all ${
+                          currentPage === index + 1
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted'
+                        }`}
+                      >
+                        {index + 1}
+                      </Button>
+                    </PaginationItem>
+                  ))}
 
                   <PaginationItem>
                     <Button

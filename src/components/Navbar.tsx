@@ -236,25 +236,12 @@ export default function Navbar() {
 
   const navLinks =
     user?.type === 'admin'
-      ? [
-          ...NAV_LINKS,
-          { to: '/admin' as const, label: 'Admin' },
-        ]
+      ? [...NAV_LINKS, { to: '/admin' as const, label: 'Admin' }]
       : NAV_LINKS
 
   return (
     <>
-      <a
-        href="#main-content"
-        className="
-          sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100
-          focus:rounded-md focus:bg-primary focus:px-4 focus:py-2
-          focus:text-primary-foreground focus:font-semibold focus:shadow-lg
-          focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-        "
-      >
-        Skip to main content
-      </a>
+      
 
       <header
         role="banner"
@@ -344,6 +331,7 @@ export default function Navbar() {
                   aria-busy={isLoading}
                   variant={'outline'}
                   className="font-semibold"
+                  aria-label="Logout"
                 >
                   <LogOut />
                 </Button>
@@ -465,6 +453,7 @@ export default function Navbar() {
                         }}
                         variant="link"
                         className="w-full h-12 text-destructive"
+                        aria-label="Logout"
                       >
                         Logout
                       </Button>
