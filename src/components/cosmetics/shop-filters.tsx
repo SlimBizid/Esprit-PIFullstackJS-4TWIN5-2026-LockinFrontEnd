@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   COSMETIC_RARITIES,
   COSMETIC_TYPES,
@@ -72,10 +72,7 @@ export function ShopFilters({
             ) : null}
 
             {isAdmin ? (
-              <Button
-                onClick={onOpenCreate}
-                className="h-10 rounded-full px-5"
-              >
+              <Button onClick={onOpenCreate} className="h-10 rounded-full px-5">
                 <Plus className="h-4 w-4" />
                 New cosmetic
               </Button>
@@ -101,7 +98,10 @@ export function ShopFilters({
                 onRarityChange(value as CosmeticRarity | 'all')
               }
             >
-              <SelectTrigger className="h-12 w-48 rounded-full border-border/70 bg-background/50 px-4">
+              <SelectTrigger
+                className="h-12 w-48 rounded-full border-border/70 bg-background/50 px-4"
+                aria-label="Filter by rarity"
+              >
                 <SelectValue placeholder="All rarities" />
               </SelectTrigger>
               <SelectContent>
@@ -132,6 +132,7 @@ export function ShopFilters({
         >
           <TabsList
             variant="line"
+            aria-label="Filter cosmetics by type"
             className="h-auto w-full flex-wrap justify-start gap-2 rounded-none p-0"
           >
             <TabsTrigger
@@ -150,6 +151,10 @@ export function ShopFilters({
               </TabsTrigger>
             ))}
           </TabsList>
+          <TabsContent value="all" />
+          {COSMETIC_TYPES.map((type) => (
+            <TabsContent key={type} value={type} />
+          ))}
         </Tabs>
       </div>
     </section>

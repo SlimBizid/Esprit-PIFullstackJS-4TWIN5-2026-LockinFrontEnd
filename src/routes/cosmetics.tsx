@@ -30,9 +30,7 @@ import {
 } from '@/components/ui/card'
 import { useAchievementOptions } from '@/hooks/use-achievement-options'
 import { useShopCosmetics } from '@/hooks/use-shop-cosmetics'
-import {
-  getApiErrorMessage,
-} from '@/lib/api-error'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   type Cosmetic,
   type CosmeticRarity,
@@ -256,7 +254,7 @@ function CosmeticsPage() {
           {Array.from({ length: 8 }).map((_, index) => (
             <div
               key={index}
-              className="aspect-[4/5] animate-pulse border border-border/60 bg-muted/40"
+              className="aspect-4/5 animate-pulse border border-border/60 bg-muted/40"
             />
           ))}
         </div>
