@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Trophy } from 'lucide-react'
 
 import { AchievementTypeCard } from '@/components/achievement-type-card'
+import { Seo } from '@/components/Seo'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { useAchievementTypes } from '@/hooks/use-achievement-types'
@@ -52,6 +53,12 @@ function AchievementsHubPage() {
 
   return (
     <main className="min-h-screen bg-background px-6 py-20 lg:px-16">
+      <Seo
+        title="Achievements"
+        description="Track your LockIN achievements, reward unlocks, and progress across challenge categories."
+        path="/achievements"
+        robots="noindex,nofollow"
+      />
       <div className="mx-auto max-w-6xl">
         <div className="relative overflow-hidden  border bg-primary/10 border-primary/15 px-6 py-10 sm:px-10">
           <div className="absolute right-0 top-0 h-44 w-44 hidden bg-primary/10 blur-3xl" />

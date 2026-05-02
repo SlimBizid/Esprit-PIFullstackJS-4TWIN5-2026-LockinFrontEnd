@@ -1,3 +1,4 @@
+import { lazy, Suspense, useEffect, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -12,10 +13,12 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Link } from '@tanstack/react-router'
-import { useState, useEffect, useId } from 'react'
 import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 import { LogOut, Menu, X } from 'lucide-react'
-import AccessibilitySettingsMenu from '@/components/accessibility/AccessibilitySettingsMenu'
+
+const AccessibilitySettingsMenu = lazy(
+  () => import('@/components/accessibility/AccessibilitySettingsMenu'),
+)
 
 const NAV_LINKS = [
   { to: '/cosmetics', label: 'Shop' },
@@ -338,7 +341,9 @@ export default function Navbar() {
               </>
             )}
 
-            <AccessibilitySettingsMenu />
+            <Suspense fallback={null}>
+              <AccessibilitySettingsMenu />
+            </Suspense>
           </div>
 
           <div className="md:hidden">
@@ -416,7 +421,9 @@ export default function Navbar() {
                 </nav>
 
                 <div className="mt-auto border-t pt-6 pb-8 flex flex-col gap-3 px-4">
-                  <AccessibilitySettingsMenu mobile />
+                  <Suspense fallback={null}>
+                    <AccessibilitySettingsMenu mobile />
+                  </Suspense>
 
                   {!isAuthenticated ? (
                     <>

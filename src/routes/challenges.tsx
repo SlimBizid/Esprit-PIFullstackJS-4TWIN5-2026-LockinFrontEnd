@@ -60,6 +60,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
+import { Seo } from '@/components/Seo'
 import {
   Card,
   CardContent,
@@ -1152,8 +1153,7 @@ function ChallengeFormDialog({
                   setValues((current) => ({
                     ...current,
                     type: nextType,
-                    teamIds:
-                      nextType === 'teams' ? current.teamIds : [],
+                    teamIds: nextType === 'teams' ? current.teamIds : [],
                   }))
 
                   const parsedCases = safeParseChallengeCases(values.testCases)
@@ -2055,6 +2055,11 @@ function RouteComponent() {
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+      <Seo
+        title="Coding challenges"
+        description="Browse solo coding problems, quiz challenges, CSS battles, team challenges, and versus modes in LockIN."
+        path="/challenges"
+      />
       <div className="max-w-6xl mx-auto space-y-8">
         {featuredChallenge && (
           <div
@@ -2515,7 +2520,7 @@ function RouteComponent() {
                         <span
                           className={`text-xs font-bold uppercase tracking-widest ${
                             challenge.difficulty === 'easy'
-                              ? 'text-emerald-500'
+                              ? 'text-rarity-rare'
                               : challenge.difficulty === 'medium'
                                 ? 'text-rarity-legendary'
                                 : 'text-rarity-epic'

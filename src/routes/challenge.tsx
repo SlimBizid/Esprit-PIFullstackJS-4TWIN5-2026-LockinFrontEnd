@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ChallengeReviewsPanel } from '@/components/challenge-reviews-panel'
+import { Seo } from '@/components/Seo'
 import { ThatsNotMyCoderChallenge } from '@/components/thats-not-my-coder-challenge'
 import { Input } from '@/components/ui/input'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
@@ -1625,6 +1626,12 @@ function RouteComponent() {
 
   return (
     <div className="mt-16 flex min-h-screen flex-col bg-background text-muted-foreground">
+      <Seo
+        title={challenge.title}
+        description={challenge.content.slice(0, 160)}
+        path={`/challenge?id=${challenge.id}`}
+        robots="noindex,nofollow"
+      />
       <nav className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <Tooltip>

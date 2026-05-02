@@ -46,7 +46,7 @@ export function ShopFilters({
   typeFilter,
 }: ShopFiltersProps) {
   return (
-    <section className="border border-border/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(9,13,24,0.96))] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.22)]">
+    <section className="border border-border/70  p-5 ">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-2">
@@ -87,7 +87,7 @@ export function ShopFilters({
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search the item shop"
-              className="h-12 rounded-full border-border/70 bg-background/50 pl-11 pr-4"
+              className="h-12 rounded-full border-border/70  pl-11 pr-4"
             />
           </div>
 
@@ -99,7 +99,7 @@ export function ShopFilters({
               }
             >
               <SelectTrigger
-                className="h-12 w-48 rounded-full border-border/70 bg-background/50 px-4"
+                className="h-12 w-48 rounded-full border-border/70  px-4"
                 aria-label="Filter by rarity"
               >
                 <SelectValue placeholder="All rarities" />
@@ -137,7 +137,7 @@ export function ShopFilters({
           >
             <TabsTrigger
               value="all"
-              className="rounded-full border border-border/70 bg-background/45 px-4 py-2 text-muted-foreground data-[state=active]:border-primary/30 data-[state=active]:bg-primary/12 data-[state=active]:text-foreground"
+              className="rounded-full border border-border/70  px-4 py-2 text-muted-foreground data-[state=active]:border-primary/30 data-[state=active]:bg-primary/12 data-[state=active]:text-foreground"
             >
               All drops
             </TabsTrigger>

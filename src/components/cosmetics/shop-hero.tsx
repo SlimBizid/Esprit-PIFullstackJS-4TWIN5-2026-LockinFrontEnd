@@ -12,12 +12,12 @@ type ShopHeroProps = {
 
 export function ShopHero({ featuredCosmetic }: ShopHeroProps) {
   return (
-    <section className="relative overflow-hidden border border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(0,207,186,0.18),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.16),transparent_26%),linear-gradient(180deg,rgba(6,9,15,0.98),rgba(10,16,28,0.98))] px-6 py-8 shadow-[0_28px_90px_rgba(0,0,0,0.38)] sm:px-8 lg:px-10">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-      <div className="absolute -left-16 top-8 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-      <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-sky-500/10 blur-3xl" />
-      <div className="absolute inset-y-0 right-0 w-[45%] bg-[linear-gradient(270deg,rgba(255,255,255,0.04),transparent)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-25" />
+    <section className="relative overflow-hidden border border-primary/20  px-6 py-8  sm:px-8 lg:px-10">
+      <div className="absolute inset-x-0 top-0 h-px" />
+      <div className="absolute -left-16 top-8 h-56 w-56 rounded-full " />
+      <div className="absolute right-0 top-0 h-72 w-72 rounded-full " />
+      <div className="absolute inset-y-0 right-0 w-[45%]" />
+      <div className="absolute inset-0 bg-background bg-[size:34px_34px] opacity-25" />
 
       <div className="relative grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div className="space-y-6">
@@ -57,7 +57,7 @@ export function ShopHero({ featuredCosmetic }: ShopHeroProps) {
 
         <div className="relative">
           <div className="absolute inset-0 translate-x-4 translate-y-4 rounded-[2rem] border border-primary/10 bg-primary/5" />
-          <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(8,12,22,0.98))] p-4 shadow-[0_22px_50px_rgba(0,0,0,0.34)]">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border/70 b p-4 ">
             {featuredCosmetic ? (
               <div className="grid gap-4 sm:grid-cols-[0.95fr_1.05fr] sm:items-center">
                 <div className="relative overflow-hidden rounded-[1.5rem] border border-primary/15 bg-[linear-gradient(180deg,rgba(4,10,8,0.92),rgba(8,16,12,0.98))]">
@@ -115,7 +115,7 @@ export function ShopHero({ featuredCosmetic }: ShopHeroProps) {
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-72 items-center justify-center rounded-[1.5rem] border border-dashed border-border/70 bg-background/30 p-8 text-center text-sm text-muted-foreground">
+              <div className="flex min-h-72 items-center justify-center rounded-[1.5rem] border border-dashed border-border/70  p-8 text-center text-sm text-muted-foreground">
                 No featured item is available right now.
               </div>
             )}

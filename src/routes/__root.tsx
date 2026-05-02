@@ -1,15 +1,15 @@
+import { lazy, Suspense } from 'react'
 import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
 import { initializeAuth } from '@/stores/userStore'
-// import Header from '../components/Header'
-
-import TanStackQueryDevtools from '@/integrations/tanstack-query/devtools'
 
 import type { QueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import { ThemeProvider } from 'next-themes'
-import Footer from '@/components/Footer'
+
+const Devtools = import.meta.env.DEV
+  ? lazy(() => import('@/components/Devtools'))
+  : null
+const Footer = lazy(() => import('@/components/Footer'))
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -36,22 +36,17 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
           <main id="main-content" tabIndex={-1}>
             <Outlet />
           </main>
-          <Footer />
+          <Suspense fallback={null}>
+            <Footer />
+          </Suspense>
         </div>
       </ThemeProvider>
 
-      <TanStackDevtools
-        config={{
-          position: 'bottom-right',
-        }}
-        plugins={[
-          {
-            name: 'Tanstack Router',
-            render: <TanStackRouterDevtoolsPanel />,
-          },
-          TanStackQueryDevtools,
-        ]}
-      />
+      {Devtools ? (
+        <Suspense fallback={null}>
+          <Devtools />
+        </Suspense>
+      ) : null}
     </>
   ),
 })
