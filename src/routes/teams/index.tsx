@@ -25,6 +25,7 @@ import {
   useTeamMessage,
 } from '@/stores/teamStore'
 import { useUser } from '@/stores/userStore'
+import { Seo } from '@/components/Seo'
 
 export const Route = createFileRoute('/teams/')({
   component: TeamsRoute,
@@ -143,6 +144,12 @@ export function TeamsRoute() {
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <Seo
+        title="Teams"
+        description="Manage your teams, invitations, and collaborative challenge progress in LockIN."
+        path="/teams"
+        robots="noindex,nofollow"
+      />
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(0,207,128,0.10),transparent_34%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_28%),linear-gradient(to_bottom,rgba(255,255,255,0.02),transparent_18%)]" />
 
       <div className="max-w-7xl mx-auto space-y-8">

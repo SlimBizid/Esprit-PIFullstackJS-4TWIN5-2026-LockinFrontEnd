@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Keania+One&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Quantico:ital,wght@0,400;0,700;1,400;1,700&family=Rubik+Mono+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Keania+One&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&family=Rubik+Mono+One&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -71,8 +69,8 @@ code {
   --radius: 0.5rem;
 
   --common: #545c67;
-  --rare: #3b82f6;
-  --epic: #a855f7;
+  --rare: #1169f6;
+  --epic: #8e26f0;
   --legendary: #b2572a;
 }
 
@@ -112,7 +110,7 @@ code {
   /* ByteBattle Rarity Colors based on your documentation */
   --common: #94a3b8;
   --rare: #3b82f6;
-  --epic: #a855f7;
+  --epic: #b26cf3;
   --legendary: #e9bf42;
 }
 

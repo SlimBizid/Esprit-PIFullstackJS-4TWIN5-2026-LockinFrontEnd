@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { api, useUser, useUserStore } from '@/stores/userStore'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,7 +49,7 @@ export function EditProfilePage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<UpdateUserFormValues>({
-    resolver: zodResolver(updateUserSchema),
+    resolver: standardSchemaResolver(updateUserSchema),
     defaultValues: {
       username: user?.username,
       email: user?.email,

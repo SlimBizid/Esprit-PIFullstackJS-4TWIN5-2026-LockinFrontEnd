@@ -259,7 +259,7 @@ function CosmeticsPage() {
           ))}
         </div>
       ) : filteredCosmetics.length === 0 ? (
-        <Card className="border-dashed border-border/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(8,12,22,0.95))] shadow-[0_16px_34px_rgba(0,0,0,0.2)]">
+        <Card className="border-dashed border-border/70 bg-background ">
           <CardHeader>
             <CardTitle className="text-foreground">
               Nothing matches this window display
