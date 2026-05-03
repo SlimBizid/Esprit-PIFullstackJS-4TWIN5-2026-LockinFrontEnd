@@ -1,49 +1,83 @@
 import { describe, expect, it } from 'vitest'
 
-import { filterShopCosmetics, formatPrice } from './utils'
+import { filterShopCosmetics, formatPrice } from '@/components/cosmetics/utils'
+import type { Cosmetic } from '@/models/cosmetic'
 
-const cosmetics = [
+const cosmetics: Cosmetic[] = [
   {
     id: '1',
-    imageUrl: 'https://example.com/1.png',
-    cosmeticTitle: 'Golden Banner',
-    cosmeticDescription: 'A bright banner for winners.',
-    cosmeticRarity: 'legendary',
-    price: 1000,
+    imageUrl: '/avatar.png',
+    cosmeticTitle: 'Sky Scout',
+    cosmeticDescription: 'Blue avatar frame',
+    cosmeticRarity: 'rare',
+    price: 1200,
     achievementId: null,
-    cosmeticType: 'banner',
+    cosmeticType: 'avatar',
     createdAt: '2026-01-01',
     updatedAt: '2026-01-01',
   },
   {
     id: '2',
-    imageUrl: 'https://example.com/2.png',
-    cosmeticTitle: 'Wave Emote',
-    cosmeticDescription: 'Say hello to the lobby.',
-    cosmeticRarity: 'common',
+    imageUrl: '/skin.png',
+    cosmeticTitle: 'Inferno Suit',
+    cosmeticDescription: 'Legendary skin for duel mode',
+    cosmeticRarity: 'legendary',
     price: null,
-    achievementId: 'ach-22',
-    cosmeticType: 'emote',
+    achievementId: 'ach-1',
+    cosmeticType: 'skin',
     createdAt: '2026-01-01',
     updatedAt: '2026-01-01',
   },
-] as const
+  {
+    id: '3',
+    imageUrl: '/banner.png',
+    cosmeticTitle: 'Forest Banner',
+    cosmeticDescription: 'Quiet green vibes',
+    cosmeticRarity: 'common',
+    price: 300,
+    achievementId: null,
+    cosmeticType: 'banner',
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
+]
 
-describe('shop cosmetic utils', () => {
-  it('formats reward-only and coin prices', () => {
-    expect(formatPrice(null)).toBe('Reward only')
-    expect(formatPrice(1500)).toBe('1,500 coins')
+describe('formatPrice', () => {
+  it('formats priced cosmetics with locale separators', () => {
+    expect(formatPrice(1200)).toBe('1,200 coins')
   })
 
-  it('filters cosmetics by type, rarity, and text query', () => {
-    expect(filterShopCosmetics([...cosmetics], 'banner', 'all', '')).toEqual([
-      cosmetics[0],
-    ])
+  it('marks missing prices as reward only', () => {
+    expect(formatPrice(null)).toBe('Reward only')
+  })
+})
 
-    expect(filterShopCosmetics([...cosmetics], 'all', 'common', 'hello')).toEqual([
+describe('filterShopCosmetics', () => {
+  it('returns all cosmetics when every filter is open', () => {
+    expect(filterShopCosmetics(cosmetics, 'all', 'all', '')).toEqual(cosmetics)
+  })
+
+  it('filters by cosmetic type', () => {
+    expect(filterShopCosmetics(cosmetics, 'skin', 'all', '')).toEqual([
       cosmetics[1],
     ])
+  })
 
-    expect(filterShopCosmetics([...cosmetics], 'all', 'epic', '')).toEqual([])
+  it('filters by rarity', () => {
+    expect(filterShopCosmetics(cosmetics, 'all', 'common', '')).toEqual([
+      cosmetics[2],
+    ])
+  })
+
+  it('matches trimmed case-insensitive search across text fields', () => {
+    expect(filterShopCosmetics(cosmetics, 'all', 'all', '  duel MODE  ')).toEqual([
+      cosmetics[1],
+    ])
+  })
+
+  it('combines type, rarity, and search filters', () => {
+    expect(filterShopCosmetics(cosmetics, 'avatar', 'rare', 'blue')).toEqual([
+      cosmetics[0],
+    ])
   })
 })

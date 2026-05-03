@@ -1,55 +1,44 @@
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { describe, expect, it } from 'vitest'
 
-import { getApiErrorMessage } from './api-error'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 describe('getApiErrorMessage', () => {
   it('returns the fallback for non-axios errors', () => {
-    expect(getApiErrorMessage(new Error('boom'), 'Fallback message')).toBe(
-      'Fallback message',
-    )
+    expect(getApiErrorMessage(new Error('boom'), 'Fallback')).toBe('Fallback')
   })
 
-  it('returns a string API message when present', () => {
-    const error = new axios.AxiosError('Request failed')
+  it('returns a string message from an axios response', () => {
+    const error = new AxiosError('Request failed')
     error.response = {
-      data: { message: 'Backend says no.' },
-      status: 400,
-      statusText: 'Bad Request',
-      headers: {},
-      config: { headers: {} as never },
-    }
+      data: { message: 'Bad request' },
+    } as never
 
-    expect(getApiErrorMessage(error, 'Fallback message')).toBe(
-      'Backend says no.',
+    expect(getApiErrorMessage(error, 'Fallback')).toBe('Bad request')
+  })
+
+  it('joins an array of backend messages', () => {
+    const error = new AxiosError('Request failed')
+    error.response = {
+      data: { message: ['Email is required', 'Password is required'] },
+    } as never
+
+    expect(getApiErrorMessage(error, 'Fallback')).toBe(
+      'Email is required, Password is required',
     )
   })
 
-  it('joins array API messages and falls back for blank strings', () => {
-    const listError = new axios.AxiosError('Validation failed')
-    listError.response = {
-      data: { message: ['Title is required', 'Image URL is invalid'] },
-      status: 422,
-      statusText: 'Unprocessable Entity',
-      headers: {},
-      config: { headers: {} as never },
-    }
-
-    expect(getApiErrorMessage(listError, 'Fallback message')).toBe(
-      'Title is required, Image URL is invalid',
-    )
-
-    const blankError = new axios.AxiosError('Blank message')
-    blankError.response = {
+  it('returns the fallback for blank axios messages', () => {
+    const error = new AxiosError('Request failed')
+    error.response = {
       data: { message: '   ' },
-      status: 500,
-      statusText: 'Server Error',
-      headers: {},
-      config: { headers: {} as never },
-    }
+    } as never
 
-    expect(getApiErrorMessage(blankError, 'Fallback message')).toBe(
-      'Fallback message',
-    )
+    expect(getApiErrorMessage(error, 'Fallback')).toBe('Fallback')
+  })
+
+  it('matches axios.isAxiosError semantics', () => {
+    const error = new AxiosError('Request failed')
+    expect(axios.isAxiosError(error)).toBe(true)
   })
 })
