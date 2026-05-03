@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AuthShell } from '@/components/auth/AuthShell'
@@ -7,10 +8,10 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
     children,
-    ...props
+  ...props
   }: {
     to: string
-    children: React.ReactNode
+    children: ReactNode
   }) => (
     <a href={to} {...props}>
       {children}

@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api, initializeAuth, useUserStore } from '@/stores/userStore'
