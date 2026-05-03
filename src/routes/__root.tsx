@@ -6,9 +6,6 @@ import type { QueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import { ThemeProvider } from 'next-themes'
 
-const Devtools = import.meta.env.DEV
-  ? lazy(() => import('@/components/Devtools'))
-  : null
 const Footer = lazy(() => import('@/components/Footer'))
 
 interface MyRouterContext {

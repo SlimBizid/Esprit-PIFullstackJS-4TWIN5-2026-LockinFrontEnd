@@ -45,6 +45,7 @@ export default defineConfig({
         'src/routes/**',
         'src/hooks/**',
         'src/integrations/**',
+        'src/components/Devtools.tsx',
         'src/components/BenefitsSection.tsx',
         'src/components/Footer.tsx',
         'src/components/Header.tsx',
