@@ -62,4 +62,19 @@ describe('Seo', () => {
         .length,
     ).toBe(1)
   })
+
+  it('uses the homepage structured data type and default robots value', () => {
+    render(<Seo title="Home" description="Welcome home" path="/" />)
+
+    expect(getMeta('name', 'robots')?.getAttribute('content')).toBe(
+      'index,follow',
+    )
+    const script = document.head.querySelector(
+      'script[data-seo-structured-data="true"]',
+    )
+    expect(script?.textContent).toContain('"@type":"WebSite"')
+    expect(getMeta('property', 'og:image:alt')?.getAttribute('content')).toBe(
+      'LockIN preview image',
+    )
+  })
 })

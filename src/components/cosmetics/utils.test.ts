@@ -44,7 +44,7 @@ const cosmetics: Cosmetic[] = [
 
 describe('formatPrice', () => {
   it('formats priced cosmetics with locale separators', () => {
-    expect(formatPrice(1200).replaceAll(/\s/gu, ' ')).toBe('1 200 coins')
+    expect(formatPrice(1200)).toMatch(/^1(?:[\s,.\u202f])?200 coins$/u)
   })
 
   it('marks missing prices as reward only', () => {

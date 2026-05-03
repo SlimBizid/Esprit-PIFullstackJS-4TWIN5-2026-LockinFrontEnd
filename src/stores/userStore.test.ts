@@ -30,6 +30,14 @@ describe('useUserStore', () => {
     resetUserStore()
   })
 
+  it('updates loading and error flags through the synchronous setters', () => {
+    useUserStore.getState().setLoading(true)
+    useUserStore.getState().setError('Oops')
+
+    expect(useUserStore.getState().isLoading).toBe(true)
+    expect(useUserStore.getState().error).toBe('Oops')
+  })
+
   it('sets and clears the user synchronously', () => {
     useUserStore.getState().setUser(sampleUser)
     expect(useUserStore.getState().user).toEqual(sampleUser)
@@ -70,6 +78,20 @@ describe('useUserStore', () => {
     ).rejects.toBe(error)
 
     expect(useUserStore.getState().error).toBe('Invalid credentials')
+    expect(useUserStore.getState().isLoading).toBe(false)
+  })
+
+  it('falls back to a default message for non-axios login errors', async () => {
+    const error = new Error('boom')
+    vi.spyOn(api, 'post').mockRejectedValueOnce(error)
+
+    await expect(
+      useUserStore
+        .getState()
+        .login({ email: 'ram@example.com', password: 'wrong' }),
+    ).rejects.toBe(error)
+
+    expect(useUserStore.getState().error).toBe('Login failed')
     expect(useUserStore.getState().isLoading).toBe(false)
   })
 
@@ -114,6 +136,21 @@ describe('useUserStore', () => {
 
     expect(useUserStore.getState().user).toBeNull()
     expect(useUserStore.getState().isAuthenticated).toBe(false)
+  })
+
+  it('clears previous errors before a successful fetchMe run', async () => {
+    useUserStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: 'old error',
+    })
+    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: sampleUser } as never)
+
+    await useUserStore.getState().fetchMe()
+
+    expect(useUserStore.getState().error).toBeNull()
+    expect(useUserStore.getState().user).toEqual(sampleUser)
   })
 
   it('initializeAuth delegates to fetchMe', async () => {

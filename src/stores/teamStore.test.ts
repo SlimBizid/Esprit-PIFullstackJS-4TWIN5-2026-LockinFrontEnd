@@ -46,6 +46,11 @@ describe('useTeamStore', () => {
     resetTeamStore()
   })
 
+  it('sets the message synchronously', () => {
+    useTeamStore.getState().setMessage('Heads up')
+    expect(useTeamStore.getState().message).toBe('Heads up')
+  })
+
   it('fetches all teams and accepts a single-team response shape', async () => {
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: team() } as never)
 
@@ -65,6 +70,26 @@ describe('useTeamStore', () => {
     await useTeamStore.getState().fetchTeams()
 
     expect(useTeamStore.getState().error).toBe('Failed to fetch teams')
+  })
+
+  it('falls back to unknown fetchTeams errors for non-axios failures', async () => {
+    vi.spyOn(api, 'get').mockRejectedValueOnce(new Error('boom'))
+
+    await useTeamStore.getState().fetchTeams()
+
+    expect(useTeamStore.getState().error).toBe('Unknown error')
+  })
+
+  it('fetches my teams and stores message-based failures', async () => {
+    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: [team({ id: 4 })] } as never)
+
+    await useTeamStore.getState().fetchMyTeams()
+
+    expect(useTeamStore.getState().myTeams).toEqual([team({ id: 4 })])
+
+    vi.spyOn(api, 'get').mockRejectedValueOnce({ message: 'No team data' } as never)
+    await useTeamStore.getState().fetchMyTeams()
+    expect(useTeamStore.getState().error).toBe('No team data')
   })
 
   it('prevents creating a second team when the user already belongs to one', async () => {
@@ -94,6 +119,14 @@ describe('useTeamStore', () => {
     )
   })
 
+  it('stores an invalid team error when createTeam returns the wrong shape', async () => {
+    vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { ok: true } } as never)
+
+    await useTeamStore.getState().createTeam('Broken Team', user.id)
+
+    expect(useTeamStore.getState().error).toBe('Invalid team data')
+  })
+
   it('updates a team in both arrays', async () => {
     const original = team()
     const updated = team({ name: 'Renamed Team' })
@@ -106,6 +139,16 @@ describe('useTeamStore', () => {
     expect(useTeamStore.getState().myTeams[0].name).toBe('Renamed Team')
   })
 
+  it('stores an invalid team error when updateTeam returns the wrong shape', async () => {
+    const original = team()
+    useTeamStore.setState({ allTeams: [original], myTeams: [original] })
+    vi.spyOn(api, 'patch').mockResolvedValueOnce({ data: { ok: true } } as never)
+
+    await useTeamStore.getState().updateTeam(original.id, 'Broken')
+
+    expect(useTeamStore.getState().error).toBe('Invalid team data')
+  })
+
   it('deletes a team from both arrays', async () => {
     const existing = team()
     useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
@@ -115,6 +158,58 @@ describe('useTeamStore', () => {
 
     expect(useTeamStore.getState().allTeams).toEqual([])
     expect(useTeamStore.getState().myTeams).toEqual([])
+  })
+
+  it('stores a deleteTeam error message from the backend', async () => {
+    const existing = team()
+    useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
+    const error = new AxiosError('failed')
+    error.response = {
+      data: { message: 'Failed to delete team' },
+    } as never
+    vi.spyOn(api, 'delete').mockRejectedValueOnce(error)
+
+    await expect(useTeamStore.getState().deleteTeam(existing.id)).rejects.toBe(error)
+
+    expect(useTeamStore.getState().error).toBe('Failed to delete team')
+  })
+
+  it('invites a user and updates team state', async () => {
+    const existing = team()
+    const updated = team({ pendingInvitations: ['new-user'] })
+    useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
+    vi.spyOn(api, 'post').mockResolvedValueOnce({ data: updated } as never)
+
+    await useTeamStore.getState().inviteUser(existing.id, 'new-user')
+
+    expect(useTeamStore.getState().allTeams[0].pendingInvitations).toEqual([
+      'new-user',
+    ])
+    expect(useTeamStore.getState().message).toBe('Invitation sent.')
+  })
+
+  it('stores an invalid team error when inviteUser returns the wrong shape', async () => {
+    const existing = team()
+    useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
+    vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { ok: true } } as never)
+
+    await useTeamStore.getState().inviteUser(existing.id, 'new-user')
+
+    expect(useTeamStore.getState().error).toBe('Invalid team data')
+  })
+
+  it('transfers leadership and updates both collections', async () => {
+    const existing = team()
+    const updated = team({ leaderId: 'user-2' })
+    useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
+    vi.spyOn(api, 'patch').mockResolvedValueOnce({ data: updated } as never)
+
+    await useTeamStore.getState().transferLeadership(existing.id, 'user-2')
+
+    expect(useTeamStore.getState().allTeams[0].leaderId).toBe('user-2')
+    expect(useTeamStore.getState().message).toBe(
+      'Leadership transferred successfully.',
+    )
   })
 
   it('accepts an invitation, removes the pending entry, and adds the team', async () => {
@@ -149,6 +244,16 @@ describe('useTeamStore', () => {
       'Yeyy! You have been added to this team.',
     )
     expect(fetchMyTeamsSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('prevents accepting an invitation when the user already has a team', async () => {
+    useTeamStore.setState({ myTeams: [team()] })
+
+    await useTeamStore.getState().acceptInvitation(1, user.id)
+
+    expect(useTeamStore.getState().message).toBe(
+      'You need to quit your current team to enter another team or create a new one.',
+    )
   })
 
   it('reverts optimistic invitation removal when accept fails', async () => {
@@ -191,5 +296,53 @@ describe('useTeamStore', () => {
       'other-user',
     ])
     expect(useTeamStore.getState().message).toBe('Invitation declined.')
+  })
+
+  it('restores prior state when declining an invitation fails', async () => {
+    const invitedTeam = team({
+      pendingInvitations: [user.id, 'other-user'],
+      status: 'PENDING',
+    })
+    useTeamStore.setState({ allTeams: [invitedTeam], myTeams: [] })
+    const error = new AxiosError('failed')
+    error.response = {
+      data: { message: 'Failed to decline invitation' },
+    } as never
+    vi.spyOn(api, 'post').mockRejectedValueOnce(error)
+
+    await expect(
+      useTeamStore.getState().declineInvitation(invitedTeam.id, user.id),
+    ).rejects.toBe(error)
+
+    expect(useTeamStore.getState().allTeams).toEqual([invitedTeam])
+    expect(useTeamStore.getState().error).toBe('Failed to decline invitation')
+  })
+
+  it('removes a user and refreshes my teams', async () => {
+    const existing = team()
+    const updated = team({ users: [] })
+    useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
+    vi.spyOn(api, 'delete').mockResolvedValueOnce({ data: updated } as never)
+    const fetchMyTeamsSpy = vi
+      .spyOn(useTeamStore.getState(), 'fetchMyTeams')
+      .mockResolvedValueOnce()
+
+    await useTeamStore.getState().removeUser(existing.id, user.id)
+
+    expect(useTeamStore.getState().allTeams[0].users).toEqual([])
+    expect(useTeamStore.getState().message).toBe(
+      'Oh no, a member has quit the team.',
+    )
+    expect(fetchMyTeamsSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('stores an invalid team error when removeUser returns the wrong shape', async () => {
+    const existing = team()
+    useTeamStore.setState({ allTeams: [existing], myTeams: [existing] })
+    vi.spyOn(api, 'delete').mockResolvedValueOnce({ data: { ok: true } } as never)
+
+    await useTeamStore.getState().removeUser(existing.id, user.id)
+
+    expect(useTeamStore.getState().error).toBe('Invalid team data')
   })
 })
