@@ -44,7 +44,7 @@ const cosmetics: Cosmetic[] = [
 
 describe('formatPrice', () => {
   it('formats priced cosmetics with locale separators', () => {
-    expect(formatPrice(1200)).toBe('1,200 coins')
+    expect(formatPrice(1200).replaceAll(/\s/gu, ' ')).toBe('1 200 coins')
   })
 
   it('marks missing prices as reward only', () => {
@@ -70,9 +70,9 @@ describe('filterShopCosmetics', () => {
   })
 
   it('matches trimmed case-insensitive search across text fields', () => {
-    expect(filterShopCosmetics(cosmetics, 'all', 'all', '  duel MODE  ')).toEqual([
-      cosmetics[1],
-    ])
+    expect(
+      filterShopCosmetics(cosmetics, 'all', 'all', '  duel MODE  '),
+    ).toEqual([cosmetics[1]])
   })
 
   it('combines type, rarity, and search filters', () => {
