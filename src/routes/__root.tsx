@@ -41,12 +41,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
           </Suspense>
         </div>
       </ThemeProvider>
-
-      {Devtools ? (
-        <Suspense fallback={null}>
-          <Devtools />
-        </Suspense>
-      ) : null}
     </>
   ),
 })
