@@ -12,7 +12,7 @@ function App() {
   return (
     <main id="main-content" tabIndex={-1} className="outline-none space-y-16">
       <Seo
-        title="Competitive coding challenges and team battles"
+        title="LockIN | Competitive coding challenges and team battles"
         description="LockIN helps you practice coding with solo challenges, CSS battles, challenge reviews, and team competition."
         path="/"
       />
