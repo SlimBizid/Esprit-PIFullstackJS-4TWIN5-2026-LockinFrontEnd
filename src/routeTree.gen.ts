@@ -29,6 +29,7 @@ import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-pas
 import { Route as AdminReviewReportsRouteImport } from './routes/admin/review-reports'
 import { Route as AchievementsTypeRouteImport } from './routes/achievements/$type'
 import { Route as ProfileEditIndexRouteImport } from './routes/profile/edit/index'
+import { Route as ProfileEditPasswordRouteImport } from './routes/profile/edit/password'
 import { Route as AdminAchievementsNewRouteImport } from './routes/admin/achievements/new'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -131,6 +132,11 @@ const ProfileEditIndexRoute = ProfileEditIndexRouteImport.update({
   path: '/profile/edit/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileEditPasswordRoute = ProfileEditPasswordRouteImport.update({
+  id: '/profile/edit/password',
+  path: '/profile/edit/password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAchievementsNewRoute = AdminAchievementsNewRouteImport.update({
   id: '/admin/achievements/new',
   path: '/admin/achievements/new',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/admin/achievements/new': typeof AdminAchievementsNewRoute
+  '/profile/edit/password': typeof ProfileEditPasswordRoute
   '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesByTo {
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/teams': typeof TeamsIndexRoute
   '/admin/achievements/new': typeof AdminAchievementsNewRoute
+  '/profile/edit/password': typeof ProfileEditPasswordRoute
   '/profile/edit': typeof ProfileEditIndexRoute
 }
 export interface FileRoutesById {
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/admin/achievements/new': typeof AdminAchievementsNewRoute
+  '/profile/edit/password': typeof ProfileEditPasswordRoute
   '/profile/edit/': typeof ProfileEditIndexRoute
 }
 export interface FileRouteTypes {
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/teams/'
     | '/admin/achievements/new'
+    | '/profile/edit/password'
     | '/profile/edit/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/teams'
     | '/admin/achievements/new'
+    | '/profile/edit/password'
     | '/profile/edit'
   id:
     | '__root__'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/teams/'
     | '/admin/achievements/new'
+    | '/profile/edit/password'
     | '/profile/edit/'
   fileRoutesById: FileRoutesById
 }
@@ -300,6 +312,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
   AdminAchievementsNewRoute: typeof AdminAchievementsNewRoute
+  ProfileEditPasswordRoute: typeof ProfileEditPasswordRoute
   ProfileEditIndexRoute: typeof ProfileEditIndexRoute
 }
 
@@ -445,6 +458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileEditIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/edit/password': {
+      id: '/profile/edit/password'
+      path: '/profile/edit/password'
+      fullPath: '/profile/edit/password'
+      preLoaderRoute: typeof ProfileEditPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/achievements/new': {
       id: '/admin/achievements/new'
       path: '/admin/achievements/new'
@@ -476,6 +496,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   TeamsIndexRoute: TeamsIndexRoute,
   AdminAchievementsNewRoute: AdminAchievementsNewRoute,
+  ProfileEditPasswordRoute: ProfileEditPasswordRoute,
   ProfileEditIndexRoute: ProfileEditIndexRoute,
 }
 export const routeTree = rootRouteImport

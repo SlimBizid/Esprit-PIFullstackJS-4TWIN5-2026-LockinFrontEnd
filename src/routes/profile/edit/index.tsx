@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-import { api, useUser, useUserStore } from '@/stores/userStore'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { api, useUser, useUserStore } from '@/stores/userStore'
 
 const updateUserSchema = z.object({
   username: z
@@ -51,9 +54,9 @@ export function EditProfilePage() {
   } = useForm<UpdateUserFormValues>({
     resolver: standardSchemaResolver(updateUserSchema),
     defaultValues: {
-      username: user?.username,
-      email: user?.email,
-      githubHandle: user?.githubHandle || '',
+      username: user.username,
+      email: user.email,
+      githubHandle: user.githubHandle || '',
       password: '',
     },
   })
@@ -64,23 +67,35 @@ export function EditProfilePage() {
       setApiError(null)
       await userStore.fetchMe()
       setSuccessMessage(true)
-    } catch (err: any) {
+    } catch (err) {
       setSuccessMessage(false)
-      setApiError(
-        err.response?.data?.message || 'Failed to update profile. Try again.',
-      )
+      setApiError(getApiErrorMessage(err, 'Failed to update profile. Try again.'))
     }
   }
 
-  return (
-    <div className="max-w-3xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-      <h1 className="text-4xl font-bold mb-8">Edit Profile</h1>
+  const goBack = () => {
+    window.history.back()
+  }
 
-      {/* API Feedback */}
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mb-8 space-y-2">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Go back"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back
+        </button>
+        <h1 className="text-4xl font-bold">Edit Profile</h1>
+      </div>
+
       <div
         role={apiError ? 'alert' : 'status'}
         aria-live="polite"
-        className={`mb-4 rounded-lg border px-4 py-3 text-sm transition-colors duration-150 min-h-[3rem] ${
+        className={`mb-4 min-h-[3rem] rounded-lg border px-4 py-3 text-sm transition-colors duration-150 ${
           apiError
             ? 'border-destructive/30 bg-destructive/10 text-destructive'
             : successMessage
@@ -88,14 +103,14 @@ export function EditProfilePage() {
               : 'border-transparent bg-transparent text-foreground'
         }`}
       >
-        {apiError && <p className="mb-0">{apiError}</p>}
+        {apiError && <p>{apiError}</p>}
         {successMessage && (
           <>
             <p className="mb-1">Profile updated successfully!</p>
-            <p className="mb-0">
+            <p>
               <Link
                 to="/profile/$userId"
-                params={{ userId: user?.username ?? '' }}
+                params={{ userId: user.username }}
                 className="font-semibold text-emerald-700 hover:text-emerald-900"
               >
                 Go back to your profile
@@ -106,7 +121,6 @@ export function EditProfilePage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Username */}
         <div className="space-y-1.5">
           <Label htmlFor="username">Username</Label>
           <Input
@@ -116,13 +130,12 @@ export function EditProfilePage() {
             placeholder="your_handle"
           />
           {errors.username && (
-            <p className="text-xs text-destructive mt-1">
+            <p className="mt-1 text-xs text-destructive">
               {errors.username.message}
             </p>
           )}
         </div>
 
-        {/* Email */}
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -131,16 +144,15 @@ export function EditProfilePage() {
             {...register('email')}
             aria-invalid={!!errors.email}
             placeholder="you@example.com"
-            disabled={user.githubHandle ? true : false}
+            disabled={!!user.githubHandle}
           />
           {errors.email && (
-            <p className="text-xs text-destructive mt-1">
+            <p className="mt-1 text-xs text-destructive">
               {errors.email.message}
             </p>
           )}
         </div>
 
-        {/* Password */}
         <div className="space-y-1.5">
           <Label htmlFor="password">Confirm Password</Label>
           <Input
@@ -148,23 +160,31 @@ export function EditProfilePage() {
             type="password"
             {...register('password')}
             aria-invalid={!!errors.password}
-            placeholder="••••••••"
+            placeholder="********"
           />
           {errors.password && (
-            <p className="text-xs text-destructive mt-1">
+            <p className="mt-1 text-xs text-destructive">
               {errors.password.message}
             </p>
           )}
         </div>
 
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          aria-busy={isSubmitting}
-          className="w-full h-11 font-semibold"
-        >
-          {isSubmitting ? 'Updating…' : 'Update Profile'}
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {!user.githubHandle && (
+            <Button asChild variant="outline" className="h-11 w-full sm:flex-1">
+              <Link to="/profile/edit/password">Update Password</Link>
+            </Button>
+          )}
+
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="h-11 w-full sm:flex-1"
+          >
+            {isSubmitting ? 'Updating...' : 'Save'}
+          </Button>
+        </div>
       </form>
     </div>
   )
