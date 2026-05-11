@@ -42,7 +42,6 @@ export default defineConfig({
         'src/firebase.ts',
         'src/reportWebVitals.ts',
         'src/routeTree.gen.ts',
-        'src/routes/**',
         'src/hooks/**',
         'src/integrations/**',
         'src/components/Devtools.tsx',

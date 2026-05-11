@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react'
 import { Github, Mail, Shield, Star, Palette, Pencil } from 'lucide-react'
 import { api, useUser } from '@/stores/userStore'
 import { UserAchievementsPreview } from '@/components/userprofileachievements'
-import type { Cosmetic, CosmeticType } from '@/models/cosmetic'
+import { ProfileCosmeticAvatar } from '@/components/profile-cosmetic-avatar'
+import type { Cosmetic } from '@/models/cosmetic'
+import {
+  getEquippedCosmetic,
+  type EquippedCosmeticRecord,
+} from '@/lib/equipped-cosmetics'
 interface UserProfile {
   id: string
   username: string
@@ -14,34 +19,6 @@ interface UserProfile {
   updatedAt: string
   xp: number
   cosmetics?: Array<string | Partial<Cosmetic> | EquippedCosmeticRecord>
-}
-
-type EquippedCosmeticRecord = {
-  id?: string
-  imageUrl?: string
-  cosmeticTitle?: string
-  cosmeticType?: CosmeticType
-  type?: CosmeticType
-  equipped?: boolean
-}
-
-function isCosmeticRecord(value: unknown): value is EquippedCosmeticRecord {
-  return typeof value === 'object' && value !== null
-}
-
-function getEquippedAvatar(user: UserProfile): EquippedCosmeticRecord | null {
-  for (const cosmetic of user.cosmetics ?? []) {
-    if (
-      isCosmeticRecord(cosmetic) &&
-      cosmetic.imageUrl &&
-      cosmetic.equipped &&
-      (cosmetic.cosmeticType === 'avatar' || cosmetic.type === 'avatar')
-    ) {
-      return cosmetic
-    }
-  }
-
-  return null
 }
 
 function getCosmeticDisplay(
@@ -124,7 +101,8 @@ function RouteComponent() {
   const previewCosmetics = cosmetics.slice(0, 3)
   const totalXp = user.xp ?? null
   const isOwnProfile = currentUser?.username === user.username
-  const equippedAvatar = getEquippedAvatar(user)
+  const equippedAvatar = getEquippedCosmetic(user, 'avatar')
+  const equippedBorder = getEquippedCosmetic(user, 'border')
 
   return (
     <main
@@ -135,15 +113,17 @@ function RouteComponent() {
         {/* Header */}
         <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            {equippedAvatar?.imageUrl ? (
-              <div className="w-20 h-20 overflow-hidden rounded-2xl border border-primary/30 bg-background/70 shadow-[0_0_20px_rgba(0,207,186,0.08)] flex-shrink-0">
-                <img
-                  src={equippedAvatar.imageUrl}
-                  alt={`${user.username} equipped avatar`}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            ) : null}
+            <ProfileCosmeticAvatar
+              avatarUrl={equippedAvatar?.imageUrl}
+              borderUrl={equippedBorder?.imageUrl}
+              username={user.username}
+              className="h-20 w-20"
+              fallback={
+                <span className="text-2xl font-mono-one uppercase text-primary">
+                  {user.username.charAt(0)}
+                </span>
+              }
+            />
 
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center gap-3">
@@ -302,8 +282,8 @@ function RouteComponent() {
                           </p>
                           <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                             {cosmetic.type
-                              ? cosmetic.type === 'avatar' && cosmetic.equipped
-                                ? 'avatar equipped'
+                              ? cosmetic.equipped
+                                ? `${cosmetic.type} equipped`
                                 : `${cosmetic.type} owned`
                               : 'Owned cosmetic'}
                           </p>

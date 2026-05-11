@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Palette, ShoppingBag } from 'lucide-react'
 
+import { ProfileCosmeticAvatar } from '@/components/profile-cosmetic-avatar'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import type { Cosmetic, CosmeticType } from '@/models/cosmetic'
+import { getEquippedCosmetic } from '@/lib/equipped-cosmetics'
 import { api, useIsAuthenticated, useUser } from '@/stores/userStore'
 
 type OwnedCosmetic = Partial<Cosmetic> & {
@@ -130,6 +132,8 @@ function ProfileCosmeticsPage() {
   }
 
   const cosmetics = profile?.cosmetics ?? []
+  const equippedAvatar = getEquippedCosmetic({ cosmetics }, 'avatar')
+  const equippedBorder = getEquippedCosmetic({ cosmetics }, 'border')
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
@@ -156,6 +160,20 @@ function ProfileCosmeticsPage() {
             automatically replaces the currently equipped cosmetic for that same
             type.
           </CardDescription>
+
+          <div className="pt-2">
+            <ProfileCosmeticAvatar
+              avatarUrl={equippedAvatar?.imageUrl}
+              borderUrl={equippedBorder?.imageUrl}
+              username={profile?.username ?? currentUser.username}
+              className="h-20 w-20"
+              fallback={
+                <span className="text-2xl font-mono-one uppercase text-primary">
+                  {(profile?.username ?? currentUser.username).charAt(0)}
+                </span>
+              }
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {error ? (

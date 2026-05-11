@@ -1,11 +1,12 @@
 export type CosmeticRarity = 'common' | 'rare' | 'epic' | 'legendary'
-export type CosmeticType = 'skin' | 'emote' | 'avatar' | 'banner'
+export type CosmeticType = 'skin' | 'emote' | 'avatar' | 'banner' | 'border'
 
 export const COSMETIC_TYPES: CosmeticType[] = [
   'skin',
   'emote',
   'avatar',
   'banner',
+  'border',
 ]
 
 export const COSMETIC_RARITIES: CosmeticRarity[] = [
@@ -20,6 +21,7 @@ export const COSMETIC_TYPE_LABELS: Record<CosmeticType, string> = {
   emote: 'Emote',
   avatar: 'Avatar',
   banner: 'Banner',
+  border: 'Border',
 }
 
 export type Cosmetic = {

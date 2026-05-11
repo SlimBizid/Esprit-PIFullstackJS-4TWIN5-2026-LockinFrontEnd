@@ -20,13 +20,20 @@ describe('reference data', () => {
   })
 
   it('keeps cosmetic types, rarities, and labels in sync', () => {
-    expect(COSMETIC_TYPES).toEqual(['skin', 'emote', 'avatar', 'banner'])
+    expect(COSMETIC_TYPES).toEqual([
+      'skin',
+      'emote',
+      'avatar',
+      'banner',
+      'border',
+    ])
     expect(COSMETIC_RARITIES).toEqual(['common', 'rare', 'epic', 'legendary'])
     expect(COSMETIC_TYPE_LABELS).toEqual({
       skin: 'Skin',
       emote: 'Emote',
       avatar: 'Avatar',
       banner: 'Banner',
+      border: 'Border',
     })
   })
 
@@ -41,6 +48,7 @@ describe('reference data', () => {
     expect(RARITY_STYLES.legendary.label).toBe('Legendary')
     expect(RARITY_STYLES.common.badge).toContain('slate')
     expect(TYPE_STYLES.avatar.panel).toContain('cyan')
+    expect(TYPE_STYLES.border.panel).toContain('amber')
     expect(TYPE_STYLES.skin.tint).toContain('violet')
   })
 })

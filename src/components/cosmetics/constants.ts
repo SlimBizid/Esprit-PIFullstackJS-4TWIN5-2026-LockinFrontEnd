@@ -52,6 +52,10 @@ export const TYPE_STYLES: Record<
     panel: 'border-emerald-500/20 bg-emerald-500/8 text-emerald-200',
     tint: 'from-emerald-400/20 to-transparent',
   },
+  border: {
+    panel: 'border-amber-500/20 bg-amber-500/8 text-amber-200',
+    tint: 'from-amber-400/20 to-transparent',
+  },
   emote: {
     panel: 'border-rose-500/20 bg-rose-500/8 text-rose-200',
     tint: 'from-rose-400/20 to-transparent',

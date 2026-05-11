@@ -13,8 +13,20 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Link } from '@tanstack/react-router'
-import { useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
+import { ProfileCosmeticAvatar } from '@/components/profile-cosmetic-avatar'
+import { getEquippedCosmetic } from '@/lib/equipped-cosmetics'
+import { api, useUser, useIsAuthenticated, useUserStore } from '@/stores/userStore'
 import { LogOut, Menu, X } from 'lucide-react'
+
+type NavbarProfile = {
+  username: string
+  cosmetics?: Array<{
+    imageUrl?: string
+    cosmeticType?: 'skin' | 'emote' | 'avatar' | 'banner' | 'border'
+    type?: 'skin' | 'emote' | 'avatar' | 'banner' | 'border'
+    equipped?: boolean
+  }>
+}
 
 const AccessibilitySettingsMenu = lazy(
   () => import('@/components/accessibility/AccessibilitySettingsMenu'),
@@ -207,6 +219,9 @@ export default function Navbar() {
   const isAuthenticated = useIsAuthenticated()
   const logout = useUserStore((s) => s.logout)
   const isLoading = useUserStore((s) => s.isLoading)
+  const [profileCosmetics, setProfileCosmetics] = useState<NavbarProfile | null>(
+    null,
+  )
 
   const handleLogout = async () => {
     try {
@@ -230,6 +245,32 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    if (!isAuthenticated || !user?.username) {
+      setProfileCosmetics(null)
+      return
+    }
+
+    let cancelled = false
+
+    api
+      .get<NavbarProfile>(`/users/profile/${user.username}`)
+      .then(({ data }) => {
+        if (!cancelled) {
+          setProfileCosmetics(data)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProfileCosmetics(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user?.username])
+
   const getNavbarBg = () => {
     if (scrollProgress < 10) return 'bg-transparent border-transparent'
     if (scrollProgress < 200)
@@ -241,6 +282,15 @@ export default function Navbar() {
     user?.type === 'admin'
       ? [...NAV_LINKS, { to: '/admin' as const, label: 'Admin' }]
       : NAV_LINKS
+
+  const equippedAvatar = getEquippedCosmetic(
+    profileCosmetics ?? { cosmetics: [] },
+    'avatar',
+  )
+  const equippedBorder = getEquippedCosmetic(
+    profileCosmetics ?? { cosmetics: [] },
+    'border',
+  )
 
   return (
     <>
@@ -312,6 +362,25 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                <Link
+                  to="/profile/$userId"
+                  params={{ userId: user?.username ?? '' }}
+                  className="transition-opacity hover:opacity-80"
+                  aria-label={`View profile of ${user?.username}`}
+                >
+                  <ProfileCosmeticAvatar
+                    avatarUrl={equippedAvatar?.imageUrl}
+                    borderUrl={equippedBorder?.imageUrl}
+                    username={user?.username ?? 'User'}
+                    className="h-10 w-10"
+                    frameClassName="rounded-full"
+                    fallback={
+                      <span className="text-sm font-mono-one uppercase text-primary">
+                        {user?.username?.charAt(0) ?? 'U'}
+                      </span>
+                    }
+                  />
+                </Link>
                 <span
                   className="text-primary font-bold"
                   aria-label={`Logged in as ${user?.username}`}
@@ -447,6 +516,20 @@ export default function Navbar() {
                     </>
                   ) : (
                     <div className="space-y-4">
+                      <div className="flex flex-col items-center gap-3">
+                        <ProfileCosmeticAvatar
+                          avatarUrl={equippedAvatar?.imageUrl}
+                          borderUrl={equippedBorder?.imageUrl}
+                          username={user?.username ?? 'User'}
+                          className="h-16 w-16"
+                          frameClassName="rounded-full"
+                          fallback={
+                            <span className="text-xl font-mono-one uppercase text-primary">
+                              {user?.username?.charAt(0) ?? 'U'}
+                            </span>
+                          }
+                        />
+                      </div>
                       <p className="px-2 text-sm text-muted-foreground text-center">
                         Signed in as{' '}
                         <span className="text-foreground font-bold">
